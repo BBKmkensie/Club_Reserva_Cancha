@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Environment (no subir credenciales)
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+out-tsc/
+*.tsbuildinfo
+
+# Frontend Angular
+frontend/dist/
+frontend/.angular/
+frontend/tmp/
+frontend/out-tsc/
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Optional
+*.local
