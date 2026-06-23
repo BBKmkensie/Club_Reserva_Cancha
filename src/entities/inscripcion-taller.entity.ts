@@ -35,6 +35,18 @@ export class InscripcionTaller {
   @Column({ type: 'varchar', length: 20, default: 'PENDIENTE' })
   estado: EstadoInscripcionTaller;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  altura: number | null;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  peso: number | null;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'porcentaje_grasa' })
+  porcentajeGrasa: number | null;
+
+  @Column({ type: 'boolean', nullable: true })
+  sedentario: boolean | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

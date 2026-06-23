@@ -6,7 +6,7 @@ Repositorio: [GitHub - Reservas_de_Cancha](https://github.com/BBKmkensie/Reserva
 
 ## 🚀 Tecnologías
 
-- **Backend:** NestJS, TypeORM, MariaDB/MySQL
+- **Backend:** NestJS, TypeORM, PostgreSQL
 - **Frontend:** Angular 18, Tailwind CSS
 - **Validación:** class-validator, class-transformer
 
@@ -14,7 +14,7 @@ Repositorio: [GitHub - Reservas_de_Cancha](https://github.com/BBKmkensie/Reserva
 
 - **Node.js** v18 o superior
 - **npm**
-- **MariaDB** o **MySQL** instalado y en ejecución
+- **PostgreSQL** instalado y en ejecución
 
 ---
 
@@ -31,30 +31,25 @@ cd Reservas_de_Cancha
 
 ### 2. Configurar la base de datos
 
-1. Inicia MariaDB/MySQL.
+1. Inicia PostgreSQL.
 2. Crea la base de datos y las tablas ejecutando los scripts SQL **en este orden** (desde la raíz del proyecto):
 
 ```bash
-# Crear base de datos
-mysql -u root -p < create_database.sql
+# Crear base de datos (conectado a postgres)
+psql -U postgres -f create_database.sql
 
-# Esquema completo (tablas base)
-mysql -u root -p proyecto_taller < proyecto_taller_fixed.sql
-
-# Migraciones (roles, imagen en talleres, reservas por profesor, inscripción a salidas)
-mysql -u root -p proyecto_taller < migration_roles_y_inscripcion.sql
-mysql -u root -p proyecto_taller < migration_alumno_taller_nullable.sql
-mysql -u root -p proyecto_taller < migration_inscripcion_taller.sql
+# Esquema completo (todas las tablas y columnas)
+psql -U postgres -d proyecto_taller -f proyecto_taller_fixed.sql
 ```
 
 3. (Opcional) Datos de ejemplo:
 
 ```bash
-mysql -u root -p proyecto_taller < seed_taller_futbol.sql
-mysql -u root -p proyecto_taller < insert_talleres.sql
+psql -U postgres -d proyecto_taller -f seed_taller_futbol.sql
+psql -U postgres -d proyecto_taller -f insert_talleres.sql
 ```
 
-Sustituye `root` y `-p` por tu usuario y contraseña de MySQL si no usas root.
+Sustituye `postgres` por tu usuario de PostgreSQL si usas otro.
 
 ### 3. Configurar el backend
 
@@ -63,7 +58,7 @@ Sustituye `root` y `-p` por tu usuario y contraseña de MySQL si no usas root.
 cp .env.example .env
 ```
 
-Edita `.env` y pon tu **DB_PASSWORD**, **DB_PORT** (por ejemplo 3306 o 3307) y el resto si lo necesitas.
+Edita `.env` y pon tu **DB_PASSWORD**, **DB_PORT** (por defecto 5432) y el resto si lo necesitas.
 
 ```bash
 npm install
@@ -112,13 +107,9 @@ La base de datos ya debe estar creada con las siguientes tablas:
 - `reservas`
 - `salidas`
 
-Para añadir roles, foto en talleres, reservas por profesor e inscripción a salidas, ejecuta la migración:
+El esquema en `proyecto_taller_fixed.sql` ya incluye roles, imágenes en talleres, reservas por profesor, `inscripcion_salida` e `inscripcion_taller`.
 
-```bash
-mysql -u root -p proyecto_taller < migration_roles_y_inscripcion.sql
-```
-
-Esto crea/añade: columna `admin.rol`, `talleres.imagen_url`, `reservas.profesor_id`, tabla `inscripcion_salida`.
+Si actualizas una base antigua, puedes usar los scripts `migration_*.sql` con `psql -U postgres -d proyecto_taller -f migration_....sql`.
 
 ## 🏃 Ejecutar la Aplicación
 

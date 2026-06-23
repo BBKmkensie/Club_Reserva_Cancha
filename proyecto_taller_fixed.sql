@@ -1,127 +1,133 @@
 -- --------------------------------------------------------
--- Script corregido para proyecto_taller
+-- Esquema completo para proyecto_taller (PostgreSQL)
+-- Ejecutar conectado a la base proyecto_taller:
+--   psql -U postgres -d proyecto_taller -f proyecto_taller_fixed.sql
 -- --------------------------------------------------------
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET NAMES utf8 */;
-/*!50503 SET NAMES utf8mb4 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+DROP TABLE IF EXISTS inscripcion_taller CASCADE;
+DROP TABLE IF EXISTS inscripcion_salida CASCADE;
+DROP TABLE IF EXISTS salidas CASCADE;
+DROP TABLE IF EXISTS reservas CASCADE;
+DROP TABLE IF EXISTS franjas_cancha CASCADE;
+DROP TABLE IF EXISTS alumnos CASCADE;
+DROP TABLE IF EXISTS profesores CASCADE;
+DROP TABLE IF EXISTS talleres CASCADE;
+DROP TABLE IF EXISTS admin CASCADE;
 
--- Crear base de datos si no existe
-CREATE DATABASE IF NOT EXISTS `proyecto_taller` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci */;
-USE `proyecto_taller`;
+CREATE TABLE admin (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  rut VARCHAR(12) NOT NULL,
+  email VARCHAR(100) NOT NULL,
+  "PasswordHash" VARCHAR(255) NOT NULL,
+  "PasswordSalt" VARCHAR(255) NOT NULL,
+  rol VARCHAR(20) NOT NULL DEFAULT 'super_admin',
+  UNIQUE (email),
+  UNIQUE (rut)
+);
 
--- Eliminar tablas existentes en orden inverso
-DROP TABLE IF EXISTS `salidas`;
-DROP TABLE IF EXISTS `reservas`;
-DROP TABLE IF EXISTS `alumnos`;
-DROP TABLE IF EXISTS `profesores`;
-DROP TABLE IF EXISTS `talleres`;
-DROP TABLE IF EXISTS `admin`;
+CREATE TABLE talleres (
+  id SERIAL PRIMARY KEY,
+  tipo VARCHAR(50) NOT NULL,
+  descripcion TEXT NOT NULL,
+  capacidad INTEGER DEFAULT 20,
+  imagen_url VARCHAR(500) DEFAULT NULL,
+  fecha_inicio DATE DEFAULT NULL,
+  admin_id INTEGER DEFAULT NULL,
+  CONSTRAINT fk_talleres_admin FOREIGN KEY (admin_id) REFERENCES admin (id) ON DELETE CASCADE
+);
 
--- Volcando estructura para tabla proyecto_taller.admin
-CREATE TABLE `admin` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(100) NOT NULL,
-  `rut` varchar(12) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `PasswordHash` varchar(255) NOT NULL,
-  `PasswordSalt` varchar(255) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`),
-  UNIQUE KEY `rut` (`rut`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE alumnos (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  rut VARCHAR(12) NOT NULL,
+  email VARCHAR(100) DEFAULT NULL,
+  telefono VARCHAR(20) DEFAULT NULL,
+  edad INTEGER DEFAULT NULL,
+  taller_id INTEGER DEFAULT NULL,
+  "PasswordHash" VARCHAR(255) DEFAULT NULL,
+  "PasswordSalt" VARCHAR(255) DEFAULT NULL,
+  UNIQUE (rut),
+  CONSTRAINT fk_alumnos_taller FOREIGN KEY (taller_id) REFERENCES talleres (id) ON DELETE SET NULL
+);
 
--- Volcando estructura para tabla proyecto_taller.talleres
-CREATE TABLE `talleres` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tipo` varchar(50) NOT NULL,
-  `descripcion` text NOT NULL,
-  `capacidad` int(11) DEFAULT 20,
-  `fecha_inicio` date DEFAULT NULL,
-  `admin_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `admin_id` (`admin_id`),
-  CONSTRAINT `fk_talleres_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE profesores (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  rut VARCHAR(12) NOT NULL,
+  email VARCHAR(100) NOT NULL,
+  telefono VARCHAR(20) DEFAULT NULL,
+  foto_path VARCHAR(255) DEFAULT NULL,
+  taller_id INTEGER NOT NULL,
+  "PasswordHash" VARCHAR(255) DEFAULT NULL,
+  "PasswordSalt" VARCHAR(255) DEFAULT NULL,
+  UNIQUE (email),
+  UNIQUE (rut),
+  CONSTRAINT fk_profesores_taller FOREIGN KEY (taller_id) REFERENCES talleres (id) ON DELETE CASCADE
+);
 
--- Volcando estructura para tabla proyecto_taller.alumnos
-CREATE TABLE `alumnos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(100) NOT NULL,
-  `rut` varchar(12) NOT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `telefono` varchar(20) DEFAULT NULL,
-  `edad` int(11) DEFAULT NULL,
-  `taller_id` int(11) NOT NULL,
-  `PasswordHash` varchar(255) DEFAULT NULL,
-  `PasswordSalt` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `rut` (`rut`),
-  KEY `taller_id` (`taller_id`),
-  CONSTRAINT `fk_alumnos_taller` FOREIGN KEY (`taller_id`) REFERENCES `talleres` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE reservas (
+  id SERIAL PRIMARY KEY,
+  espacio VARCHAR(50) NOT NULL,
+  fecha DATE NOT NULL,
+  hora_inicio TIME DEFAULT NULL,
+  hora_fin TIME DEFAULT NULL,
+  taller_id INTEGER NOT NULL,
+  admin_id INTEGER DEFAULT NULL,
+  profesor_id INTEGER DEFAULT NULL,
+  CONSTRAINT fk_reservas_taller FOREIGN KEY (taller_id) REFERENCES talleres (id) ON DELETE CASCADE,
+  CONSTRAINT fk_reservas_admin FOREIGN KEY (admin_id) REFERENCES admin (id) ON DELETE SET NULL,
+  CONSTRAINT fk_reservas_profesor FOREIGN KEY (profesor_id) REFERENCES profesores (id) ON DELETE SET NULL
+);
 
--- Volcando estructura para tabla proyecto_taller.profesores
-CREATE TABLE `profesores` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(100) NOT NULL,
-  `rut` varchar(12) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `telefono` varchar(20) DEFAULT NULL,
-  `foto_path` varchar(255) DEFAULT NULL,
-  `taller_id` int(11) NOT NULL,
-  `PasswordHash` varchar(255) DEFAULT NULL,
-  `PasswordSalt` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`),
-  UNIQUE KEY `rut` (`rut`),
-  KEY `taller_id` (`taller_id`),
-  CONSTRAINT `fk_profesores_taller` FOREIGN KEY (`taller_id`) REFERENCES `talleres` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE UNIQUE INDEX idx_reservas_espacio_fecha_hora ON reservas (espacio, fecha, hora_inicio);
 
--- Volcando estructura para tabla proyecto_taller.reservas
-CREATE TABLE `reservas` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `espacio` varchar(50) NOT NULL,
-  `fecha` date NOT NULL,
-  `hora_inicio` time DEFAULT NULL,
-  `hora_fin` time DEFAULT NULL,
-  `taller_id` int(11) NOT NULL,
-  `admin_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `taller_id` (`taller_id`),
-  KEY `admin_id` (`admin_id`),
-  CONSTRAINT `fk_reservas_taller` FOREIGN KEY (`taller_id`) REFERENCES `talleres` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_reservas_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE franjas_cancha (
+  id SERIAL PRIMARY KEY,
+  espacio VARCHAR(50) NOT NULL DEFAULT 'Cancha Principal',
+  dia_semana SMALLINT NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
+  hora_inicio TIME NOT NULL,
+  hora_fin TIME NOT NULL,
+  activa BOOLEAN NOT NULL DEFAULT TRUE,
+  para_todos BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE (espacio, dia_semana, hora_inicio)
+);
 
--- Volcando estructura para tabla proyecto_taller.salidas
-CREATE TABLE `salidas` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `destino` varchar(100) NOT NULL,
-  `fecha` date NOT NULL,
-  `hora` time DEFAULT NULL,
-  `descripcion` text DEFAULT NULL,
-  `taller_id` int(11) NOT NULL,
-  `admin_id` int(11) DEFAULT NULL,
-  `profesor_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `taller_id` (`taller_id`),
-  KEY `admin_id` (`admin_id`),
-  KEY `profesor_id` (`profesor_id`),
-  CONSTRAINT `fk_salidas_taller` FOREIGN KEY (`taller_id`) REFERENCES `talleres` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_salidas_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_salidas_profesor` FOREIGN KEY (`profesor_id`) REFERENCES `profesores` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+INSERT INTO franjas_cancha (espacio, dia_semana, hora_inicio, hora_fin, activa, para_todos)
+SELECT 'Cancha Principal', d.dia, (h.hora || ':00')::time, ((h.hora + 1) || ':00')::time, TRUE, (h.hora = 13)
+FROM generate_series(1, 7) AS d(dia)
+CROSS JOIN generate_series(9, 20) AS h(hora);
 
-/*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
-/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
-/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;
+CREATE TABLE salidas (
+  id SERIAL PRIMARY KEY,
+  destino VARCHAR(100) NOT NULL,
+  fecha DATE NOT NULL,
+  hora TIME DEFAULT NULL,
+  descripcion TEXT DEFAULT NULL,
+  taller_id INTEGER NOT NULL,
+  admin_id INTEGER DEFAULT NULL,
+  profesor_id INTEGER DEFAULT NULL,
+  CONSTRAINT fk_salidas_taller FOREIGN KEY (taller_id) REFERENCES talleres (id) ON DELETE CASCADE,
+  CONSTRAINT fk_salidas_admin FOREIGN KEY (admin_id) REFERENCES admin (id) ON DELETE SET NULL,
+  CONSTRAINT fk_salidas_profesor FOREIGN KEY (profesor_id) REFERENCES profesores (id) ON DELETE SET NULL
+);
 
+CREATE TABLE inscripcion_salida (
+  id SERIAL PRIMARY KEY,
+  alumno_id INTEGER NOT NULL,
+  salida_id INTEGER NOT NULL,
+  UNIQUE (alumno_id, salida_id),
+  CONSTRAINT fk_inscripcion_alumno FOREIGN KEY (alumno_id) REFERENCES alumnos (id) ON DELETE CASCADE,
+  CONSTRAINT fk_inscripcion_salida FOREIGN KEY (salida_id) REFERENCES salidas (id) ON DELETE CASCADE
+);
+
+CREATE TABLE inscripcion_taller (
+  id SERIAL PRIMARY KEY,
+  alumno_id INTEGER NOT NULL,
+  taller_id INTEGER NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (alumno_id, taller_id),
+  CONSTRAINT fk_insc_taller_alumno FOREIGN KEY (alumno_id) REFERENCES alumnos (id) ON DELETE CASCADE,
+  CONSTRAINT fk_insc_taller_taller FOREIGN KEY (taller_id) REFERENCES talleres (id) ON DELETE CASCADE
+);

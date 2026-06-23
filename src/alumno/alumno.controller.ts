@@ -9,9 +9,12 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AlumnoService } from './alumno.service';
 import { CreateAlumnoDto } from '../dto/create-alumno.dto';
 
+@ApiTags('Alumnos')
+@ApiBearerAuth('JWT')
 @Controller('alumno')
 export class AlumnoController {
   constructor(private readonly alumnoService: AlumnoService) {}

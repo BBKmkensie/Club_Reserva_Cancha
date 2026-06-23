@@ -1,102 +1,93 @@
-import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, inject, OnInit } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthRoleService } from '../../shared/services/auth-role.service';
+import { AuthRoleService, AppRole, UserTipo } from '../../shared/services/auth-role.service';
 import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
         <h1 class="text-2xl font-bold text-gray-800 mb-2 text-center">Reservas de Cancha</h1>
-        <p class="text-gray-600 text-center mb-6">Elige tu rol para continuar</p>
+        <p class="text-gray-600 text-center mb-6">Iniciar sesión</p>
+        <p class="text-sm text-gray-500 text-center mb-4">Ingresa tu usuario y contraseña</p>
 
-        <div class="space-y-3">
-          <button (click)="entrar('super_admin')"
-                  class="w-full py-3 px-4 rounded-lg border-2 border-amber-500 text-amber-700 font-medium hover:bg-amber-50 transition">
-            Super Admin
-          </button>
-
-          <div class="border-2 border-blue-200 rounded-lg p-3 bg-blue-50/50">
-            <input [(ngModel)]="profesorUsuario" type="text" placeholder="Ej: Juan Pérez o Futbol"
-                   class="w-full py-2 px-3 border border-gray-300 rounded-lg mb-2">
-            <input [(ngModel)]="profesorPassword" type="password" placeholder="Contraseña (12345)"
-                   class="w-full py-2 px-3 border border-gray-300 rounded-lg mb-2">
-            @if (profesorError) {
-              <p class="text-sm text-red-600 mb-2">{{ profesorError }}</p>
-            }
-            <button (click)="entrarComoProfesor()"
-                    [disabled]="!profesorUsuario?.trim() || !profesorPassword"
-                    class="w-full py-2 px-4 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-              Entrar como profesor
-            </button>
-          </div>
-
-          <select [(ngModel)]="alumnoIdSeleccionado" (ngModelChange)="onAlumnoChange()"
-                  class="w-full py-2 px-3 border border-gray-300 rounded-lg mb-1">
-            <option [ngValue]="null">Seleccionar alumno (estudiante)</option>
-            <option *ngFor="let a of alumnos" [ngValue]="a.id">{{ a.nombre }} ({{ a.rut }})</option>
-          </select>
-          <button (click)="entrarComoAlumno()"
-                  [disabled]="!alumnoIdSeleccionado"
-                  class="w-full py-3 px-4 rounded-lg border-2 border-green-500 text-green-700 font-medium hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-            Estudiante (Usuario)
+        <div class="space-y-4">
+          <label class="block">
+            <span class="text-sm font-medium text-gray-700">Usuario</span>
+            <input [(ngModel)]="usuario" type="text"
+                   placeholder="Email, RUT o nombre de profesor"
+                   class="mt-1 w-full py-2 px-3 border border-gray-300 rounded-lg">
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium text-gray-700">Contraseña</span>
+            <input [(ngModel)]="password" type="password" placeholder="Contraseña"
+                   class="mt-1 w-full py-2 px-3 border border-gray-300 rounded-lg"
+                   (keyup.enter)="entrar()">
+          </label>
+          @if (error) {
+            <p class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{{ error }}</p>
+          }
+          <button (click)="entrar()"
+                  [disabled]="!usuario.trim() || !password || cargando"
+                  class="w-full py-2.5 px-4 rounded-lg bg-primary-600 text-white font-medium hover:bg-primary-700 disabled:opacity-50">
+            {{ cargando ? 'Entrando...' : 'Entrar' }}
           </button>
         </div>
+
+        <p class="text-xs text-gray-400 mt-6 text-center leading-relaxed">
+          Super admin: admin&#64;reservas.local · Directiva: directiva&#64;reservas.local ·
+          Profesor: nombre completo · Alumno: RUT
+        </p>
+        <a routerLink="/dashboard" class="block text-center text-sm text-gray-500 mt-3 hover:text-primary-600">
+          ← Volver al inicio
+        </a>
       </div>
     </div>
   `,
   styles: []
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private auth = inject(AuthRoleService);
   private api = inject(ApiService);
   private router = inject(Router);
 
-  alumnos: { id: number; nombre: string; rut: string }[] = [];
-  alumnoIdSeleccionado: number | null = null;
-  profesorUsuario = '';
-  profesorPassword = '12345';
-  profesorError = '';
+  usuario = '';
+  password = '12345';
+  error = '';
+  cargando = false;
 
   ngOnInit(): void {
-    this.api.getAlumnos().subscribe({
-      next: (data) => this.alumnos = data.map((a: any) => ({ id: a.id, nombre: a.nombre, rut: a.rut })),
-      error: () => this.alumnos = []
-    });
+    if (this.auth.isLoggedIn()) {
+      this.router.navigate(['/dashboard']);
+    }
   }
 
-  onAlumnoChange(): void {}
-
-  entrar(role: 'super_admin'): void {
-    this.auth.setRole(role);
-    this.router.navigate(['/dashboard']);
-  }
-
-  entrarComoProfesor(): void {
-    this.profesorError = '';
-    const usuario = this.profesorUsuario?.trim();
-    const password = this.profesorPassword || '';
-    if (!usuario) return;
-    this.api.loginProfesor(usuario, password).subscribe({
-      next: (profesor) => {
-        this.auth.setRole('admin', profesor.id, profesor.tallerId ?? profesor.taller?.id);
+  entrar(): void {
+    this.error = '';
+    this.cargando = true;
+    this.api.loginUnified(this.usuario.trim(), this.password).subscribe({
+      next: (res) => {
+        this.cargando = false;
+        this.auth.setSession(
+          res.accessToken,
+          res.user.role as AppRole,
+          res.user.id,
+          res.user.tallerId,
+          res.user.nombre,
+          res.user.tipo as UserTipo,
+        );
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
-        this.profesorError = err?.error?.message || 'Usuario o contraseña incorrectos';
-      }
+        this.cargando = false;
+        const msg = err?.error?.message;
+        this.error = Array.isArray(msg) ? msg.join(', ') : (msg || 'Usuario o contraseña incorrectos');
+      },
     });
-  }
-
-  entrarComoAlumno(): void {
-    if (this.alumnoIdSeleccionado != null) {
-      this.auth.setRole('usuario', this.alumnoIdSeleccionado);
-      this.router.navigate(['/dashboard']);
-    }
   }
 }

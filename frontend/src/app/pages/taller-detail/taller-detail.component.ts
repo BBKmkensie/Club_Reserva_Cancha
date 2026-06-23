@@ -9,6 +9,8 @@ import { Profesor } from '../../models/profesor.model';
 import { Alumno } from '../../models/alumno.model';
 import { Reserva } from '../../models/reserva.model';
 
+const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
 @Component({
   selector: 'app-taller-detail',
   standalone: true,
@@ -54,6 +56,10 @@ import { Reserva } from '../../models/reserva.model';
               <p class="text-gray-700">{{ profesor.nombre }}</p>
             </div>
 
+            @if (taller) {
+              <p class="text-sm text-gray-500">{{ textoHorario(taller) }}</p>
+            }
+
             <!-- Botón Inscribirse (solo alumno logueado) -->
             @if (auth.canInscribirseTalleres() && alumnoId && taller) {
               @if (estadoSolicitud === 'PENDIENTE') {
@@ -61,11 +67,11 @@ import { Reserva } from '../../models/reserva.model';
               } @else if (estadoSolicitud === 'ACEPTADO') {
                 <p class="text-green-600 font-medium">Estás inscrito en este taller</p>
               } @else if (estadoSolicitud === 'RECHAZADO') {
-                <button (click)="enviarSolicitud()" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
+                <button (click)="abrirConfirmacion()" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
                   Volver a solicitar inscripción
                 </button>
               } @else {
-                <button (click)="enviarSolicitud()" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
+                <button (click)="abrirConfirmacion()" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
                   Inscribirse en este taller
                 </button>
               }
@@ -86,14 +92,17 @@ import { Reserva } from '../../models/reserva.model';
       </div>
 
       <!-- Solicitudes pendientes (solo profesor/admin) -->
-      @if ((auth.isAdmin() || auth.isSuperAdmin()) && taller) {
+      @if (auth.canGestionarInscripcionesTaller() && taller && puedeGestionarEsteTaller()) {
         <div class="bg-white rounded-lg shadow-lg p-6">
           <h2 class="text-2xl font-semibold text-gray-800 mb-4">Solicitudes de inscripción</h2>
           @if (solicitudesPendientes.length > 0) {
             <ul class="space-y-2">
               @for (s of solicitudesPendientes; track s.id) {
                 <li class="flex items-center justify-between py-2 px-3 bg-amber-50 rounded-lg border border-amber-200">
-                  <span class="font-medium">{{ s.alumno?.nombre }} ({{ s.alumno?.rut }})</span>
+                  <div>
+                    <span class="font-medium">{{ s.alumno?.nombre }} ({{ s.alumno?.rut }})</span>
+                    <p class="text-xs text-gray-600 mt-1">{{ textoFicha(s) }}</p>
+                  </div>
                   <div class="flex gap-2">
                     <button (click)="responderSolicitud(s.id, 'ACEPTADO')" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Aceptar</button>
                     <button (click)="responderSolicitud(s.id, 'RECHAZADO')" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Rechazar</button>
@@ -121,8 +130,9 @@ import { Reserva } from '../../models/reserva.model';
         <div *ngIf="alumnosExpanded" class="mt-4 pt-4 border-t border-gray-100">
           <ul class="space-y-2">
             @for (insc of listaInscritosAceptados; track insc.id) {
-              <li class="py-2 px-3 bg-gray-50 rounded-lg text-gray-800 font-medium">
-                {{ insc.alumno?.nombre }} {{ insc.alumno?.rut }}
+              <li class="py-2 px-3 bg-gray-50 rounded-lg text-gray-800">
+                <span class="font-medium">{{ insc.alumno?.nombre }} {{ insc.alumno?.rut }}</span>
+                <p class="text-xs text-gray-600 mt-1">{{ textoFicha(insc) }}</p>
               </li>
             }
           </ul>
@@ -130,6 +140,59 @@ import { Reserva } from '../../models/reserva.model';
         </div>
       </div>
     </div>
+
+    @if (mostrarConfirmacion && taller) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 class="text-xl font-bold text-gray-800 mb-2">Confirmar inscripción</h3>
+          <p class="text-gray-600 mb-4">¿Deseas inscribirte en <strong>{{ taller.tipo }}</strong>?</p>
+          <div class="bg-gray-50 rounded-lg p-4 text-sm space-y-2 mb-4">
+            <p><strong>Horario:</strong> {{ textoHorario(taller) }}</p>
+            @if (validacion) {
+              <p><strong>Cupos disponibles:</strong> {{ validacion.cuposDisponibles }} de {{ validacion.capacidad }}</p>
+            }
+          </div>
+          <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
+            <h4 class="font-semibold text-gray-800 mb-2">Ficha del alumno</h4>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <label class="block">
+                <span class="text-gray-700">Altura (cm)</span>
+                <input type="number" [(ngModel)]="fichaForm.altura" min="50" max="250" step="0.1"
+                       class="mt-1 w-full border rounded-lg px-2 py-1.5">
+              </label>
+              <label class="block">
+                <span class="text-gray-700">Peso (kg)</span>
+                <input type="number" [(ngModel)]="fichaForm.peso" min="20" max="300" step="0.1"
+                       class="mt-1 w-full border rounded-lg px-2 py-1.5">
+              </label>
+              <label class="block">
+                <span class="text-gray-700">% grasa</span>
+                <input type="number" [(ngModel)]="fichaForm.porcentajeGrasa" min="1" max="60" step="0.1"
+                       class="mt-1 w-full border rounded-lg px-2 py-1.5">
+              </label>
+              <label class="block">
+                <span class="text-gray-700">Sedentario</span>
+                <select [(ngModel)]="fichaForm.sedentario" class="mt-1 w-full border rounded-lg px-2 py-1.5">
+                  <option [ngValue]="true">Sí</option>
+                  <option [ngValue]="false">No</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          @if (errorInscripcion) {
+            <p class="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3 mb-4">{{ errorInscripcion }}</p>
+          }
+          <div class="flex gap-3 justify-end">
+            <button (click)="cerrarConfirmacion()" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">Cancelar</button>
+            <button (click)="confirmarInscripcion()"
+                    [disabled]="!validacion?.puedeInscribirse || confirmando || !fichaValida()"
+                    class="px-4 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50">
+              {{ confirmando ? 'Enviando...' : 'Confirmar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: []
 })
@@ -150,6 +213,11 @@ export class TallerDetailComponent implements OnInit {
   alumnosExpanded: boolean = true;
   alumnoId: number | null = null;
   misSolicitudesTaller: any[] = [];
+  mostrarConfirmacion = false;
+  validacion: any = null;
+  errorInscripcion = '';
+  confirmando = false;
+  fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
 
   get descripcionTexto(): string {
     return this.taller?.descripcion || 'Descripción del taller de ' + (this.taller?.tipo || '') + ', lo que hacen, sus objetivos, una pequeña descripción.';
@@ -161,6 +229,13 @@ export class TallerDetailComponent implements OnInit {
 
   get solicitudesPendientes(): any[] {
     return this.inscripcionesTaller.filter((i: any) => i.estado === 'PENDIENTE');
+  }
+
+  puedeGestionarEsteTaller(): boolean {
+    if (!this.taller) return false;
+    if (this.auth.isCoordinacion()) return true;
+    const miTallerId = this.auth.currentTallerId();
+    return miTallerId != null && miTallerId === this.taller.id;
   }
 
   get estadoSolicitud(): 'PENDIENTE' | 'ACEPTADO' | 'RECHAZADO' | null {
@@ -267,16 +342,72 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
-  enviarSolicitud() {
+  textoHorario(taller: Taller): string {
+    if (!taller.diaSemana || !taller.horaInicio || !taller.horaFin) {
+      return 'Horario por confirmar';
+    }
+    const dia = DIAS_SEMANA[taller.diaSemana] ?? `Día ${taller.diaSemana}`;
+    return `${dia} ${taller.horaInicio.slice(0, 5)} - ${taller.horaFin.slice(0, 5)}`;
+  }
+
+  textoFicha(s: any): string {
+    if (s.altura == null && s.peso == null) return 'Sin ficha';
+    const sed = s.sedentario === true ? 'sedentario' : s.sedentario === false ? 'activo' : '—';
+    return `${s.altura ?? '—'} cm · ${s.peso ?? '—'} kg · ${s.porcentajeGrasa ?? '—'}% grasa · ${sed}`;
+  }
+
+  fichaValida(): boolean {
+    const { altura, peso, porcentajeGrasa } = this.fichaForm;
+    return altura != null && altura >= 50 && altura <= 250
+      && peso != null && peso >= 20 && peso <= 300
+      && porcentajeGrasa != null && porcentajeGrasa >= 1 && porcentajeGrasa <= 60;
+  }
+
+  abrirConfirmacion() {
     if (!this.taller || !this.alumnoId) return;
-    this.apiService.solicitarInscripcionTaller(this.alumnoId, this.taller.id).subscribe({
-      next: () => {
-        this.cargarMisSolicitudesTaller();
-        this.cargarInscripcionesTaller(this.taller!.id);
-        alert('Solicitud enviada. El profesor la revisará.');
+    this.mostrarConfirmacion = true;
+    this.validacion = null;
+    this.errorInscripcion = '';
+    this.fichaForm = { altura: null, peso: null, porcentajeGrasa: null, sedentario: false };
+    this.apiService.validarInscripcionTaller(this.alumnoId, this.taller.id).subscribe({
+      next: (v) => {
+        this.validacion = v;
+        if (!v.puedeInscribirse) {
+          this.errorInscripcion = v.motivo ?? 'No puedes inscribirte';
+        }
       },
       error: (err) => {
-        alert(err?.error?.message || err?.message || 'No se pudo enviar la solicitud.');
+        this.errorInscripcion = err?.error?.message || 'Error al validar';
+      }
+    });
+  }
+
+  cerrarConfirmacion() {
+    this.mostrarConfirmacion = false;
+    this.validacion = null;
+    this.errorInscripcion = '';
+    this.confirmando = false;
+  }
+
+  confirmarInscripcion() {
+    if (!this.taller || !this.alumnoId || !this.validacion?.puedeInscribirse || !this.fichaValida()) return;
+    this.confirmando = true;
+    this.apiService.solicitarInscripcionTaller(this.alumnoId, this.taller.id, {
+      altura: Number(this.fichaForm.altura),
+      peso: Number(this.fichaForm.peso),
+      porcentajeGrasa: Number(this.fichaForm.porcentajeGrasa),
+      sedentario: this.fichaForm.sedentario,
+    }).subscribe({
+      next: () => {
+        this.confirmando = false;
+        this.cerrarConfirmacion();
+        this.cargarMisSolicitudesTaller();
+        this.cargarInscripcionesTaller(this.taller!.id);
+        alert('Solicitud registrada. El coordinador/profesor la revisará.');
+      },
+      error: (err) => {
+        this.confirmando = false;
+        this.errorInscripcion = err?.error?.message || 'No se pudo enviar la solicitud.';
       }
     });
   }

@@ -9,15 +9,21 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProfesorService } from './profesor.service';
 import { CreateProfesorDto } from '../dto/create-profesor.dto';
 import { LoginProfesorDto } from '../dto/login-profesor.dto';
+import { Public } from '../auth/public.decorator';
 
+@ApiTags('Profesores')
+@ApiBearerAuth('JWT')
 @Controller('profesor')
 export class ProfesorController {
   constructor(private readonly profesorService: ProfesorService) {}
 
+  @Public()
   @Post('login')
+  @ApiOperation({ summary: 'Login profesor legacy (público)' })
   login(@Body() dto: LoginProfesorDto) {
     return this.profesorService.login(dto.usuario, dto.password);
   }

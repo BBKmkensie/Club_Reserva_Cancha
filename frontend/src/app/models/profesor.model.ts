@@ -5,7 +5,7 @@ export interface Profesor {
   email: string;
   telefono?: string;
   fotoPath?: string;
-  tallerId: number;
+  tallerId?: number | null;
   taller?: { id: number; tipo?: string };
 }
 
@@ -15,7 +15,7 @@ export interface CreateProfesorDto {
   email: string;
   telefono?: string;
   fotoPath?: string;
-  tallerId: number;
+  tallerId?: number | null;
   password?: string;
 }
 

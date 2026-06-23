@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, MinLength, IsOptional, IsIn } from 'class-validator';
 
 export class CreateAdminDto {
   @IsString()
@@ -16,5 +16,9 @@ export class CreateAdminDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @IsOptional()
+  @IsIn(['super_admin', 'directiva'])
+  rol?: 'super_admin' | 'directiva';
 }
 

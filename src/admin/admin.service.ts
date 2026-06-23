@@ -24,6 +24,7 @@ export class AdminService {
       email: createAdminDto.email,
       passwordHash: hash,
       passwordSalt: salt,
+      rol: createAdminDto.rol ?? 'super_admin',
     });
 
     return await this.adminRepository.save(admin);

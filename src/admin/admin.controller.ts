@@ -7,9 +7,12 @@ import {
   Delete,
   ParseIntPipe,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from '../dto/create-admin.dto';
 
+@ApiTags('Admin')
+@ApiBearerAuth('JWT')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}

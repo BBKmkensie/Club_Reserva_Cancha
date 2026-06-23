@@ -11,10 +11,22 @@ import {
 } from '@nestjs/common';
 import { ReservaService } from './reserva.service';
 import { CreateReservaDto } from '../dto/create-reserva.dto';
+import { CANCHA_ESPACIO_DEFAULT } from './cancha.constants';
 
 @Controller('reserva')
 export class ReservaController {
   constructor(private readonly reservaService: ReservaService) {}
+
+  @Get('disponibilidad')
+  obtenerDisponibilidad(
+    @Query('fecha') fecha: string,
+    @Query('espacio') espacio?: string,
+  ) {
+    return this.reservaService.obtenerDisponibilidad(
+      fecha,
+      espacio ?? CANCHA_ESPACIO_DEFAULT,
+    );
+  }
 
   @Post()
   create(@Body() createReservaDto: CreateReservaDto) {
@@ -53,4 +65,3 @@ export class ReservaController {
     return this.reservaService.remove(id);
   }
 }
-

@@ -9,9 +9,12 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SalidaService } from './salida.service';
 import { CreateSalidaDto } from '../dto/create-salida.dto';
 
+@ApiTags('Salidas')
+@ApiBearerAuth('JWT')
 @Controller('salida')
 export class SalidaController {
   constructor(private readonly salidaService: SalidaService) {}

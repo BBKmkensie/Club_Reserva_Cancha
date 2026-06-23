@@ -5,14 +5,12 @@ import { BehaviorSubject } from 'rxjs';
   providedIn: 'root'
 })
 export class SidebarService {
-  private isOpenSubject = new BehaviorSubject<boolean>(false);
+  private isOpenSubject = new BehaviorSubject<boolean>(this.defaultOpen());
   public isOpen$ = this.isOpenSubject.asObservable();
 
-  constructor() {
-    // Abrir sidebar por defecto en desktop
-    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-      this.isOpenSubject.next(true);
-    }
+  private defaultOpen(): boolean {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth >= 1024;
   }
 
   toggle() {
@@ -31,4 +29,3 @@ export class SidebarService {
     return this.isOpenSubject.value;
   }
 }
-

@@ -3,6 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
+export interface FichaAlumnoPayload {
+  altura: number;
+  peso: number;
+  porcentajeGrasa: number;
+  sedentario: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -11,7 +18,15 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
-  // Admin endpoints
+  login(tipo: 'admin' | 'directiva' | 'profesor' | 'alumno' | 'apoderado', usuario: string, password: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/auth/login`, { tipo, usuario, password });
+  }
+
+  loginUnified(usuario: string, password: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/auth/login`, { usuario, password });
+  }
+
+  // Admin
   getAdmins(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/admin`);
   }
@@ -28,9 +43,17 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/admin/${id}`);
   }
 
-  // Taller endpoints
+  // Taller
   getTalleres(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/taller`);
+  }
+
+  getCatalogoTalleres(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/taller/catalogo`);
+  }
+
+  getCatalogoTallerDetalle(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/taller/catalogo/${id}`);
   }
 
   getTaller(id: number): Observable<any> {
@@ -49,9 +72,39 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/taller/${id}`);
   }
 
-  // Alumno endpoints
+  asignarDocenteActividad(tallerId: number, profesorId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/taller/${tallerId}/asignar-docente`, { profesorId });
+  }
+
+  getAsignacionesPendientes(profesorId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/taller/asignaciones/pendientes?profesorId=${profesorId}`);
+  }
+
+  responderAsignacion(asignacionId: number, profesorId: number, acepta: boolean, motivo?: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/taller/asignaciones/${asignacionId}/responder`, {
+      profesorId, acepta, motivo,
+    });
+  }
+
+  definirHorarioActividad(tallerId: number, horario: any): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/taller/${tallerId}/horario`, horario);
+  }
+
+  publicarActividad(tallerId: number, data?: { fechaAperturaInscripcion?: string; fechaCierreInscripcion?: string }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/taller/${tallerId}/publicar`, data ?? {});
+  }
+
+  cerrarActividad(tallerId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/taller/${tallerId}/cerrar`, {});
+  }
+
+  getReporteActividad(tallerId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/taller/${tallerId}/reporte`);
+  }
+
+  // Alumno
   getAlumnos(tallerId?: number): Observable<any[]> {
-    const url = tallerId 
+    const url = tallerId
       ? `${this.apiUrl}/alumno?tallerId=${tallerId}`
       : `${this.apiUrl}/alumno`;
     return this.http.get<any[]>(url);
@@ -73,9 +126,9 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/alumno/${id}`);
   }
 
-  // Profesor endpoints
+  // Profesor
   getProfesores(tallerId?: number): Observable<any[]> {
-    const url = tallerId 
+    const url = tallerId
       ? `${this.apiUrl}/profesor?tallerId=${tallerId}`
       : `${this.apiUrl}/profesor`;
     return this.http.get<any[]>(url);
@@ -101,7 +154,7 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/profesor/${id}`);
   }
 
-  // Reserva endpoints
+  // Reserva
   getReservas(tallerId?: number, fecha?: string): Observable<any[]> {
     let url = `${this.apiUrl}/reserva`;
     const params: string[] = [];
@@ -127,9 +180,28 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/reserva/${id}`);
   }
 
-  // Salida endpoints
+  getDisponibilidadCancha(fecha: string, espacio = 'Cancha Principal'): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/reserva/disponibilidad?fecha=${fecha}&espacio=${encodeURIComponent(espacio)}`,
+    );
+  }
+
+  getFranjasCancha(espacio = 'Cancha Principal'): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/franja-cancha?espacio=${encodeURIComponent(espacio)}`,
+    );
+  }
+
+  actualizarFranjasCancha(
+    franjas: { diaSemana: number; horaInicio: string; activa: boolean; duracionHoras?: number }[],
+    espacio = 'Cancha Principal',
+  ): Observable<any[]> {
+    return this.http.put<any[]>(`${this.apiUrl}/franja-cancha`, { espacio, franjas });
+  }
+
+  // Salida
   getSalidas(tallerId?: number): Observable<any[]> {
-    const url = tallerId 
+    const url = tallerId
       ? `${this.apiUrl}/salida?tallerId=${tallerId}`
       : `${this.apiUrl}/salida`;
     return this.http.get<any[]>(url);
@@ -151,7 +223,7 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/salida/${id}`);
   }
 
-  // Inscripción alumno a salida (usuarios/alumnos)
+  // Inscripción salida
   inscribirSalida(alumnoId: number, salidaId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/inscripcion-salida`, { alumnoId, salidaId });
   }
@@ -168,9 +240,22 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/inscripcion-salida?alumnoId=${alumnoId}&salidaId=${salidaId}`);
   }
 
-  // Inscripción a taller (solicitud → profesor acepta/rechaza)
-  solicitarInscripcionTaller(alumnoId: number, tallerId: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller`, { alumnoId, tallerId });
+  // Inscripción taller
+  validarInscripcionTaller(alumnoId: number, tallerId: number, notificar = false): Observable<any> {
+    const q = notificar ? '?notificar=true' : '';
+    return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/validar/${alumnoId}/${tallerId}${q}`);
+  }
+
+  getResumenInscripcionesTaller(tallerId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/resumen/${tallerId}`);
+  }
+
+  solicitarInscripcionTaller(alumnoId: number, tallerId: number, ficha: FichaAlumnoPayload): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller`, { alumnoId, tallerId, ficha });
+  }
+
+  actualizarFichaInscripcion(inscripcionId: number, ficha: Partial<FichaAlumnoPayload>): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/${inscripcionId}/ficha`, ficha);
   }
 
   getInscripcionesTallerPorAlumno(alumnoId: number): Observable<any[]> {
@@ -181,8 +266,104 @@ export class ApiService {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/por-taller/${tallerId}`);
   }
 
+  getInscripcionesPendientes(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/pendientes`);
+  }
+
+  proponerInscripcionDirectiva(alumnoId: number, tallerId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller/proponer-directiva`, { alumnoId, tallerId });
+  }
+
   responderInscripcionTaller(id: number, estado: 'ACEPTADO' | 'RECHAZADO'): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/${id}/responder`, { estado });
   }
-}
 
+  // Fichas alumno por taller
+  getFichasAlumnosPorTaller(tallerId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/ficha-alumno/taller/${tallerId}`);
+  }
+
+  guardarFichaAlumnoTaller(alumnoId: number, tallerId: number, ficha: Partial<FichaAlumnoPayload>): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/ficha-alumno/${alumnoId}/${tallerId}`, ficha);
+  }
+
+  getFichaAlumnoTaller(alumnoId: number, tallerId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/ficha-alumno/${alumnoId}/${tallerId}`);
+  }
+
+  // Asistencia
+  abrirSesionAsistencia(tallerId: number, profesorId: number, fecha?: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/asistencia/sesion/abrir`, { tallerId, profesorId, fecha });
+  }
+
+  getSesionActiva(tallerId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/asistencia/sesion/activa/${tallerId}`);
+  }
+
+  getHistorialSesiones(tallerId: number): Observable<any> {
+    return this.http.get<any[]>(`${this.apiUrl}/asistencia/sesiones/${tallerId}`);
+  }
+
+  actualizarAsistencia(sesionId: number, registros: any[]): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/asistencia/sesion/${sesionId}/registros`, { registros });
+  }
+
+  cerrarSesionAsistencia(sesionId: number, observaciones?: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/asistencia/sesion/${sesionId}/cerrar`, { observaciones });
+  }
+
+  getReporteAsistencia(tallerId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/asistencia/reporte/${tallerId}`);
+  }
+
+  getAlertasGestion(tallerId?: number): Observable<any[]> {
+    const q = tallerId ? `?tallerId=${tallerId}` : '';
+    return this.http.get<any[]>(`${this.apiUrl}/asistencia/alertas/gestion${q}`);
+  }
+
+  actualizarUmbralAusencias(tallerId: number, umbral: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/asistencia/umbral/${tallerId}`, { umbral });
+  }
+
+  contactarApoderado(alertaId: number, notas: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/asistencia/alertas/${alertaId}/contactar`, { notas });
+  }
+
+  resolverAlerta(alertaId: number, notas: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/asistencia/alertas/${alertaId}/resolver`, { notas });
+  }
+
+  // Período
+  getPeriodoActivo(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/periodo/activo`);
+  }
+
+  getPeriodos(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/periodo`);
+  }
+
+  configurarPeriodo(data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/periodo`, data);
+  }
+
+  getComparacionSemestre(periodoId?: number, profesorId?: number): Observable<any> {
+    const params: string[] = [];
+    if (periodoId != null) params.push(`periodoId=${periodoId}`);
+    if (profesorId != null) params.push(`profesorId=${profesorId}`);
+    const q = params.length ? `?${params.join('&')}` : '';
+    return this.http.get<any>(`${this.apiUrl}/taller/estadisticas/semestre${q}`);
+  }
+
+  // Notificaciones
+  getNotificaciones(alumnoId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-alumno/${alumnoId}`);
+  }
+
+  marcarNotificacionLeida(id: number, alumnoId: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer/${alumnoId}`, {});
+  }
+
+  marcarTodasNotificacionesLeidas(alumnoId: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas/${alumnoId}`, {});
+  }
+}
