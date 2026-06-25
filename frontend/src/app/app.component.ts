@@ -15,9 +15,9 @@ import { CommonModule } from '@angular/common';
     <div class="min-h-screen bg-gray-50 flex">
       <app-sidebar></app-sidebar>
       <div class="flex-1 w-full transition-all duration-300 min-w-0"
-           [class.ml-64]="auth.isLoggedIn() && sidebarOpen">
+           [ngClass]="{ 'lg:ml-64': auth.isLoggedIn() && sidebarOpen }">
         <app-navbar></app-navbar>
-        <main class="container mx-auto px-4 py-8">
+        <main class="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-full">
           <router-outlet></router-outlet>
         </main>
       </div>

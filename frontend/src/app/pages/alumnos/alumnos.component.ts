@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
 
 @Component({
@@ -78,9 +79,9 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr *ngFor="let alumno of alumnos">
-              <td class="px-6 py-4 whitespace-nowrap">{{ alumno.nombre }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">{{ alumno.rut }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">{{ alumno.email || '-' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ priv.nombre(alumno.nombre) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ priv.rut(alumno.rut) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ priv.email(alumno.email) }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ alumno.taller?.tipo || '-' }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <button (click)="editAlumno(alumno)" class="text-primary-600 hover:text-primary-700 mr-3">✏️</button>
@@ -98,6 +99,7 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
   styles: []
 })
 export class AlumnosComponent implements OnInit {
+  priv = inject(AlumnoPrivacidadService);
   alumnos: Alumno[] = [];
   showModal = false;
   editingAlumno: Alumno | null = null;

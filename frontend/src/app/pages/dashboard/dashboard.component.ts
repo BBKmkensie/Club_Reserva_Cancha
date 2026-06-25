@@ -78,7 +78,11 @@ interface CardTaller {
         <h1 class="text-4xl font-bold text-gray-800 mb-2">Sistema de Gestión de Talleres</h1>
         <p class="text-gray-600">
           @if (auth.isLoggedIn()) {
-            Selecciona una actividad para gestionar
+            @if (auth.isProfesor()) {
+              Gestiona tu taller
+            } @else {
+              Selecciona una actividad para gestionar
+            }
           } @else {
             Explora las actividades del club. Inicia sesión para inscribirte o gestionar.
           }
@@ -104,10 +108,15 @@ interface CardTaller {
 
         @if (actividadesPublicadas.length === 0) {
           <div class="col-span-full text-center text-gray-500 py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            No hay actividades publicadas en el catálogo.
+            @if (auth.isProfesor()) {
+              No tienes un taller asignado o publicado aún.
+            } @else {
+              No hay actividades publicadas en el catálogo.
+            }
           </div>
         }
 
+        @if (!auth.isProfesor()) {
         <a [routerLink]="auth.isLoggedIn() ? '/salidas' : '/login'"
            class="group rounded-xl shadow-lg p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl hover:scale-105 transition-all duration-300 text-center">
           <div class="text-6xl mb-4">🚌</div>
@@ -120,6 +129,7 @@ interface CardTaller {
             </div>
           }
         </a>
+        }
       </div>
 
       @if (auth.canAccessTalleresCRUD()) {
@@ -258,7 +268,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.apiService.getCatalogoTalleres().subscribe({
       next: (data) => {
-        this.actividadesPublicadas = asList(data);
+        this.actividadesPublicadas = this.filtrarActividadesParaUsuario(asList(data));
         if (this.auth.isLoggedIn()) {
           this.cargarInscripcionesPorTaller(this.actividadesPublicadas);
         }
@@ -267,6 +277,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
 
     if (!this.auth.isLoggedIn()) return;
+
+    if (this.auth.isProfesor()) return;
 
     this.apiService.getTalleres().subscribe({
       next: (data) => {
@@ -289,6 +301,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.apiService.getSalidas().subscribe({
       next: (data) => (this.stats.salidas = asList(data).length),
     });
+  }
+
+  private filtrarActividadesParaUsuario(actividades: any[]): any[] {
+    if (this.auth.isProfesor()) {
+      const tallerId = this.auth.currentTallerId();
+      if (!tallerId) return [];
+      return actividades.filter((a) => Number(a.id) === tallerId);
+    }
+    return actividades;
   }
 
   private cargarInscripcionesPorTaller(actividades: any[]) {
@@ -328,6 +349,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           if (token && tallerId) {
             this.auth.setSession(token, 'admin', profesorId, tallerId, this.auth.currentNombre() ?? undefined, 'profesor');
             this.tallerIdProfesor = tallerId;
+            this.loadData();
           }
           alert('Asignación aceptada.');
         }

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
+import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
 const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -87,8 +88,8 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
               @for (s of pendientes; track s.id) {
                 <li class="flex flex-wrap items-center justify-between gap-3 py-3 px-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div>
-                    <span class="font-semibold text-gray-800">{{ s.alumno?.nombre }}</span>
-                    <span class="text-sm text-gray-500 ml-2">({{ s.alumno?.rut }})</span>
+                    <span class="font-semibold text-gray-800">{{ priv.alumno(s.alumno).nombre }}</span>
+                    <span class="text-sm text-gray-500 ml-2">({{ priv.alumno(s.alumno).rut }})</span>
                     <p class="text-xs text-gray-400 mt-1">Solicitud #{{ s.id }}</p>
                     <p class="text-xs text-gray-600 mt-2">
                       Ficha: {{ textoFicha(s) }}
@@ -129,8 +130,8 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
               <tbody>
                 @for (s of resumen.inscripciones; track s.id) {
                   <tr class="border-t border-gray-100 hover:bg-gray-50">
-                    <td class="p-3 font-medium">{{ s.alumno?.nombre }}</td>
-                    <td class="p-3">{{ s.alumno?.rut }}</td>
+                    <td class="p-3 font-medium">{{ priv.alumno(s.alumno).nombre }}</td>
+                    <td class="p-3">{{ priv.alumno(s.alumno).rut }}</td>
                     <td class="p-3">{{ s.altura != null ? s.altura + ' cm' : '—' }}</td>
                     <td class="p-3">{{ s.peso != null ? s.peso + ' kg' : '—' }}</td>
                     <td class="p-3">{{ s.porcentajeGrasa != null ? s.porcentajeGrasa + '%' : '—' }}</td>
@@ -168,7 +169,7 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 class="text-xl font-bold text-gray-800 mb-1">Editar ficha</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ fichaEditando.alumno?.nombre }} — {{ resumen?.taller?.tipo }}</p>
+            <p class="text-sm text-gray-600 mb-4">{{ priv.alumno(fichaEditando.alumno).nombre }} — {{ resumen?.taller?.tipo }}</p>
             <div class="grid grid-cols-2 gap-3 text-sm mb-4">
               <label class="block">
                 <span class="text-gray-700">Altura (cm)</span>
@@ -207,6 +208,7 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 export class GestionInscripcionesComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthRoleService);
+  priv = inject(AlumnoPrivacidadService);
 
   talleres: any[] = [];
   tallerIdSeleccionado: number | null = null;
@@ -306,9 +308,10 @@ export class GestionInscripcionesComponent implements OnInit {
       `Cupos disponibles: ${this.resumen.resumen.cuposDisponibles}`,
       '',
       'Alumno\tRUT\tAltura\tPeso\t%Grasa\tSedentario\tEstado\tFecha',
-      ...this.resumen.inscripciones.map((s: any) =>
-        `${s.alumno?.nombre}\t${s.alumno?.rut}\t${s.altura ?? ''}\t${s.peso ?? ''}\t${s.porcentajeGrasa ?? ''}\t${s.sedentario === true ? 'Sí' : s.sedentario === false ? 'No' : ''}\t${s.estado}\t${s.createdAt ?? ''}`
-      )
+      ...this.resumen.inscripciones.map((s: any) => {
+        const a = this.priv.alumno(s.alumno);
+        return `${a.nombre}\t${a.rut}\t${s.altura ?? ''}\t${s.peso ?? ''}\t${s.porcentajeGrasa ?? ''}\t${s.sedentario === true ? 'Sí' : s.sedentario === false ? 'No' : ''}\t${s.estado}\t${s.createdAt ?? ''}`;
+      })
     ];
     const blob = new Blob([lineas.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);

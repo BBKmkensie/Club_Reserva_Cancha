@@ -68,6 +68,19 @@ export class ApiService {
     return this.http.patch<any>(`${this.apiUrl}/taller/${id}`, data);
   }
 
+  actualizarPresentacionTaller(
+    tallerId: number,
+    data: { descripcion?: string; fotoPath?: string; profesorId?: number },
+    opts?: { esDirectiva?: boolean; profesorId?: number },
+  ): Observable<any> {
+    const params = new URLSearchParams();
+    if (opts?.esDirectiva) params.set('esDirectiva', 'true');
+    if (opts?.profesorId != null) params.set('profesorId', String(opts.profesorId));
+    const qs = params.toString();
+    const url = `${this.apiUrl}/taller/${tallerId}/presentacion${qs ? `?${qs}` : ''}`;
+    return this.http.patch<any>(url, data);
+  }
+
   deleteTaller(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/taller/${id}`);
   }
@@ -223,6 +236,63 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/salida/${id}`);
   }
 
+  getSalidasPublicadas(tallerId?: number, alumnoId?: number): Observable<any[]> {
+    const params = new URLSearchParams();
+    if (tallerId != null) params.set('tallerId', String(tallerId));
+    if (alumnoId != null) params.set('alumnoId', String(alumnoId));
+    const q = params.toString() ? `?${params}` : '';
+    return this.http.get<any[]>(`${this.apiUrl}/salida/publicadas${q}`);
+  }
+
+  getSalidasPendientesProfesor(profesorId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/salida/pendientes/profesor/${profesorId}`);
+  }
+
+  getSalidasPendientesDirectiva(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/salida/pendientes/directiva`);
+  }
+
+  getSalidasPorProfesor(profesorId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/salida/por-profesor/${profesorId}`);
+  }
+
+  asignarSalidaDirectiva(data: {
+    destino: string;
+    fecha: string;
+    hora?: string;
+    descripcion?: string;
+    tallerId: number;
+    profesorId: number;
+    adminId?: number;
+  }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/salida/asignar`, data);
+  }
+
+  proponerSalidaProfesor(data: {
+    destino: string;
+    fecha: string;
+    hora?: string;
+    descripcion?: string;
+    tallerId: number;
+    profesorId: number;
+  }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/salida/proponer`, data);
+  }
+
+  responderSalida(id: number, acepta: boolean, actor: 'profesor' | 'directiva', actorId?: number, motivo?: string): Observable<any> {
+    const params = new URLSearchParams({ actor });
+    if (actorId != null) params.set('actorId', String(actorId));
+    return this.http.patch<any>(`${this.apiUrl}/salida/${id}/responder?${params}`, { acepta, motivo });
+  }
+
+  abrirSalida(id: number, profesorId: number, comentario?: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/salida/${id}/abrir?profesorId=${profesorId}`, { comentario });
+  }
+
+  cerrarSalida(id: number, profesorId: number, resultado: 'EXITO' | 'FRACASO', comentario: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/salida/${id}/cerrar?profesorId=${profesorId}`, { resultado, comentario });
+  }
+
   // Inscripción salida
   inscribirSalida(alumnoId: number, salidaId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/inscripcion-salida`, { alumnoId, salidaId });
@@ -279,8 +349,16 @@ export class ApiService {
   }
 
   // Fichas alumno por taller
-  getFichasAlumnosPorTaller(tallerId: number): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/ficha-alumno/taller/${tallerId}`);
+  getFichasAlumnosPorTaller(
+    tallerId: number,
+    opts?: { soloInscritos?: boolean; esCoordinacion?: boolean; profesorId?: number },
+  ): Observable<any> {
+    const params = new URLSearchParams();
+    if (opts?.soloInscritos) params.set('soloInscritos', 'true');
+    if (opts?.esCoordinacion) params.set('esCoordinacion', 'true');
+    if (opts?.profesorId != null) params.set('profesorId', String(opts.profesorId));
+    const q = params.toString() ? `?${params}` : '';
+    return this.http.get<any>(`${this.apiUrl}/ficha-alumno/taller/${tallerId}${q}`);
   }
 
   guardarFichaAlumnoTaller(alumnoId: number, tallerId: number, ficha: Partial<FichaAlumnoPayload>): Observable<any> {

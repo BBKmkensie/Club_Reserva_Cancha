@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not } from 'typeorm';
@@ -14,8 +15,13 @@ import { SesionAsistencia } from '../entities/sesion-asistencia.entity';
 import { CreateTallerDto } from '../dto/create-taller.dto';
 import { AsignarDocenteDto } from '../dto/asignar-docente.dto';
 import { ResponderAsignacionDto } from '../dto/responder-asignacion.dto';
+import { TallerHorario } from '../entities/taller-horario.entity';
 import { DefinirHorarioDto } from '../dto/definir-horario.dto';
+import { DefinirHorariosTallerDto } from '../dto/definir-horarios-taller.dto';
+import { ModoHorarioTaller } from '../entities/taller.entity';
+import { CURSOS_TALLER } from '../common/curso.constants';
 import { PublicarActividadDto } from '../dto/publicar-actividad.dto';
+import { ActualizarPresentacionTallerDto } from '../dto/actualizar-presentacion-taller.dto';
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { PeriodoAcademico } from '../entities/periodo-academico.entity';
@@ -33,6 +39,8 @@ export class TallerService {
     private inscripcionRepository: Repository<InscripcionTaller>,
     @InjectRepository(SesionAsistencia)
     private sesionAsistenciaRepository: Repository<SesionAsistencia>,
+    @InjectRepository(TallerHorario)
+    private tallerHorarioRepository: Repository<TallerHorario>,
     private notificacionService: NotificacionService,
     private periodoService: PeriodoService,
   ) {}
@@ -54,7 +62,7 @@ export class TallerService {
 
   async findAll(): Promise<Taller[]> {
     return await this.tallerRepository.find({
-      relations: ['profesores'],
+      relations: ['profesores', 'horarios'],
       order: { id: 'DESC' },
     });
   }
@@ -63,6 +71,7 @@ export class TallerService {
     const hoy = new Date().toISOString().split('T')[0];
     const talleres = await this.tallerRepository.find({
       where: { estado: 'PUBLICADO' },
+      relations: ['horarios'],
       order: { tipo: 'ASC' },
     });
     return talleres.filter((t) => this.inscripcionesAbiertas(t, hoy));
@@ -71,7 +80,7 @@ export class TallerService {
   async findOne(id: number): Promise<Taller> {
     const taller = await this.tallerRepository.findOne({
       where: { id },
-      relations: ['admin', 'alumnos', 'profesores', 'reservas', 'salidas'],
+      relations: ['admin', 'alumnos', 'profesores', 'reservas', 'salidas', 'horarios'],
     });
     if (!taller) {
       throw new NotFoundException(`Actividad con ID ${id} no encontrada`);
@@ -89,6 +98,65 @@ export class TallerService {
       taller.fechaInicio = new Date(updateTallerDto.fechaInicio);
     }
     return await this.tallerRepository.save(taller);
+  }
+
+  async actualizarPresentacion(
+    tallerId: number,
+    dto: ActualizarPresentacionTallerDto,
+    opts: { esDirectiva?: boolean; profesorId?: number },
+  ): Promise<{ taller: Taller; profesor: Profesor | null }> {
+    if (dto.descripcion == null && dto.fotoPath == null) {
+      throw new BadRequestException('Debe indicar descripción y/o foto del profesor');
+    }
+
+    const taller = await this.findOne(tallerId);
+    if (taller.estado === 'CERRADO') {
+      throw new BadRequestException('No se puede editar una actividad cerrada');
+    }
+
+    const esDirectiva = opts.esDirectiva === true;
+    let profesorActor: Profesor | null = null;
+
+    if (!esDirectiva) {
+      if (!opts.profesorId) {
+        throw new ForbiddenException('Solo el profesor del taller o la directiva pueden editar');
+      }
+      profesorActor = await this.profesorRepository.findOne({
+        where: { id: opts.profesorId },
+      });
+      if (!profesorActor || profesorActor.tallerId !== tallerId) {
+        throw new ForbiddenException('No tienes permiso para editar este taller');
+      }
+    }
+
+    if (dto.descripcion != null) {
+      taller.descripcion = dto.descripcion.trim();
+      await this.tallerRepository.save(taller);
+    }
+
+    let profesorActualizado: Profesor | null = null;
+    if (dto.fotoPath != null) {
+      const profesorId = dto.profesorId ?? opts.profesorId;
+      if (!profesorId) {
+        throw new BadRequestException('Debe indicar el profesor cuya foto se actualiza');
+      }
+      if (!esDirectiva && profesorId !== opts.profesorId) {
+        throw new ForbiddenException('Solo puedes actualizar tu propia foto');
+      }
+
+      const profesor = await this.profesorRepository.findOne({ where: { id: profesorId } });
+      if (!profesor || profesor.tallerId !== tallerId) {
+        throw new NotFoundException('Profesor no encontrado en este taller');
+      }
+
+      profesor.fotoPath = dto.fotoPath.trim() || null;
+      profesorActualizado = await this.profesorRepository.save(profesor);
+    }
+
+    return {
+      taller: await this.findOne(tallerId),
+      profesor: profesorActualizado ?? profesorActor,
+    };
   }
 
   async remove(id: number): Promise<void> {
@@ -188,7 +256,26 @@ export class TallerService {
     return await this.asignacionRepository.save(asignacion);
   }
 
-  async definirHorario(tallerId: number, dto: DefinirHorarioDto): Promise<Taller> {
+  async definirHorario(
+    tallerId: number,
+    dto: DefinirHorarioDto | DefinirHorariosTallerDto,
+  ): Promise<Taller> {
+    if ('horarios' in dto && Array.isArray(dto.horarios)) {
+      return this.definirHorarios(tallerId, dto);
+    }
+    const simple = dto as DefinirHorarioDto;
+    return this.definirHorarios(tallerId, {
+      modo: 'POR_CURSO',
+      horarios: CURSOS_TALLER.map((c) => ({
+        curso: c.code,
+        diaSemana: simple.diaSemana,
+        horaInicio: simple.horaInicio,
+        horaFin: simple.horaFin,
+      })),
+    });
+  }
+
+  async definirHorarios(tallerId: number, dto: DefinirHorariosTallerDto): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'ESPERA_HORARIO') {
       throw new BadRequestException('La actividad debe tener docente confirmado antes de definir horario');
@@ -201,22 +288,65 @@ export class TallerService {
       throw new BadRequestException('No hay docente aceptado para esta actividad');
     }
 
-    if (dto.horaInicio >= dto.horaFin) {
-      throw new BadRequestException('La hora de inicio debe ser anterior a la hora de fin');
+    const filas = dto.horarios.filter(
+      (h) => h.diaSemana && h.horaInicio && h.horaFin,
+    );
+    if (!filas.length) {
+      throw new BadRequestException('Debes definir al menos un horario');
     }
 
-    await this.validarConflictoHorarioDocente(
-      asignacionAceptada.profesorId,
-      dto.diaSemana,
-      dto.horaInicio,
-      dto.horaFin,
-      tallerId,
-    );
+    for (const h of filas) {
+      if (h.horaInicio >= h.horaFin) {
+        throw new BadRequestException('La hora de inicio debe ser anterior a la hora de fin');
+      }
+      if (dto.modo === 'POR_CURSO' && !h.curso) {
+        throw new BadRequestException('Cada horario por curso debe indicar el curso');
+      }
+      if (dto.modo === 'POR_SECCION' && !h.seccion?.trim()) {
+        throw new BadRequestException('Cada horario por sección debe indicar la sección');
+      }
+      await this.validarConflictoHorarioDocente(
+        asignacionAceptada.profesorId,
+        h.diaSemana,
+        h.horaInicio,
+        h.horaFin,
+        tallerId,
+      );
+    }
 
-    taller.diaSemana = dto.diaSemana;
-    taller.horaInicio = dto.horaInicio;
-    taller.horaFin = dto.horaFin;
+    await this.tallerHorarioRepository.delete({ tallerId });
+
+    const entities = filas.map((h) =>
+      this.tallerHorarioRepository.create({
+        tallerId,
+        curso: dto.modo === 'POR_CURSO' ? h.curso! : null,
+        seccion: dto.modo === 'POR_SECCION' ? h.seccion!.trim().toUpperCase() : null,
+        diaSemana: h.diaSemana,
+        horaInicio: h.horaInicio,
+        horaFin: h.horaFin,
+      }),
+    );
+    await this.tallerHorarioRepository.save(entities);
+
+    const primero = filas[0];
+    taller.modoHorario = dto.modo;
+    taller.diaSemana = primero.diaSemana;
+    taller.horaInicio = primero.horaInicio;
+    taller.horaFin = primero.horaFin;
     return await this.tallerRepository.save(taller);
+  }
+
+  async getHorarios(tallerId: number): Promise<TallerHorario[]> {
+    await this.findOne(tallerId);
+    return this.tallerHorarioRepository.find({
+      where: { tallerId },
+      order: { curso: 'ASC', seccion: 'ASC', diaSemana: 'ASC' },
+    });
+  }
+
+  private tieneHorarioDefinido(taller: Taller): boolean {
+    if (taller.horarios?.length) return true;
+    return taller.diaSemana != null && !!taller.horaInicio && !!taller.horaFin;
   }
 
   async publicar(tallerId: number, dto: PublicarActividadDto): Promise<Taller> {
@@ -224,7 +354,7 @@ export class TallerService {
     if (taller.estado !== 'ESPERA_HORARIO') {
       throw new BadRequestException('Solo se publican actividades con horario definido');
     }
-    if (taller.diaSemana == null || !taller.horaInicio || !taller.horaFin) {
+    if (!this.tieneHorarioDefinido(taller)) {
       throw new BadRequestException('Debes definir el horario antes de publicar');
     }
 

@@ -1,193 +1,77 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
-import { Salida, CreateSalidaDto } from '../../models/salida.model';
-import { Taller } from '../../models/taller.model';
+import { AuthRoleService } from '../../shared/services/auth-role.service';
+import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 
 @Component({
   selector: 'app-salidas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, DatePipe],
   template: `
     <div class="space-y-6">
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Salidas</h1>
-        <button (click)="openModal()" 
-                class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
-          + Nueva Salida
-        </button>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">Salidas programadas</h1>
+        <p class="text-gray-600 mt-1">Historial con profesor responsable, origen y resultado al cerrar.</p>
       </div>
 
-      <!-- Modal -->
-      <div *ngIf="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <h2 class="text-2xl font-bold mb-4">{{ editingSalida ? 'Editar' : 'Nueva' }} Salida</h2>
-          <form [formGroup]="salidaForm" (ngSubmit)="saveSalida()">
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Destino</label>
-                <input formControlName="destino" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-                <input formControlName="fecha" type="date" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
-                <input formControlName="hora" type="time" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <textarea formControlName="descripcion" rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Taller</label>
-                <select formControlName="tallerId" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-                  <option value="">Seleccione un taller</option>
-                  <option *ngFor="let taller of talleres" [value]="taller.id">
-                    {{ taller.tipo }}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6">
-              <button type="button" (click)="closeModal()" 
-                      class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-                Cancelar
-              </button>
-              <button type="submit" 
-                      class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
-                Guardar
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Lista de Salidas -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div *ngFor="let salida of salidas" 
-             class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
-          <div class="flex justify-between items-start mb-4">
-            <div>
-              <h3 class="text-xl font-semibold text-gray-800">{{ salida.destino }}</h3>
-              <p class="text-sm text-gray-500">{{ salida.fecha | date:'short' }}</p>
-            </div>
-            <div class="flex space-x-2">
-              <button (click)="editSalida(salida)" class="text-primary-600 hover:text-primary-700">✏️</button>
-              <button (click)="deleteSalida(salida.id)" class="text-red-600 hover:text-red-700">🗑️</button>
-            </div>
+        @for (salida of salidas; track salida.id) {
+          <div class="bg-white rounded-xl shadow p-6 border-l-4"
+               [class.border-purple-500]="salida.estado === 'PUBLICADA'"
+               [class.border-blue-500]="salida.estado === 'EN_CURSO'"
+               [class.border-green-500]="salida.estado === 'CERRADA' && salida.resultado === 'EXITO'"
+               [class.border-red-500]="salida.estado === 'CERRADA' && salida.resultado === 'FRACASO'"
+               [class.border-amber-500]="salida.estado === 'PENDIENTE_PROFESOR' || salida.estado === 'PENDIENTE_DIRECTIVA'">
+            <h3 class="text-xl font-semibold text-gray-800">{{ salida.destino }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ salida.fecha | date:'fullDate' }} @if (salida.hora) { · {{ salida.hora }} }</p>
+            <p class="text-sm text-gray-600 mt-2">Profesor: <strong>{{ salida.profesor?.nombre || '—' }}</strong></p>
+            <p class="text-sm text-gray-600">Taller: {{ salida.taller?.tipo || '—' }}</p>
+            @if (salida.descripcion) {
+              <p class="text-sm text-gray-500 mt-2">{{ salida.descripcion }}</p>
+            }
+            <p class="text-xs text-primary-700 mt-2">{{ etiqueta(salida) }}</p>
+            <span class="inline-block mt-2 text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+              {{ estadoLabel(salida) }}
+            </span>
+            @if (salida.estado === 'CERRADA') {
+              <div class="mt-3 p-2 rounded text-sm"
+                   [class.bg-green-50]="salida.resultado === 'EXITO'"
+                   [class.text-green-800]="salida.resultado === 'EXITO'"
+                   [class.bg-red-50]="salida.resultado === 'FRACASO'"
+                   [class.text-red-800]="salida.resultado === 'FRACASO'">
+                {{ salida.resultado === 'EXITO' ? '✓ Salida exitosa' : '✗ Salida con dificultades' }}
+                @if (salida.comentarioCierre) {
+                  <p class="mt-1 italic">"{{ salida.comentarioCierre }}"</p>
+                }
+              </div>
+            }
           </div>
-          <div class="space-y-2 text-sm">
-            <div *ngIf="salida.hora"><span class="font-medium">Hora:</span> {{ salida.hora }}</div>
-            <div><span class="font-medium">Taller:</span> {{ salida.taller?.tipo || '-' }}</div>
-            <div *ngIf="salida.descripcion" class="text-gray-600">{{ salida.descripcion }}</div>
-          </div>
-        </div>
-        <div *ngIf="salidas.length === 0" class="col-span-full text-center text-gray-500 py-12">
-          No hay salidas registradas
-        </div>
+        }
+        @if (salidas.length === 0) {
+          <div class="col-span-full text-center text-gray-500 py-12">No hay salidas registradas</div>
+        }
       </div>
     </div>
   `,
-  styles: []
 })
 export class SalidasComponent implements OnInit {
-  salidas: Salida[] = [];
-  talleres: Taller[] = [];
-  showModal = false;
-  editingSalida: Salida | null = null;
-  salidaForm: FormGroup;
+  private api = inject(ApiService);
+  auth = inject(AuthRoleService);
 
-  constructor(
-    private apiService: ApiService,
-    private fb: FormBuilder
-  ) {
-    this.salidaForm = this.fb.group({
-      destino: ['', Validators.required],
-      fecha: ['', Validators.required],
-      hora: [''],
-      descripcion: [''],
-      tallerId: ['', Validators.required]
-    });
-  }
+  salidas: Salida[] = [];
 
   ngOnInit() {
-    this.loadSalidas();
-    this.loadTalleres();
+    this.cargar();
   }
 
-  loadSalidas() {
-    this.apiService.getSalidas().subscribe({
-      next: (data) => this.salidas = data,
-      error: (err) => console.error('Error cargando salidas:', err)
+  cargar() {
+    this.api.getSalidas().subscribe({
+      next: (d) => (this.salidas = d),
+      error: () => (this.salidas = []),
     });
   }
 
-  loadTalleres() {
-    this.apiService.getTalleres().subscribe({
-      next: (data) => this.talleres = data
-    });
-  }
-
-  openModal() {
-    this.editingSalida = null;
-    this.salidaForm.reset();
-    this.showModal = true;
-  }
-
-  closeModal() {
-    this.showModal = false;
-    this.editingSalida = null;
-    this.salidaForm.reset();
-  }
-
-  editSalida(salida: Salida) {
-    this.editingSalida = salida;
-    const fecha = new Date(salida.fecha);
-    this.salidaForm.patchValue({
-      destino: salida.destino,
-      fecha: fecha.toISOString().split('T')[0],
-      hora: salida.hora || '',
-      descripcion: salida.descripcion || '',
-      tallerId: salida.tallerId
-    });
-    this.showModal = true;
-  }
-
-  saveSalida() {
-    if (this.salidaForm.valid) {
-      const data: CreateSalidaDto = this.salidaForm.value;
-      if (this.editingSalida) {
-        this.apiService.updateSalida(this.editingSalida.id, data).subscribe({
-          next: () => {
-            this.loadSalidas();
-            this.closeModal();
-          }
-        });
-      } else {
-        this.apiService.createSalida(data).subscribe({
-          next: () => {
-            this.loadSalidas();
-            this.closeModal();
-          }
-        });
-      }
-    }
-  }
-
-  deleteSalida(id: number) {
-    if (confirm('¿Estás seguro de eliminar esta salida?')) {
-      this.apiService.deleteSalida(id).subscribe({
-        next: () => this.loadSalidas()
-      });
-    }
-  }
+  etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }
+  estadoLabel(s: Salida) { return etiquetaEstadoSalida(s); }
 }
-

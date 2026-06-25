@@ -14,7 +14,9 @@ import { CreateTallerDto } from '../dto/create-taller.dto';
 import { AsignarDocenteDto } from '../dto/asignar-docente.dto';
 import { ResponderAsignacionDto } from '../dto/responder-asignacion.dto';
 import { DefinirHorarioDto } from '../dto/definir-horario.dto';
+import { DefinirHorariosTallerDto } from '../dto/definir-horarios-taller.dto';
 import { PublicarActividadDto } from '../dto/publicar-actividad.dto';
+import { ActualizarPresentacionTallerDto } from '../dto/actualizar-presentacion-taller.dto';
 
 @Controller('taller')
 export class TallerController {
@@ -70,9 +72,14 @@ export class TallerController {
   @Patch(':id/horario')
   definirHorario(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: DefinirHorarioDto,
+    @Body() dto: DefinirHorarioDto | DefinirHorariosTallerDto,
   ) {
     return this.tallerService.definirHorario(id, dto);
+  }
+
+  @Get(':id/horarios')
+  getHorarios(@Param('id', ParseIntPipe) id: number) {
+    return this.tallerService.getHorarios(id);
   }
 
   @Patch(':id/publicar')
@@ -81,6 +88,19 @@ export class TallerController {
     @Body() dto: PublicarActividadDto,
   ) {
     return this.tallerService.publicar(id, dto);
+  }
+
+  @Patch(':id/presentacion')
+  actualizarPresentacion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarPresentacionTallerDto,
+    @Query('esDirectiva') esDirectiva?: string,
+    @Query('profesorId') profesorId?: string,
+  ) {
+    return this.tallerService.actualizarPresentacion(id, dto, {
+      esDirectiva: esDirectiva === 'true',
+      profesorId: profesorId ? parseInt(profesorId, 10) : undefined,
+    });
   }
 
   @Patch(':id/cerrar')

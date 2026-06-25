@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
+import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
 interface RegistroUI {
   alumnoId: number;
@@ -67,8 +68,8 @@ interface RegistroUI {
                 <tbody>
                   @for (r of registros; track r.alumnoId) {
                     <tr class="border-t border-gray-100">
-                      <td class="p-3 font-medium">{{ r.nombre }}</td>
-                      <td class="p-3">{{ r.rut }}</td>
+                      <td class="p-3 font-medium">{{ priv.nombre(r.nombre) }}</td>
+                      <td class="p-3">{{ priv.rut(r.rut) }}</td>
                       <td class="p-3">
                         <select [(ngModel)]="r.estado" class="border rounded px-2 py-1">
                           <option value="PRESENTE">Presente</option>
@@ -146,6 +147,7 @@ interface RegistroUI {
 export class ControlAsistenciaComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthRoleService);
+  priv = inject(AlumnoPrivacidadService);
 
   tallerId: number | null = null;
   profesorId: number | null = null;
@@ -282,12 +284,13 @@ export class ControlAsistenciaComponent implements OnInit {
           `\nASISTENCIA\n` +
           `Sesiones: ${r.asistencia?.sesionesRealizadas ?? 0} | Presentes: ${r.asistencia?.registrosPresentes ?? 0} | Ausentes: ${r.asistencia?.registrosAusentes ?? 0}\n` +
           `\nALUMNOS:\n` +
-          (r.alumnos ?? []).map((a: any) => {
-            const f = a.ficha;
+          (r.alumnos ?? []).map((al: any) => {
+            const d = this.priv.alumno(al);
+            const f = al.ficha;
             const fichaTxt = f
               ? ` | ${f.altura ?? '—'}cm ${f.peso ?? '—'}kg ${f.porcentajeGrasa ?? '—'}% grasa ${f.sedentario ? 'sedentario' : 'activo'}`
               : '';
-            return `- ${a.nombre} (${a.rut}): ${a.estado}${fichaTxt}`;
+            return `- ${d.nombre} (${d.rut}): ${al.estado}${fichaTxt}`;
           }).join('\n');
         const blob = new Blob([txt], { type: 'text/plain' });
         const a = document.createElement('a');

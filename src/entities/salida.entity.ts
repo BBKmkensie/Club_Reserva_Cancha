@@ -36,20 +36,46 @@ export class Salida {
   taller: Taller;
 
   @Column({ name: 'admin_id', nullable: true })
-  adminId: number;
+  adminId: number | null;
 
   @ManyToOne(() => Admin, (admin) => admin.salidas, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'admin_id' })
-  admin: Admin;
+  admin: Admin | null;
 
   @Column({ name: 'profesor_id', nullable: true })
-  profesorId: number;
+  profesorId: number | null;
 
   @ManyToOne(() => Profesor, (profesor) => profesor.salidas, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'profesor_id' })
-  profesor: Profesor;
+  profesor: Profesor | null;
+
+  @Column({ type: 'varchar', length: 30, default: 'PROPUESTA_PROFESOR' })
+  origen: string;
+
+  @Column({ type: 'varchar', length: 30, default: 'PUBLICADA' })
+  estado: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  resultado: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'comentario_cierre' })
+  comentarioCierre: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'comentario_apertura' })
+  comentarioApertura: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'motivo_rechazo' })
+  motivoRechazo: string | null;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'fecha_apertura' })
+  fechaApertura: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'fecha_cierre' })
+  fechaCierre: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'fecha_respuesta' })
+  fechaRespuesta: Date | null;
 
   @OneToMany(() => InscripcionSalida, (insc) => insc.salida)
   inscripciones: InscripcionSalida[];
 }
-

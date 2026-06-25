@@ -1,6 +1,7 @@
 import { Admin } from './admin.model';
 import { Alumno } from './alumno.model';
 import { Profesor } from './profesor.model';
+import { TallerHorarioItem } from '../shared/utils/horario-taller.util';
 
 export type EstadoActividad =
   | 'BORRADOR'
@@ -18,6 +19,8 @@ export interface Taller {
   horaInicio?: string | null;
   horaFin?: string | null;
   estado?: EstadoActividad;
+  modoHorario?: 'POR_CURSO' | 'POR_SECCION';
+  horarios?: TallerHorarioItem[];
   fechaAperturaInscripcion?: string | null;
   fechaCierreInscripcion?: string | null;
   publicadoAt?: string | null;
@@ -49,4 +52,4 @@ export interface AsignacionDocente {
   profesor?: Profesor;
   createdAt?: string;
 }
-
+

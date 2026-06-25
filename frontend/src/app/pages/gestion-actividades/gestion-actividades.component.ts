@@ -4,7 +4,17 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
+import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 import { Taller, EstadoActividad } from '../../models/taller.model';
+import {
+  CURSOS_TALLER,
+  SECCIONES_TALLER_DEFAULT,
+  textoHorarioTaller,
+  horariosOrdenados,
+  crearBorradorHorariosPorCurso,
+  crearBorradorHorariosPorSeccion,
+  ModoHorarioTaller,
+} from '../../shared/utils/horario-taller.util';
 
 const DIAS = [
   { v: 1, l: 'Lunes' },
@@ -127,7 +137,9 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
 
             <p class="text-sm text-gray-500 mb-3">
               Capacidad: {{ t.capacidad }}
-              @if (t.diaSemana && t.horaInicio) {
+              @if (horariosGuardados(t).length) {
+                · {{ tituloHorariosResumen(t) }} ({{ horariosGuardados(t).length }})
+              } @else if (t.diaSemana && t.horaInicio) {
                 · {{ textoHorario(t) }}
               }
             </p>
@@ -158,26 +170,99 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
             }
 
             @if (t.estado === 'ESPERA_HORARIO') {
-              <div class="bg-blue-50 p-3 rounded-lg space-y-2">
-                <p class="text-sm text-blue-800 font-medium">Docente confirmó. Define horario y publica el catálogo.</p>
-                <div class="flex flex-wrap gap-2 items-end">
-                  <select [(ngModel)]="horarioDraft[t.id].diaSemana" class="border rounded px-2 py-1.5 text-sm">
-                    @for (d of dias; track d.v) {
-                      <option [ngValue]="d.v">{{ d.l }}</option>
-                    }
-                  </select>
-                  <input type="time" [(ngModel)]="horarioDraft[t.id].horaInicio" class="border rounded px-2 py-1.5 text-sm">
-                  <input type="time" [(ngModel)]="horarioDraft[t.id].horaFin" class="border rounded px-2 py-1.5 text-sm">
-                  <button (click)="guardarHorario(t.id)" class="text-sm bg-blue-600 text-white px-3 py-2 rounded-lg">
-                    Guardar horario
-                  </button>
+              <div class="bg-blue-50 p-3 rounded-lg space-y-3">
+                <p class="text-sm text-blue-800 font-medium">Docente confirmó. Define horarios por curso o por sección y publica el catálogo.</p>
+                <div class="flex flex-col sm:flex-row gap-3 text-sm">
+                  <label class="inline-flex items-center gap-2">
+                    <input type="radio" name="modo-{{ t.id }}" [ngModel]="modoHorarioDraft[t.id]" (ngModelChange)="cambiarModoHorario(t.id, 'POR_CURSO')" value="POR_CURSO">
+                    Por curso
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="radio" name="modo-{{ t.id }}" [ngModel]="modoHorarioDraft[t.id]" (ngModelChange)="cambiarModoHorario(t.id, 'POR_SECCION')" value="POR_SECCION">
+                    Por sección
+                  </label>
                 </div>
-                @if (t.diaSemana) {
+
+                <!-- Móvil: tarjetas editables -->
+                <div class="md:hidden space-y-2 max-h-80 overflow-y-auto pr-1">
+                  @if (modoHorarioDraft[t.id] === 'POR_SECCION') {
+                    @for (s of secciones; track s) {
+                      <div class="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
+                        <p class="font-semibold text-gray-800">Sección {{ s }}</p>
+                        <select [(ngModel)]="horariosSeccionDraft[t.id][s].diaSemana" class="w-full border rounded px-2 py-2 text-sm">
+                          @for (d of dias; track d.v) { <option [ngValue]="d.v">{{ d.l }}</option> }
+                        </select>
+                        <div class="grid grid-cols-2 gap-2">
+                          <input type="time" [(ngModel)]="horariosSeccionDraft[t.id][s].horaInicio" class="w-full border rounded px-2 py-2 text-sm">
+                          <input type="time" [(ngModel)]="horariosSeccionDraft[t.id][s].horaFin" class="w-full border rounded px-2 py-2 text-sm">
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    @for (c of cursos; track c.code) {
+                      <div class="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
+                        <p class="font-semibold text-gray-800 text-sm">{{ c.label }}</p>
+                        <select [(ngModel)]="horariosCursoDraft[t.id][c.code].diaSemana" class="w-full border rounded px-2 py-2 text-sm">
+                          @for (d of dias; track d.v) { <option [ngValue]="d.v">{{ d.l }}</option> }
+                        </select>
+                        <div class="grid grid-cols-2 gap-2">
+                          <input type="time" [(ngModel)]="horariosCursoDraft[t.id][c.code].horaInicio" class="w-full border rounded px-2 py-2 text-sm">
+                          <input type="time" [(ngModel)]="horariosCursoDraft[t.id][c.code].horaFin" class="w-full border rounded px-2 py-2 text-sm">
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+
+                <!-- Escritorio: tabla -->
+                <div class="hidden md:block overflow-x-auto border border-blue-200 rounded-lg bg-white">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-600">
+                      <tr>
+                        <th class="text-left px-2 py-2">{{ modoHorarioDraft[t.id] === 'POR_SECCION' ? 'Sección' : 'Curso' }}</th>
+                        <th class="text-left px-2 py-2">Día</th>
+                        <th class="text-left px-2 py-2">Inicio</th>
+                        <th class="text-left px-2 py-2">Fin</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @if (modoHorarioDraft[t.id] === 'POR_SECCION') {
+                        @for (s of secciones; track s) {
+                          <tr class="border-t">
+                            <td class="px-2 py-1 font-medium">{{ s }}</td>
+                            <td class="px-2 py-1">
+                              <select [(ngModel)]="horariosSeccionDraft[t.id][s].diaSemana" class="border rounded px-1 py-1">
+                                @for (d of dias; track d.v) { <option [ngValue]="d.v">{{ d.l }}</option> }
+                              </select>
+                            </td>
+                            <td class="px-2 py-1"><input type="time" [(ngModel)]="horariosSeccionDraft[t.id][s].horaInicio" class="border rounded px-1 py-1"></td>
+                            <td class="px-2 py-1"><input type="time" [(ngModel)]="horariosSeccionDraft[t.id][s].horaFin" class="border rounded px-1 py-1"></td>
+                          </tr>
+                        }
+                      } @else {
+                        @for (c of cursos; track c.code) {
+                          <tr class="border-t">
+                            <td class="px-2 py-1 font-medium whitespace-nowrap">{{ c.label }}</td>
+                            <td class="px-2 py-1">
+                              <select [(ngModel)]="horariosCursoDraft[t.id][c.code].diaSemana" class="border rounded px-1 py-1">
+                                @for (d of dias; track d.v) { <option [ngValue]="d.v">{{ d.l }}</option> }
+                              </select>
+                            </td>
+                            <td class="px-2 py-1"><input type="time" [(ngModel)]="horariosCursoDraft[t.id][c.code].horaInicio" class="border rounded px-1 py-1"></td>
+                            <td class="px-2 py-1"><input type="time" [(ngModel)]="horariosCursoDraft[t.id][c.code].horaFin" class="border rounded px-1 py-1"></td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <button (click)="guardarHorario(t.id)" class="text-sm bg-blue-600 text-white px-3 py-2 rounded-lg">
+                  Guardar horarios
+                </button>
+                @if (tieneHorarioGuardado(t)) {
                   <div class="flex flex-wrap gap-2 items-end pt-2 border-t border-blue-200">
-                    <input type="date" [(ngModel)]="publicarDraft[t.id].apertura" placeholder="Apertura"
-                           class="border rounded px-2 py-1.5 text-sm" title="Apertura inscripciones">
-                    <input type="date" [(ngModel)]="publicarDraft[t.id].cierre" placeholder="Cierre"
-                           class="border rounded px-2 py-1.5 text-sm" title="Cierre inscripciones">
+                    <input type="date" [(ngModel)]="publicarDraft[t.id].apertura" class="border rounded px-2 py-1.5 text-sm" title="Apertura inscripciones">
+                    <input type="date" [(ngModel)]="publicarDraft[t.id].cierre" class="border rounded px-2 py-1.5 text-sm" title="Cierre inscripciones">
                     <button (click)="publicar(t.id)" class="text-sm bg-green-600 text-white px-3 py-2 rounded-lg">
                       Publicar catálogo
                     </button>
@@ -215,14 +300,19 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
 export class GestionActividadesComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthRoleService);
+  priv = inject(AlumnoPrivacidadService);
   private fb = inject(FormBuilder);
 
   actividades: Taller[] = [];
   profesores: any[] = [];
   profesorPorActividad: Record<number, number | null> = {};
-  horarioDraft: Record<number, { diaSemana: number; horaInicio: string; horaFin: string }> = {};
+  modoHorarioDraft: Record<number, ModoHorarioTaller> = {};
+  horariosCursoDraft: Record<number, Record<string, { diaSemana: number; horaInicio: string; horaFin: string }>> = {};
+  horariosSeccionDraft: Record<number, Record<string, { diaSemana: number; horaInicio: string; horaFin: string }>> = {};
   publicarDraft: Record<number, { apertura: string; cierre: string }> = {};
   dias = DIAS;
+  cursos = CURSOS_TALLER;
+  secciones = SECCIONES_TALLER_DEFAULT;
   showModal = false;
   form: FormGroup;
   periodoActivo: any = null;
@@ -279,11 +369,7 @@ export class GestionActividadesComponent implements OnInit {
       next: (data) => {
         this.actividades = data;
         for (const t of data) {
-          this.horarioDraft[t.id] = {
-            diaSemana: t.diaSemana ?? 1,
-            horaInicio: t.horaInicio?.slice(0, 5) ?? '16:00',
-            horaFin: t.horaFin?.slice(0, 5) ?? '18:00',
-          };
+          this.inicializarBorradoresHorario(t);
           this.publicarDraft[t.id] = { apertura: '', cierre: '' };
         }
       },
@@ -295,8 +381,55 @@ export class GestionActividadesComponent implements OnInit {
   }
 
   textoHorario(t: Taller) {
-    const d = DIAS.find((x) => x.v === t.diaSemana)?.l ?? '';
-    return `${d} ${t.horaInicio?.slice(0, 5)} - ${t.horaFin?.slice(0, 5)}`;
+    return textoHorarioTaller(t);
+  }
+
+  horariosGuardados(t: Taller) {
+    return horariosOrdenados(t);
+  }
+
+  tituloHorariosResumen(t: Taller) {
+    return t.modoHorario === 'POR_SECCION' ? 'Horarios por sección' : 'Horarios por curso';
+  }
+
+  tieneHorarioGuardado(t: Taller): boolean {
+    return this.horariosGuardados(t).length > 0 || !!(t.diaSemana && t.horaInicio && t.horaFin);
+  }
+
+  cambiarModoHorario(tallerId: number, modo: ModoHorarioTaller) {
+    this.modoHorarioDraft[tallerId] = modo;
+  }
+
+  private inicializarBorradoresHorario(t: Taller) {
+    const modo: ModoHorarioTaller = t.modoHorario ?? 'POR_CURSO';
+    this.modoHorarioDraft[t.id] = modo;
+    this.horariosCursoDraft[t.id] = crearBorradorHorariosPorCurso();
+    this.horariosSeccionDraft[t.id] = crearBorradorHorariosPorSeccion();
+
+    const base = {
+      diaSemana: t.diaSemana ?? 2,
+      horaInicio: t.horaInicio?.slice(0, 5) ?? '16:00',
+      horaFin: t.horaFin?.slice(0, 5) ?? '18:00',
+    };
+
+    if (t.horarios?.length) {
+      for (const h of t.horarios) {
+        const fila = {
+          diaSemana: h.diaSemana,
+          horaInicio: h.horaInicio?.slice(0, 5) ?? base.horaInicio,
+          horaFin: h.horaFin?.slice(0, 5) ?? base.horaFin,
+        };
+        if (h.curso) this.horariosCursoDraft[t.id][h.curso] = fila;
+        if (h.seccion) this.horariosSeccionDraft[t.id][h.seccion] = fila;
+      }
+    } else if (t.diaSemana) {
+      for (const c of CURSOS_TALLER) {
+        this.horariosCursoDraft[t.id][c.code] = { ...base };
+      }
+      for (const s of SECCIONES_TALLER_DEFAULT) {
+        this.horariosSeccionDraft[t.id][s] = { ...base };
+      }
+    }
   }
 
   abrirCrear() {
@@ -332,10 +465,21 @@ export class GestionActividadesComponent implements OnInit {
   }
 
   guardarHorario(tallerId: number) {
-    const h = this.horarioDraft[tallerId];
-    this.api.definirHorarioActividad(tallerId, h).subscribe({
+    const modo = this.modoHorarioDraft[tallerId] ?? 'POR_CURSO';
+    const horarios =
+      modo === 'POR_SECCION'
+        ? this.secciones.map((s) => ({
+            seccion: s,
+            ...this.horariosSeccionDraft[tallerId][s],
+          }))
+        : this.cursos.map((c) => ({
+            curso: c.code,
+            ...this.horariosCursoDraft[tallerId][c.code],
+          }));
+
+    this.api.definirHorarioActividad(tallerId, { modo, horarios }).subscribe({
       next: () => {
-        alert('Horario guardado. Ya puedes publicar el catálogo.');
+        alert('Horarios guardados. Ya puedes publicar el catálogo.');
         this.cargar();
       },
       error: (e) => alert(e?.error?.message || 'Error de horario'),
@@ -379,7 +523,10 @@ export class GestionActividadesComponent implements OnInit {
             ? `Asistencia: ${r.asistencia.sesionesRealizadas} sesiones, ${r.asistencia.registrosPresentes} presentes, ${r.asistencia.registrosAusentes} ausentes\n`
             : '') +
           `\nALUMNOS:\n` +
-          r.alumnos.map((a: any) => `- ${a.nombre} (${a.rut}): ${a.estado}`).join('\n');
+          r.alumnos.map((al: any) => {
+            const d = this.priv.alumno(al);
+            return `- ${d.nombre} (${d.rut}): ${al.estado}`;
+          }).join('\n');
         const blob = new Blob([txt], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);

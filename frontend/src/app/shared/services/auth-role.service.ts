@@ -163,6 +163,21 @@ export class AuthRoleService {
     return this.isCoordinacion();
   }
 
+  /** Super admin: datos personales de alumnos enmascarados (nombre, RUT, correo) */
+  debeEnmascararDatosAlumno(): boolean {
+    return this.isSuperAdmin();
+  }
+
+  /** Profesor de su taller o directiva: editar descripción y foto del profesor */
+  canEditarPresentacionTaller(tallerId: number): boolean {
+    if (this.isCoordinacion()) return true;
+    if (this.isProfesor()) {
+      const miTallerId = this.currentTallerId();
+      return miTallerId != null && miTallerId === tallerId;
+    }
+    return false;
+  }
+
   canReservarCancha(): boolean {
     const r = this.roleSignal();
     return r === 'super_admin' || r === 'admin';
@@ -222,11 +237,11 @@ export class AuthRoleService {
   }
 
   canVerAlumnos(): boolean {
-    return this.isCoordinacion() || this.isProfesor();
+    return this.isCoordinacion();
   }
 
   canVerProfesores(): boolean {
-    return this.isCoordinacion() || this.isProfesor();
+    return this.isCoordinacion();
   }
 
   /** Etiqueta visible en navbar */

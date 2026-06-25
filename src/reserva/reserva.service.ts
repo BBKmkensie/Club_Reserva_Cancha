@@ -19,6 +19,8 @@ import {
   horaAMinutos,
   horariosSolapan,
   normalizarHora,
+  parseFechaIso,
+  fechaLocal,
 } from './cancha.constants';
 
 export type EstadoSlotCancha = 'disponible' | 'ocupada' | 'no_habilitada';
@@ -59,7 +61,7 @@ export class ReservaService {
     });
 
     const reservas = await this.reservaRepository.find({
-      where: { espacio, fecha: new Date(fecha) as any },
+      where: { espacio, fecha: fechaLocal(fecha) as any },
       relations: ['taller', 'profesor'],
     });
 
@@ -137,7 +139,8 @@ export class ReservaService {
       );
     }
 
-    const diaSemana = diaSemanaDesdeFecha(dto.fecha);
+    const fechaIso = parseFechaIso(dto.fecha);
+    const diaSemana = diaSemanaDesdeFecha(fechaIso);
     const franja =
       (await this.franjaRepository.findOne({
         where: { espacio, diaSemana, horaInicio: `${horaInicio}:00` as any },
@@ -169,7 +172,7 @@ export class ReservaService {
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.taller', 'taller')
       .where('r.espacio = :espacio', { espacio })
-      .andWhere('r.fecha = :fecha', { fecha: dto.fecha })
+      .andWhere('r.fecha = :fecha::date', { fecha: fechaIso })
       .andWhere('r.hora_inicio < :fin::time', { fin: `${horaFin}:00` })
       .andWhere('r.hora_fin > :inicio::time', { inicio: `${horaInicio}:00` })
       .getMany();
@@ -192,7 +195,7 @@ export class ReservaService {
 
     const reserva = this.reservaRepository.create({
       espacio: createReservaDto.espacio || CANCHA_ESPACIO_DEFAULT,
-      fecha: new Date(createReservaDto.fecha),
+      fecha: fechaLocal(createReservaDto.fecha),
       horaInicio: `${horaInicio}:00`,
       horaFin: `${horaFin}:00`,
       tallerId: createReservaDto.tallerId,
@@ -200,7 +203,16 @@ export class ReservaService {
       profesorId: createReservaDto.profesorId ?? null,
     });
 
-    return await this.reservaRepository.save(reserva);
+    try {
+      return await this.reservaRepository.save(reserva);
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        throw new ConflictException(
+          `La cancha ya está ocupada de ${horaInicio} a ${horaFin} en esa fecha`,
+        );
+      }
+      throw err;
+    }
   }
 
   async findAll(): Promise<Reserva[]> {
@@ -231,7 +243,7 @@ export class ReservaService {
 
   async findByFecha(fecha: string): Promise<Reserva[]> {
     return await this.reservaRepository.find({
-      where: { fecha: new Date(fecha) as any },
+      where: { fecha: fechaLocal(fecha) as any },
       relations: ['taller', 'admin', 'profesor'],
       order: { horaInicio: 'ASC' },
     });
@@ -250,19 +262,16 @@ export class ReservaService {
     };
 
     if (updateReservaDto.fecha) {
-      merged.fecha =
-        typeof updateReservaDto.fecha === 'string'
-          ? updateReservaDto.fecha
-          : new Date(updateReservaDto.fecha).toISOString().split('T')[0];
+      merged.fecha = parseFechaIso(updateReservaDto.fecha as string);
     } else if (reserva.fecha) {
-      merged.fecha = new Date(reserva.fecha).toISOString().split('T')[0];
+      merged.fecha = parseFechaIso(reserva.fecha);
     }
 
     await this.validarReserva(merged, id);
 
     Object.assign(reserva, {
       espacio: merged.espacio,
-      fecha: new Date(merged.fecha),
+      fecha: fechaLocal(merged.fecha),
       horaInicio: `${normalizarHora(merged.horaInicio)}:00`,
       horaFin: `${normalizarHora(merged.horaFin)}:00`,
       tallerId: merged.tallerId,

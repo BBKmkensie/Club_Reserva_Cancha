@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Taller } from '../../models/taller.model';
+import { HorariosTallerComponent } from '../../shared/components/horarios-taller/horarios-taller.component';
+import { textoHorarioTaller } from '../../shared/utils/horario-taller.util';
 
 interface InscripcionTaller {
   id: number;
@@ -20,17 +22,14 @@ interface ValidacionInscripcion {
   cuposDisponibles: number;
   capacidad: number;
   conflictoHorario: boolean;
-  sinCupo?: boolean;
   tallerConflicto?: string;
   motivo?: string;
 }
 
-const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
 @Component({
   selector: 'app-inscripcion-talleres',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, HorariosTallerComponent],
   template: `
     <div class="space-y-6">
       <div class="bg-white rounded-lg shadow p-6">
@@ -39,21 +38,6 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
           Explora el catálogo, selecciona un taller y confirma tu inscripción.
           El sistema valida cupos y conflictos de horario antes de registrar tu solicitud.
         </p>
-        @if (auth.canProponerActividad()) {
-          <div class="mt-4 p-4 bg-teal-50 border border-teal-200 rounded-lg flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-teal-900">
-              @if (auth.isAlumno()) {
-                ¿No encuentras el taller que buscas (Zumba, Cocina, etc.)? Propón una nueva actividad al coordinador.
-              } @else {
-                ¿Te gustaría otro taller? Envía una propuesta al coordinador.
-              }
-            </p>
-            <a routerLink="/propuestas-actividad"
-               class="text-sm bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 whitespace-nowrap">
-              Proponer actividad →
-            </a>
-          </div>
-        }
       </div>
 
       @if (auth.canInscribirseTalleres()) {
@@ -100,8 +84,8 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
             <div class="border rounded-lg p-4 flex flex-col hover:shadow-md transition">
               <h3 class="font-semibold text-gray-800 text-lg">{{ taller.tipo }}</h3>
               <p class="text-sm text-gray-600 mt-1 flex-1">{{ taller.descripcion }}</p>
-              <p class="text-sm text-gray-500 mt-2">{{ textoHorario(taller) }}</p>
-              <div class="flex items-center justify-between mt-3">
+              <app-horarios-taller [taller]="taller" [mostrarTitulo]="true" />
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
                 <span class="text-sm text-gray-500">
                   Cupos: {{ cuposPorTaller[taller.id]?.cuposDisponibles ?? '—' }} / {{ taller.capacidad }}
                 </span>
@@ -145,7 +129,7 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
           <p class="text-gray-600 mb-4">¿Deseas inscribirte en <strong>{{ tallerConfirmando.tipo }}</strong>?</p>
 
           <div class="bg-gray-50 rounded-lg p-4 text-sm space-y-2 mb-4">
-            <p><strong>Horario:</strong> {{ textoHorario(tallerConfirmando) }}</p>
+            <app-horarios-taller *ngIf="tallerConfirmando" [taller]="tallerConfirmando" [mostrarTitulo]="false" />
             @if (validacionActual) {
               <p><strong>Cupos disponibles:</strong> {{ validacionActual.cuposDisponibles }} de {{ validacionActual.capacidad }}</p>
             }
@@ -268,16 +252,6 @@ export class InscripcionTalleresComponent implements OnInit {
     return s.taller?.tipo ?? `Taller #${s.tallerId}`;
   }
 
-  textoHorario(taller: Taller): string {
-    if (!taller.diaSemana || !taller.horaInicio || !taller.horaFin) {
-      return 'Horario por confirmar';
-    }
-    const dia = DIAS_SEMANA[taller.diaSemana] ?? `Día ${taller.diaSemana}`;
-    const inicio = taller.horaInicio.slice(0, 5);
-    const fin = taller.horaFin.slice(0, 5);
-    return `${dia} ${inicio} - ${fin}`;
-  }
-
   abrirConfirmacion(taller: Taller) {
     if (!this.alumnoId) {
       alert('Inicia sesión como estudiante para inscribirte.');
@@ -287,14 +261,11 @@ export class InscripcionTalleresComponent implements OnInit {
     this.validacionActual = null;
     this.errorConfirmacion = '';
     this.fichaForm = { altura: null, peso: null, porcentajeGrasa: null, sedentario: false };
-    this.apiService.validarInscripcionTaller(this.alumnoId, taller.id, true).subscribe({
+    this.apiService.validarInscripcionTaller(this.alumnoId, taller.id).subscribe({
       next: (v) => {
         this.validacionActual = v;
         if (!v.puedeInscribirse) {
-          const avisoNotificacion = v.conflictoHorario || v.sinCupo
-            ? ' Revisa tu bandeja de notificaciones en el Dashboard.'
-            : '';
-          this.errorConfirmacion = (v.motivo ?? 'No puedes inscribirte en este taller') + avisoNotificacion;
+          this.errorConfirmacion = v.motivo ?? 'No puedes inscribirte en este taller';
         }
       },
       error: (err) => {

@@ -16,6 +16,7 @@ import { InscripcionSalidaModule } from './inscripcion-salida/inscripcion-salida
 import { InscripcionTallerModule } from './inscripcion-taller/inscripcion-taller.module';
 import { PeriodoModule } from './periodo/periodo.module';
 import { AsistenciaModule } from './asistencia/asistencia.module';
+import { FichaAlumnoModule } from './ficha-alumno/ficha-alumno.module';
 import { Admin } from './entities/admin.entity';
 import { Taller } from './entities/taller.entity';
 import { Alumno } from './entities/alumno.entity';
@@ -57,6 +58,7 @@ import { InscripcionTaller } from './entities/inscripcion-taller.entity';
     InscripcionSalidaModule,
     InscripcionTallerModule,
     AsistenciaModule,
+    FichaAlumnoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

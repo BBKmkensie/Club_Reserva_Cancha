@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
+import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Taller, CreateTallerDto } from '../../models/taller.model';
 
 @Component({
@@ -13,10 +14,12 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
     <div class="space-y-6">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-800">Talleres</h1>
-        <button (click)="openModal()" 
-                class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
-          + Nuevo Taller
-        </button>
+        @if (auth.canAccessTalleresCRUD()) {
+          <button (click)="openModal()" 
+                  class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
+            + Nuevo Taller
+          </button>
+        }
       </div>
 
       <!-- Modal -->
@@ -88,16 +91,18 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
                class="w-full h-32 object-cover rounded-lg mb-3">
           <div class="flex justify-between items-start mb-4">
             <h3 class="text-xl font-semibold text-gray-800">{{ taller.tipo }}</h3>
-            <div class="flex space-x-2" (click)="$event.stopPropagation()">
-              <button (click)="editTaller(taller)" 
-                      class="text-primary-600 hover:text-primary-700">
-                ✏️
-              </button>
-              <button (click)="deleteTaller(taller.id)" 
-                      class="text-red-600 hover:text-red-700">
-                🗑️
-              </button>
-            </div>
+            @if (auth.canAccessTalleresCRUD()) {
+              <div class="flex space-x-2" (click)="$event.stopPropagation()">
+                <button (click)="editTaller(taller)" 
+                        class="text-primary-600 hover:text-primary-700">
+                  ✏️
+                </button>
+                <button (click)="deleteTaller(taller.id)" 
+                        class="text-red-600 hover:text-red-700">
+                  🗑️
+                </button>
+              </div>
+            }
           </div>
           <p class="text-gray-600 mb-3">{{ taller.descripcion }}</p>
           <div class="flex justify-between text-sm text-gray-500 mb-3">
@@ -124,6 +129,7 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
   styles: []
 })
 export class TalleresComponent implements OnInit {
+  auth = inject(AuthRoleService);
   talleres: Taller[] = [];
   talleresFiltrados: Taller[] = [];
   showModal = false;

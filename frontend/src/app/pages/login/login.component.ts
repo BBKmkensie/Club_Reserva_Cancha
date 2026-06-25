@@ -12,15 +12,13 @@ import { ApiService } from '../../services/api.service';
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
-        <h1 class="text-2xl font-bold text-gray-800 mb-2 text-center">Reservas de Cancha</h1>
-        <p class="text-gray-600 text-center mb-6">Iniciar sesión</p>
-        <p class="text-sm text-gray-500 text-center mb-4">Ingresa tu usuario y contraseña</p>
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Reservas de Cancha</h1>
 
         <div class="space-y-4">
           <label class="block">
             <span class="text-sm font-medium text-gray-700">Usuario</span>
             <input [(ngModel)]="usuario" type="text"
-                   placeholder="Email, RUT o nombre de profesor"
+                   placeholder="RUT o nombre"
                    class="mt-1 w-full py-2 px-3 border border-gray-300 rounded-lg">
           </label>
           <label class="block">
@@ -39,11 +37,7 @@ import { ApiService } from '../../services/api.service';
           </button>
         </div>
 
-        <p class="text-xs text-gray-400 mt-6 text-center leading-relaxed">
-          Super admin: admin&#64;reservas.local · Directiva: directiva&#64;reservas.local ·
-          Profesor: nombre completo · Alumno: RUT
-        </p>
-        <a routerLink="/dashboard" class="block text-center text-sm text-gray-500 mt-3 hover:text-primary-600">
+        <a routerLink="/dashboard" class="block text-center text-sm text-gray-500 mt-6 hover:text-primary-600">
           ← Volver al inicio
         </a>
       </div>

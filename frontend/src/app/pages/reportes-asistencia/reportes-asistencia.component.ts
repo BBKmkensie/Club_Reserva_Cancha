@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
+import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
 @Component({
   selector: 'app-reportes-asistencia',
@@ -54,7 +55,7 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
               <div class="bg-white p-4 rounded-lg border border-red-200">
                 <div class="flex flex-wrap justify-between gap-2 mb-2">
                   <div>
-                    <strong>{{ a.nombre }}</strong> ({{ a.rut }}) — {{ a.taller }}
+                    <strong>{{ priv.nombre(a.nombre) }}</strong> ({{ priv.rut(a.rut) }}) — {{ a.taller }}
                     <span class="ml-2 text-red-600 font-bold">{{ a.cantidadAusencias }} ausencias</span>
                     <span class="ml-2 text-xs px-2 py-0.5 rounded-full"
                           [class.bg-amber-200]="a.estado === 'PENDIENTE'"
@@ -138,7 +139,7 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
               <tbody>
                 @for (e of reporte.estadisticasAlumnos; track e.alumnoId) {
                   <tr class="border-t" [class.bg-red-50]="e.alertaAusencia">
-                    <td class="p-3 font-medium">{{ e.nombre }}</td>
+                    <td class="p-3 font-medium">{{ priv.nombre(e.nombre) }}</td>
                     <td class="p-3 text-gray-600">{{ e.apoderadoNombre ?? '—' }}</td>
                     <td class="p-3 text-center text-green-700">{{ e.presentes }}</td>
                     <td class="p-3 text-center text-red-700">{{ e.ausentes }}</td>
@@ -157,6 +158,7 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
 export class ReportesAsistenciaComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthRoleService);
+  priv = inject(AlumnoPrivacidadService);
 
   talleres: any[] = [];
   tallerIdSeleccionado: number | null = null;
@@ -242,9 +244,11 @@ export class ReportesAsistenciaComponent implements OnInit {
       `Alertas activas: ${this.reporte.resumen.alertasPendientes}`,
       '',
       'Alumno\tRUT\tApoderado\tTeléfono\tPresentes\tAusentes\t% Asistencia\tAlerta',
-      ...this.reporte.estadisticasAlumnos.map((e: any) =>
-        `${e.nombre}\t${e.rut}\t${e.apoderadoNombre ?? ''}\t${e.apoderadoTelefono ?? ''}\t${e.presentes}\t${e.ausentes}\t${e.porcentajeAsistencia}%\t${e.alertaAusencia ? 'SI' : 'NO'}`
-      ),
+      ...this.reporte.estadisticasAlumnos.map((e: any) => {
+        const nombre = this.priv.nombre(e.nombre);
+        const rut = this.priv.rut(e.rut);
+        return `${nombre}\t${rut}\t${e.apoderadoNombre ?? ''}\t${e.apoderadoTelefono ?? ''}\t${e.presentes}\t${e.ausentes}\t${e.porcentajeAsistencia}%\t${e.alertaAusencia ? 'SI' : 'NO'}`;
+      }),
     ];
     const blob = new Blob([lineas.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
