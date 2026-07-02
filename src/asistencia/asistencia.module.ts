@@ -10,7 +10,6 @@ import { AlertaAusencia } from '../entities/alerta-ausencia.entity';
 import { AsistenciaService } from './asistencia.service';
 import { AsistenciaController } from './asistencia.controller';
 import { NotificacionModule } from '../notificacion/notificacion.module';
-import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -24,7 +23,6 @@ import { MailModule } from '../mail/mail.module';
       AlertaAusencia,
     ]),
     NotificacionModule,
-    MailModule,
   ],
   controllers: [AsistenciaController],
   providers: [AsistenciaService],

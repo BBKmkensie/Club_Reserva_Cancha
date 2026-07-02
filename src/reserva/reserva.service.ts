@@ -18,9 +18,11 @@ import {
   formatHoraSlot,
   horaAMinutos,
   horariosSolapan,
+  lunesDeSemana,
   normalizarHora,
   parseFechaIso,
   fechaLocal,
+  sumarDias,
 } from './cancha.constants';
 
 export type EstadoSlotCancha = 'disponible' | 'ocupada' | 'no_habilitada';
@@ -111,6 +113,23 @@ export class ReservaService {
     }
 
     return slots;
+  }
+
+  async obtenerDisponibilidadSemana(
+    fechaInicio?: string,
+    espacio = CANCHA_ESPACIO_DEFAULT,
+  ): Promise<{ fecha: string; diaSemana: number; slots: SlotDisponibilidadCancha[] }[]> {
+    const lunes = lunesDeSemana(fechaInicio);
+    const dias: { fecha: string; diaSemana: number; slots: SlotDisponibilidadCancha[] }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const fecha = sumarDias(lunes, i);
+      dias.push({
+        fecha,
+        diaSemana: diaSemanaDesdeFecha(fecha),
+        slots: await this.obtenerDisponibilidad(fecha, espacio),
+      });
+    }
+    return dias;
   }
 
   private async validarReserva(

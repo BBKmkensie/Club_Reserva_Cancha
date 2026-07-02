@@ -199,6 +199,12 @@ export class ApiService {
     );
   }
 
+  getDisponibilidadSemanaCancha(fechaInicio?: string, espacio = 'Cancha Principal'): Observable<any[]> {
+    let url = `${this.apiUrl}/reserva/disponibilidad-semana?espacio=${encodeURIComponent(espacio)}`;
+    if (fechaInicio) url += `&fechaInicio=${fechaInicio}`;
+    return this.http.get<any[]>(url);
+  }
+
   getFranjasCancha(espacio = 'Cancha Principal'): Observable<any[]> {
     return this.http.get<any[]>(
       `${this.apiUrl}/franja-cancha?espacio=${encodeURIComponent(espacio)}`,

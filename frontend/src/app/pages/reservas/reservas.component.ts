@@ -5,10 +5,12 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Reserva } from '../../models/reserva.model';
 import { Taller } from '../../models/taller.model';
+import { HORAS_FRANJA_CANCHA, CANCHA_HORA_INICIO, CANCHA_HORA_FIN } from '../../shared/utils/cancha.constants';
+import { CanchaSemanaVistaComponent } from '../../shared/components/cancha-semana-vista/cancha-semana-vista.component';
 
 const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const ESPACIO = 'Cancha Principal';
-const HORAS = Array.from({ length: 12 }, (_, i) => 9 + i); // 9..20 → hasta 21:00
+const HORAS = HORAS_FRANJA_CANCHA;
 const HORA_PARA_TODOS = 13;
 
 type EstadoSlot = 'disponible' | 'ocupada' | 'no_habilitada';
@@ -37,16 +39,26 @@ interface FranjaConfig {
 @Component({
   selector: 'app-reservas',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, DatePipe, CanchaSemanaVistaComponent],
   template: `
     <div class="space-y-8">
       <div>
         <h1 class="text-3xl font-bold text-gray-800">Reserva de cancha</h1>
         <p class="text-gray-600 mt-1">
-          Horarios de <strong>09:00 a 21:00</strong> (1 hora por reserva). El bloque <strong>13:00–14:00</strong> está habilitado para todos los talleres.
+          Horarios de <strong>{{ fmtHora(CANCHA_HORA_INICIO) }} a {{ fmtHora(CANCHA_HORA_FIN) }}</strong> (1 hora por reserva). El bloque <strong>13:00–14:00</strong> está habilitado para todos los talleres.
           La directiva puede ampliar franjas a más de 1 hora.
         </p>
       </div>
+
+      @if (auth.isCoordinacion()) {
+        <div>
+          <h2 class="text-xl font-semibold text-gray-800 mb-1">Ocupación semanal de la cancha</h2>
+          <p class="text-sm text-gray-600 mb-4">
+            Revisa la semana completa: días, horarios ocupados y franjas disponibles (09:00–20:00).
+          </p>
+          <app-cancha-semana-vista [version]="versionSemana" [espacio]="ESPACIO" />
+        </div>
+      }
 
       @if (auth.canGestionarFranjasCancha()) {
         <section class="bg-white rounded-xl shadow-lg p-6">
@@ -235,6 +247,11 @@ export class ReservasComponent implements OnInit {
   readonly DIAS_SEMANA = DIAS_SEMANA;
   readonly HORAS = HORAS;
   readonly HORA_PARA_TODOS = HORA_PARA_TODOS;
+  readonly CANCHA_HORA_INICIO = CANCHA_HORA_INICIO;
+  readonly CANCHA_HORA_FIN = CANCHA_HORA_FIN;
+  readonly ESPACIO = ESPACIO;
+
+  versionSemana = 0;
 
   reservas: Reserva[] = [];
   talleres: Taller[] = [];
@@ -249,6 +266,10 @@ export class ReservasComponent implements OnInit {
   cargandoSlots = false;
   reservando = false;
   errorReserva = '';
+
+  private refrescarSemana(): void {
+    this.versionSemana++;
+  }
 
   ngOnInit() {
     this.loadReservas();
@@ -368,6 +389,7 @@ export class ReservasComponent implements OnInit {
         this.franjasModificadas = false;
         this.cargarFranjas();
         this.cargarDisponibilidad();
+        this.refrescarSemana();
         alert('Franjas horarias actualizadas.');
       },
       error: (e) => {
@@ -421,6 +443,7 @@ export class ReservasComponent implements OnInit {
         this.reservando = false;
         this.loadReservas();
         this.cargarDisponibilidad();
+        this.refrescarSemana();
       },
       error: (e) => {
         this.reservando = false;
@@ -451,6 +474,7 @@ export class ReservasComponent implements OnInit {
       next: () => {
         this.loadReservas();
         this.cargarDisponibilidad();
+        this.refrescarSemana();
       },
       error: (e) => alert(e?.error?.message || 'Error al cancelar')
     });

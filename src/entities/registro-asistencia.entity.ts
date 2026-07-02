@@ -31,7 +31,7 @@ export class RegistroAsistencia {
   @JoinColumn({ name: 'alumno_id' })
   alumno: Alumno;
 
-  @Column({ type: 'varchar', length: 20, default: 'AUSENTE' })
+  @Column({ type: 'varchar', length: 20, default: 'PRESENTE' })
   estado: EstadoAsistencia;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

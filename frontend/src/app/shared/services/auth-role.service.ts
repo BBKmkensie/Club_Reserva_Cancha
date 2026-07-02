@@ -244,8 +244,8 @@ export class AuthRoleService {
     return this.isCoordinacion();
   }
 
-  /** Etiqueta visible en navbar */
-  displayLabel(): string {
+  /** Solo el rol (Profesor, Estudiante, etc.) */
+  roleLabel(): string {
     const tipo = this.userTipoSignal();
     if (tipo === 'directiva') return 'Directiva';
     if (tipo === 'profesor') return 'Profesor';
@@ -255,5 +255,12 @@ export class AuthRoleService {
     if (role === 'super_admin') return 'Super Admin';
     if (role === 'usuario') return 'Estudiante';
     return 'Usuario';
+  }
+
+  /** Etiqueta visible en navbar (rol + nombre si existe) */
+  displayLabel(): string {
+    const nombre = this.nombreSignal()?.trim();
+    const rol = this.roleLabel();
+    return nombre ? `${rol} · ${nombre}` : rol;
   }
 }

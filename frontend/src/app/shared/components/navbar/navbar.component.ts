@@ -43,11 +43,18 @@ import { NavLinksComponent } from '../nav-links/nav-links.component';
             <app-nav-links mode="navbar" />
           }
 
-          <div class="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
+          <div class="flex items-center gap-2 sm:gap-3 ml-auto shrink-0 min-w-0">
             @if (auth.isLoggedIn()) {
-              <span class="bg-primary-600 text-white text-xs sm:text-sm font-semibold px-2 sm:px-4 py-1.5 sm:py-2 rounded-full whitespace-nowrap max-w-[7rem] sm:max-w-none truncate">
-                {{ auth.displayLabel() }}
-              </span>
+              <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[11rem] sm:max-w-xs">
+                @if (auth.currentNombre()) {
+                  <span class="text-xs sm:text-sm text-gray-700 font-medium truncate" [title]="auth.currentNombre()!">
+                    {{ auth.currentNombre() }}
+                  </span>
+                }
+                <span class="bg-primary-600 text-white text-xs sm:text-sm font-semibold px-2 sm:px-3 py-1.5 sm:py-2 rounded-full whitespace-nowrap shrink-0">
+                  {{ auth.roleLabel() }}
+                </span>
+              </div>
               <button type="button" (click)="cerrar()"
                       class="text-xs sm:text-sm text-gray-600 hover:text-primary-600 px-2 py-1 rounded whitespace-nowrap">
                 Salir

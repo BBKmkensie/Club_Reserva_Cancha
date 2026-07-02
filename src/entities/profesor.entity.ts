@@ -28,7 +28,7 @@ export class Profesor {
   telefono: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'foto_path' })
-  fotoPath: string;
+  fotoPath: string | null;
 
   @Column({ name: 'taller_id' })
   tallerId: number;

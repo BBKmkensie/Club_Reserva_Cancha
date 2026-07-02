@@ -1,6 +1,6 @@
 export const CANCHA_ESPACIO_DEFAULT = 'Cancha Principal';
 export const CANCHA_HORA_INICIO = 9;
-export const CANCHA_HORA_FIN = 21;
+export const CANCHA_HORA_FIN = 20;
 /** Franja 13:00–14:00 habilitada para todos los talleres, todos los días */
 export const CANCHA_HORA_PARA_TODOS = 13;
 
@@ -31,7 +31,23 @@ export function horariosSolapan(
   return a < d && c < b;
 }
 
-/** Fecha ISO (YYYY-MM-DD) → día semana 1=Lunes … 7=Domingo */
+/** Lunes de la semana que contiene `fecha` (o hoy) */
+export function lunesDeSemana(fecha?: string | Date): string {
+  const base = fecha
+    ? new Date(`${parseFechaIso(fecha)}T12:00:00`)
+    : new Date(new Date().toDateString() + 'T12:00:00');
+  const js = base.getDay();
+  const diff = js === 0 ? -6 : 1 - js;
+  base.setDate(base.getDate() + diff);
+  return parseFechaIso(base);
+}
+
+export function sumarDias(fecha: string, dias: number): string {
+  const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
+  d.setDate(d.getDate() + dias);
+  return parseFechaIso(d);
+}
+
 export function diaSemanaDesdeFecha(fecha: string): number {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   const js = d.getDay();

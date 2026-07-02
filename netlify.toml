@@ -1,0 +1,16 @@
+# Despliegue del frontend Angular en Netlify
+# El backend NestJS y PostgreSQL deben estar en otro servicio (Render, Railway, etc.)
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist/reservas-frontend/browser"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA: todas las rutas de Angular van a index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

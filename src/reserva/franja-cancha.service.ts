@@ -116,6 +116,16 @@ export class FranjaCanchaService {
       await this.repo
         .createQueryBuilder()
         .update(FranjaCancha)
+        .set({ activa: false })
+        .where('espacio = :espacio', { espacio })
+        .andWhere(
+          '(EXTRACT(HOUR FROM hora_inicio) < :inicio OR EXTRACT(HOUR FROM hora_inicio) >= :fin)',
+          { inicio: CANCHA_HORA_INICIO, fin: CANCHA_HORA_FIN },
+        )
+        .execute();
+      await this.repo
+        .createQueryBuilder()
+        .update(FranjaCancha)
         .set({ paraTodos: true, activa: true })
         .where('espacio = :espacio', { espacio })
         .andWhere('EXTRACT(HOUR FROM hora_inicio) = :h', { h: CANCHA_HORA_PARA_TODOS })

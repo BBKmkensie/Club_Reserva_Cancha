@@ -16,7 +16,7 @@ export class PeriodoService {
   }
 
   async findAll(): Promise<PeriodoAcademico[]> {
-    return await this.repo.find({ order: { fechaApertura: 'DESC', id: 'DESC' } });
+    return await this.repo.find({ order: { id: 'DESC' } });
   }
 
   async configurar(dto: PeriodoAcademicoDto): Promise<PeriodoAcademico> {

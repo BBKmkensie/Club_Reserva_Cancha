@@ -1,5 +1,4 @@
-import { IsString, IsEmail, IsInt, IsNotEmpty, IsOptional, ValidateIf } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsEmail, IsInt, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateProfesorDto {
   @IsString()
@@ -22,11 +21,9 @@ export class CreateProfesorDto {
   @IsOptional()
   fotoPath?: string;
 
-  @IsOptional()
-  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
-  @ValidateIf((_, value) => value !== undefined)
   @IsInt()
-  tallerId?: number;
+  @IsNotEmpty()
+  tallerId: number;
 
   @IsString()
   @IsOptional()

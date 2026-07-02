@@ -27,9 +27,14 @@ import { ApiService } from '../../../services/api.service';
           <nav class="p-4 pt-5">
             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Menú</p>
             <app-nav-links mode="sidebar" (navigated)="sidebarService.close()" />
-            <div class="mt-6 pt-4 border-t border-gray-100 px-2">
+            <div class="mt-6 pt-4 border-t border-gray-100 px-2 space-y-1">
+              @if (auth.currentNombre()) {
+                <p class="text-xs text-gray-700 font-semibold truncate" [title]="auth.currentNombre()!">
+                  {{ auth.currentNombre() }}
+                </p>
+              }
               <p class="text-xs text-gray-500">
-                Rol: <span class="font-semibold text-gray-700">{{ auth.displayLabel() }}</span>
+                Rol: <span class="font-semibold text-gray-700">{{ auth.roleLabel() }}</span>
               </p>
             </div>
           </nav>

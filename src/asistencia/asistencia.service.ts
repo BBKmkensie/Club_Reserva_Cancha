@@ -73,7 +73,7 @@ export class AsistenciaService {
       this.registroRepo.create({
         sesionId: guardada.id,
         alumnoId: insc.alumnoId,
-        estado: 'AUSENTE',
+        estado: 'PRESENTE',
       }),
     );
     await this.registroRepo.save(registros);

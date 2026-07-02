@@ -9,7 +9,7 @@ interface RegistroUI {
   alumnoId: number;
   nombre: string;
   rut: string;
-  estado: 'PRESENTE' | 'AUSENTE' | 'TARDE';
+  estado: 'PRESENTE' | 'AUSENTE';
   observacion: string;
 }
 
@@ -22,7 +22,7 @@ interface RegistroUI {
       <div class="bg-white rounded-xl shadow-lg p-6">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
         <p class="text-gray-600">
-          Abre una sesión de clase, pasa lista de alumnos inscritos y cierra la sesión al terminar.
+          Abre una sesión de clase y marca solo los alumnos <strong>ausentes</strong>. El resto queda como presente por defecto.
         </p>
       </div>
 
@@ -54,38 +54,57 @@ interface RegistroUI {
           }
 
           @if (sesion && sesion.estado === 'ABIERTA') {
-            <h3 class="text-lg font-semibold text-gray-800 mb-3">Pasar lista</h3>
-            <div class="overflow-x-auto mb-4">
-              <table class="w-full text-sm border border-gray-200 rounded-lg">
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th class="text-left p-3">Alumno</th>
-                    <th class="text-left p-3">RUT</th>
-                    <th class="text-left p-3">Estado</th>
-                    <th class="text-left p-3">Observación</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (r of registros; track r.alumnoId) {
-                    <tr class="border-t border-gray-100">
-                      <td class="p-3 font-medium">{{ priv.nombre(r.nombre) }}</td>
-                      <td class="p-3">{{ priv.rut(r.rut) }}</td>
-                      <td class="p-3">
-                        <select [(ngModel)]="r.estado" class="border rounded px-2 py-1">
-                          <option value="PRESENTE">Presente</option>
-                          <option value="AUSENTE">Ausente</option>
-                          <option value="TARDE">Tarde</option>
-                        </select>
-                      </td>
-                      <td class="p-3">
-                        <input [(ngModel)]="r.observacion" type="text" placeholder="Opcional"
-                               class="border rounded px-2 py-1 w-full max-w-xs">
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 class="text-lg font-semibold text-gray-800">Pasar lista</h3>
+              <div class="flex flex-wrap items-center gap-3">
+                <p class="text-sm text-gray-600">
+                  <span class="text-green-700 font-semibold">{{ contarPresentes() }} presentes</span>
+                  ·
+                  <span class="text-red-700 font-semibold">{{ contarAusentes() }} ausentes</span>
+                  · {{ registros.length }} alumnos
+                </p>
+                <button type="button" (click)="marcarTodosPresentes()"
+                        class="text-sm text-primary-600 hover:text-primary-800 font-medium">
+                  Todos presentes
+                </button>
+              </div>
             </div>
+            <p class="text-xs text-gray-500 mb-3">
+              Toca el círculo para marcar ausente. Vuelve a tocar para dejarlo presente.
+            </p>
+            <div class="flex flex-wrap gap-4 text-xs text-gray-500 mb-4">
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[10px]">✓</span>
+                Presente
+              </span>
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-6 h-6 rounded-full border-2 border-red-400 bg-white"></span>
+                Ausente
+              </span>
+            </div>
+            <ul class="mb-4 max-h-[32rem] overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100 bg-white">
+              @for (r of registros; track r.alumnoId) {
+                <li class="flex items-center gap-3 px-3 sm:px-4 py-3 transition-colors"
+                    [ngClass]="r.estado === 'PRESENTE' ? 'fila-presente' : 'fila-ausente'">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium text-gray-800 truncate">{{ priv.nombre(r.nombre) }}</p>
+                    <p class="text-xs text-gray-500">{{ priv.rut(r.rut) }}</p>
+                  </div>
+                  <button type="button"
+                          (click)="toggleAsistencia(r)"
+                          [attr.aria-label]="etiquetaEstado(r.estado)"
+                          class="asistencia-circulo shrink-0"
+                          [class.asistencia-circulo--presente]="r.estado === 'PRESENTE'"
+                          [class.asistencia-circulo--ausente]="r.estado === 'AUSENTE'">
+                    @if (r.estado === 'PRESENTE') {
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                      </svg>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
 
             <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones de la sesión</label>
@@ -143,6 +162,42 @@ interface RegistroUI {
       }
     </div>
   `,
+  styles: [`
+    .asistencia-circulo {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+      cursor: pointer;
+    }
+    .asistencia-circulo:hover {
+      transform: scale(1.06);
+    }
+    .asistencia-circulo:active {
+      transform: scale(0.95);
+    }
+    .asistencia-circulo--presente {
+      background-color: #10b981;
+      border-color: #059669;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    }
+    .asistencia-circulo--ausente {
+      background-color: #fff;
+      border-color: #f87171;
+      box-shadow: 0 1px 4px rgba(239, 68, 68, 0.12);
+    }
+    .fila-presente {
+      background-color: rgba(16, 185, 129, 0.08);
+    }
+    .fila-ausente {
+      background-color: rgba(239, 68, 68, 0.06);
+    }
+  `],
 })
 export class ControlAsistenciaComponent implements OnInit {
   private api = inject(ApiService);
@@ -197,7 +252,7 @@ export class ControlAsistenciaComponent implements OnInit {
       alumnoId: r.alumnoId,
       nombre: r.alumno?.nombre ?? 'Alumno',
       rut: r.alumno?.rut ?? '',
-      estado: r.estado ?? 'AUSENTE',
+      estado: r.estado === 'AUSENTE' ? 'AUSENTE' : 'PRESENTE',
       observacion: r.observacion ?? '',
     }));
     this.observacionesSesion = sesion.observaciones ?? '';
@@ -266,6 +321,26 @@ export class ControlAsistenciaComponent implements OnInit {
 
   contarEstado(sesion: any, estado: string): number {
     return sesion.registros?.filter((r: any) => r.estado === estado).length ?? 0;
+  }
+
+  contarPresentes(): number {
+    return this.registros.filter((r) => r.estado === 'PRESENTE').length;
+  }
+
+  contarAusentes(): number {
+    return this.registros.filter((r) => r.estado === 'AUSENTE').length;
+  }
+
+  toggleAsistencia(r: RegistroUI) {
+    r.estado = r.estado === 'PRESENTE' ? 'AUSENTE' : 'PRESENTE';
+  }
+
+  etiquetaEstado(estado: RegistroUI['estado']): string {
+    return estado === 'PRESENTE' ? 'Presente, tocar para marcar ausente' : 'Ausente, tocar para marcar presente';
+  }
+
+  marcarTodosPresentes() {
+    this.registros.forEach((r) => { r.estado = 'PRESENTE'; });
   }
 
   generarReporteFinal() {

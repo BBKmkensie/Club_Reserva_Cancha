@@ -28,7 +28,7 @@ export class Admin {
   @Column({ type: 'varchar', length: 255, name: 'PasswordSalt' })
   passwordSalt: string;
 
-  /** Rol: super_admin | directiva (mismos permisos de coordinador) */
+  /** Rol: super_admin (crea talleres, horarios, todo) */
   @Column({ type: 'varchar', length: 20, default: 'super_admin' })
   rol: string;
 

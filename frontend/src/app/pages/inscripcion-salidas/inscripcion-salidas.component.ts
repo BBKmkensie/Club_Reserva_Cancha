@@ -5,11 +5,12 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 import { Taller } from '../../models/taller.model';
+import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-picker.component';
 
 @Component({
   selector: 'app-inscripcion-salidas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, HoraPickerComponent],
   template: `
     <div class="space-y-8">
       <div class="bg-white rounded-xl shadow-lg p-6">
@@ -55,8 +56,8 @@ import { Taller } from '../../models/taller.model';
               <input formControlName="fecha" type="date" class="w-full border rounded-lg px-3 py-2">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
-              <input formControlName="hora" type="time" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-gray-400 font-normal">(opcional)</span></label>
+              <app-hora-picker formControlName="hora" />
             </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
@@ -106,8 +107,8 @@ import { Taller } from '../../models/taller.model';
               <input formControlName="fecha" type="date" class="w-full border rounded-lg px-3 py-2">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
-              <input formControlName="hora" type="time" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-gray-400 font-normal">(opcional)</span></label>
+              <app-hora-picker formControlName="hora" />
             </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>

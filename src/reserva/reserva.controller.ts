@@ -17,6 +17,17 @@ import { CANCHA_ESPACIO_DEFAULT } from './cancha.constants';
 export class ReservaController {
   constructor(private readonly reservaService: ReservaService) {}
 
+  @Get('disponibilidad-semana')
+  obtenerDisponibilidadSemana(
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('espacio') espacio?: string,
+  ) {
+    return this.reservaService.obtenerDisponibilidadSemana(
+      fechaInicio,
+      espacio ?? CANCHA_ESPACIO_DEFAULT,
+    );
+  }
+
   @Get('disponibilidad')
   obtenerDisponibilidad(
     @Query('fecha') fecha: string,
