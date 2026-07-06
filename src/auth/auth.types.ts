@@ -1,5 +1,5 @@
 export type AppRole = 'super_admin' | 'admin' | 'usuario';
-export type UserTipo = 'admin' | 'directiva' | 'profesor' | 'alumno';
+export type UserTipo = 'admin' | 'directiva' | 'profesor' | 'alumno' | 'apoderado';
 
 export interface JwtPayload {
   sub: number;

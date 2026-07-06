@@ -5,7 +5,14 @@
   <title>Reservas de Cancha - Sistema de Gestión</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" href="assets/images/logo-nauta.png">
+  <script>
+    (function () {
+      if (localStorage.getItem('app-theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

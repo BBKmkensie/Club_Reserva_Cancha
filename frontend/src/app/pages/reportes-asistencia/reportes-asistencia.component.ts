@@ -11,18 +11,18 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
   imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-6">
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Reportes de Asistencia</h1>
-        <p class="text-gray-600">
+      <div class="bg-surface rounded-xl shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Reportes de Asistencia</h1>
+        <p class="text-ink-muted">
           Revisa estadísticas, recibe alertas, contacta apoderados y toma medidas correctivas.
         </p>
       </div>
 
       @if (auth.isCoordinacion() || auth.isProfesor()) {
-        <div class="bg-white rounded-lg shadow p-4 flex flex-wrap gap-4 items-end">
+        <div class="bg-surface rounded-lg shadow p-4 flex flex-wrap gap-4 items-end">
           @if (auth.isCoordinacion()) {
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Taller</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Taller</label>
               <select [(ngModel)]="tallerIdSeleccionado" (ngModelChange)="cargarTodo()"
                       class="border rounded-lg px-3 py-2 max-w-md w-full">
                 <option [ngValue]="null">— Seleccionar —</option>
@@ -34,7 +34,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
           }
           @if (tallerIdSeleccionado && auth.isCoordinacion()) {
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Umbral de ausencias</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Umbral de ausencias</label>
               <div class="flex gap-2">
                 <input type="number" [(ngModel)]="umbralEdit" min="1" max="20"
                        class="border rounded-lg px-3 py-2 w-20">
@@ -52,7 +52,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
           <h2 class="text-xl font-bold text-red-800 mb-3">Alertas pendientes — Contactar apoderado</h2>
           <div class="space-y-4">
             @for (a of alertasGestion; track a.id) {
-              <div class="bg-white p-4 rounded-lg border border-red-200">
+              <div class="bg-surface p-4 rounded-lg border border-red-200">
                 <div class="flex flex-wrap justify-between gap-2 mb-2">
                   <div>
                     <strong>{{ priv.nombre(a.nombre) }}</strong> ({{ priv.rut(a.rut) }}) — {{ a.taller }}
@@ -65,7 +65,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                   </div>
                 </div>
                 @if (a.apoderado?.nombre || a.apoderado?.telefono) {
-                  <p class="text-sm text-gray-600 mb-2">
+                  <p class="text-sm text-ink-muted mb-2">
                     Apoderado: <strong>{{ a.apoderado?.nombre ?? '—' }}</strong>
                     @if (a.apoderado?.telefono) { · Tel: {{ a.apoderado.telefono }} }
                     @if (a.apoderado?.email) { · {{ a.apoderado.email }} }
@@ -97,36 +97,36 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div class="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
             <div class="text-2xl font-bold text-blue-700">{{ reporte.resumen.totalSesiones }}</div>
-            <div class="text-sm text-gray-600">Sesiones</div>
+            <div class="text-sm text-ink-muted">Sesiones</div>
           </div>
           <div class="bg-green-50 rounded-xl p-4 text-center border border-green-200">
             <div class="text-2xl font-bold text-green-700">{{ reporte.resumen.totalAlumnos }}</div>
-            <div class="text-sm text-gray-600">Alumnos</div>
+            <div class="text-sm text-ink-muted">Alumnos</div>
           </div>
           <div class="bg-red-50 rounded-xl p-4 text-center border border-red-200">
             <div class="text-2xl font-bold text-red-700">{{ reporte.resumen.alertasPendientes }}</div>
-            <div class="text-sm text-gray-600">Alertas activas</div>
+            <div class="text-sm text-ink-muted">Alertas activas</div>
           </div>
           <div class="bg-amber-50 rounded-xl p-4 text-center border border-amber-200">
             <div class="text-2xl font-bold text-amber-700">{{ reporte.resumen.umbralAusencias }}</div>
-            <div class="text-sm text-gray-600">Umbral ausencias</div>
+            <div class="text-sm text-ink-muted">Umbral ausencias</div>
           </div>
           <div class="bg-purple-50 rounded-xl p-4 text-center border border-purple-200">
             <div class="text-2xl font-bold text-purple-700">{{ reporte.taller.tipo }}</div>
-            <div class="text-sm text-gray-600">Taller</div>
+            <div class="text-sm text-ink-muted">Taller</div>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow p-6">
+        <div class="bg-surface rounded-xl shadow p-6">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">Reporte final por alumno</h2>
+            <h2 class="text-xl font-bold text-ink">Reporte final por alumno</h2>
             <button (click)="exportar()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm">
               Generar reporte final
             </button>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm border border-gray-200">
-              <thead class="bg-gray-100">
+            <table class="w-full text-sm border border-line">
+              <thead class="bg-muted">
                 <tr>
                   <th class="text-left p-3">Alumno</th>
                   <th class="text-left p-3">Apoderado</th>
@@ -140,7 +140,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                 @for (e of reporte.estadisticasAlumnos; track e.alumnoId) {
                   <tr class="border-t" [class.bg-red-50]="e.alertaAusencia">
                     <td class="p-3 font-medium">{{ priv.nombre(e.nombre) }}</td>
-                    <td class="p-3 text-gray-600">{{ e.apoderadoNombre ?? '—' }}</td>
+                    <td class="p-3 text-ink-muted">{{ e.apoderadoNombre ?? '—' }}</td>
                     <td class="p-3 text-center text-green-700">{{ e.presentes }}</td>
                     <td class="p-3 text-center text-red-700">{{ e.ausentes }}</td>
                     <td class="p-3 text-center font-bold">{{ e.porcentajeAsistencia }}%</td>
@@ -168,7 +168,7 @@ export class ReportesAsistenciaComponent implements OnInit {
   notasAlerta: Record<number, string> = {};
 
   ngOnInit() {
-    if (this.auth.isAdmin() && this.auth.currentTallerId()) {
+    if (this.auth.isProfesor() && this.auth.currentTallerId()) {
       this.tallerIdSeleccionado = this.auth.currentTallerId();
       this.cargarTodo();
     }

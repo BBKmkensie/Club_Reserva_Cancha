@@ -14,6 +14,14 @@ DB_DATABASE=proyecto_taller
 
 # Application
 PORT=3000
+
+# Email (SMTP) — ver sección "Correo electrónico" más abajo
+MAIL_ENABLED=false
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=Reservas Cancha <noreply@reservas.local>
 ```
 
 ### Notas importantes:
@@ -24,6 +32,66 @@ PORT=3000
 4. **DB_PASSWORD**: Contraseña de la base de datos
 5. **DB_DATABASE**: Nombre de la base de datos (proyecto_taller)
 6. **PORT**: Puerto donde correrá la aplicación NestJS (por defecto: 3000)
+7. **MAIL_ENABLED**: `true` envía correos reales; `false` (o vacío) solo los registra en consola
+8. **SMTP_***: Credenciales del servidor SMTP (Mailtrap, Gmail, SendGrid, etc.)
+
+## Correo electrónico
+
+El backend usa **nodemailer** para notificar por email (inscripciones, alertas de asistencia, contacto a apoderados, etc.).
+
+### Modo desarrollo (sin SMTP)
+
+En tu `.env`:
+
+```env
+MAIL_ENABLED=false
+```
+
+Al iniciar el backend verás:
+
+`Email deshabilitado (MAIL_ENABLED=false). Los correos se registran en consola.`
+
+Cada notificación aparecerá como `[EMAIL simulado] Para: ... | Asunto: ...` en la terminal. Las notificaciones **dentro de la app** siguen funcionando con normalidad.
+
+### Configurar Mailtrap (recomendado para pruebas)
+
+[Mailtrap](https://mailtrap.io) captura los correos en una bandeja de prueba sin enviarlos a usuarios reales.
+
+1. Crea una cuenta gratuita en [mailtrap.io](https://mailtrap.io).
+2. Ve a **Email Testing → Inboxes → [tu inbox] → SMTP Settings**.
+3. Elige integración **Nodemailer** (o copia host, puerto, usuario y contraseña).
+4. Pega los datos en tu `.env`:
+
+```env
+MAIL_ENABLED=true
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=tu_usuario_mailtrap
+SMTP_PASS=tu_contraseña_mailtrap
+SMTP_FROM=Reservas Cancha <noreply@reservas.local>
+```
+
+5. Reinicia el backend:
+
+```bash
+npm run start:dev
+```
+
+6. Deberías ver: `Email habilitado (sandbox.smtp.mailtrap.io:2525)`.
+7. Dispara una acción que envíe correo (por ejemplo, aprobar una inscripción) y revisa la bandeja en Mailtrap.
+
+### Producción
+
+Usa las credenciales de tu proveedor real (SendGrid, Amazon SES, servidor SMTP institucional, etc.) y un remitente válido en `SMTP_FROM`.
+
+```env
+MAIL_ENABLED=true
+SMTP_HOST=smtp.tuproveedor.cl
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM=Reservas Cancha <noreply@tudominio.cl>
+```
 
 ## Verificación de la Base de Datos
 

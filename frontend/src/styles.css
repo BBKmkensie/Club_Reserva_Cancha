@@ -2,15 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --color-page: 249 250 251;
+  --color-surface: 255 255 255;
+  --color-muted: 243 244 246;
+  --color-elevated: 255 255 255;
+  --color-ink: 17 24 39;
+  --color-ink-secondary: 55 65 81;
+  --color-ink-muted: 75 85 99;
+  --color-border: 229 231 235;
+  --color-border-strong: 209 213 219;
+  --color-accent: 126 140 224;
+  --color-accent-hover: 107 120 212;
+  --color-accent-soft: 232 234 248;
+  --color-accent-text: 88 100 200;
+  --palette-periwinkle: 126 140 224;
+  --palette-sky: 144 194 231;
+  --palette-lime: 184 217 79;
+  --palette-yellow: 249 212 35;
+  --palette-orange: 255 140 0;
+  --palette-orange-red: 255 78 0;
+  --palette-magenta: 216 27 96;
+  --palette-brand: 211 47 47;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-page: 12 14 20;
+  --color-surface: 22 25 34;
+  --color-muted: 30 34 45;
+  --color-elevated: 26 29 38;
+  --color-ink: 243 244 246;
+  --color-ink-secondary: 209 213 219;
+  --color-ink-muted: 156 163 175;
+  --color-border: 55 65 81;
+  --color-border-strong: 75 85 99;
+  --color-accent: 144 194 231;
+  --color-accent-hover: 126 176 220;
+  --color-accent-soft: 30 45 62;
+  --color-accent-text: 186 220 245;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  @apply bg-page text-ink transition-colors duration-200;
 }
 
+@layer components {
+  .app-card {
+    @apply bg-surface rounded-xl shadow-lg border border-line;
+  }
+
+  .app-input {
+    @apply bg-surface border border-line-strong text-ink rounded-lg;
+  }
+
+  .app-btn-primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600 font-medium rounded-lg transition-colors;
+  }
+
+  .palette-bar {
+    background: linear-gradient(
+      90deg,
+      #7E8CE0 0%,
+      #90C2E7 16%,
+      #B8D94F 33%,
+      #F9D423 50%,
+      #FF8C00 66%,
+      #FF4E00 83%,
+      #D81B60 100%
+    );
+  }
+
+  .dark .bg-blue-50 { @apply bg-blue-950/40; }
+  .dark .bg-indigo-50 { @apply bg-indigo-950/40; }
+  .dark .bg-amber-50 { @apply bg-amber-950/40; }
+  .dark .bg-green-50 { @apply bg-green-950/40; }
+  .dark .bg-red-50 { @apply bg-red-950/40; }
+  .dark .bg-emerald-50 { @apply bg-emerald-950/40; }
+  .dark .bg-purple-50 { @apply bg-purple-950/40; }
+  .dark .bg-orange-50 { @apply bg-orange-950/40; }
+  .dark .bg-yellow-50 { @apply bg-yellow-950/30; }
+  .dark .text-blue-800, .dark .text-blue-700 { @apply text-blue-300; }
+  .dark .text-indigo-900 { @apply text-indigo-200; }
+  .dark .text-amber-800 { @apply text-amber-300; }
+  .dark .text-green-800 { @apply text-green-300; }
+  .dark .text-red-800, .dark .text-red-600 { @apply text-red-300; }
+  .dark .text-emerald-700, .dark .text-emerald-600 { @apply text-emerald-300; }
+  .dark .border-indigo-200 { @apply border-indigo-800; }
+  .dark .border-amber-200 { @apply border-amber-800; }
+  .dark .border-red-200 { @apply border-red-800; }
+  .dark .border-emerald-200 { @apply border-emerald-800; }
+  .dark .border-blue-400 { @apply border-palette-sky; }
+}

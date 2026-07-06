@@ -15,6 +15,8 @@ import {
   crearBorradorHorariosPorSeccion,
   ModoHorarioTaller,
 } from '../../shared/utils/horario-taller.util';
+import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
+import { descargarTextoReporte, textoReporteActividad } from '../../shared/utils/reporte-actividad.util';
 
 const DIAS = [
   { v: 1, l: 'Lunes' },
@@ -37,13 +39,13 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
 @Component({
   selector: 'app-gestion-actividades',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, DatePipe, FechaPickerComponent],
   template: `
     <div class="space-y-6">
       <div class="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-800">Gestión de Actividades</h1>
-          <p class="text-gray-600 text-sm mt-1">Cocina, Zumba, deportes y más — flujo del coordinador (BPMN 3)</p>
+          <h1 class="text-3xl font-bold text-ink">Gestión de Actividades</h1>
+          <p class="text-ink-muted text-sm mt-1">Cocina, Zumba, deportes y más — flujo del coordinador (BPMN 3)</p>
         </div>
         <button (click)="abrirCrear()"
                 class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
@@ -51,9 +53,9 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
         </button>
       </div>
 
-      <div class="bg-white rounded-xl shadow p-5 border-2 border-violet-200">
-        <h2 class="text-lg font-bold text-gray-800 mb-1">Configuración de período académico</h2>
-        <p class="text-sm text-gray-600 mb-3">Define las fechas globales de apertura y cierre de inscripciones (subproceso BPMN).</p>
+      <div class="bg-surface rounded-xl shadow p-5 border-2 border-violet-200">
+        <h2 class="text-lg font-bold text-ink mb-1">Configuración de período académico</h2>
+        <p class="text-sm text-ink-muted mb-3">Define las fechas globales de apertura y cierre de inscripciones (subproceso BPMN).</p>
         @if (periodoActivo) {
           <p class="text-sm text-violet-800 mb-3">
             Período activo: <strong>{{ periodoActivo.nombre }}</strong>
@@ -62,16 +64,16 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
         }
         <div class="flex flex-wrap gap-2 items-end">
           <div>
-            <label class="text-xs text-gray-600">Nombre</label>
+            <label class="text-xs text-ink-muted">Nombre</label>
             <input [(ngModel)]="periodoForm.nombre" class="border rounded px-2 py-1.5 text-sm block mt-1" placeholder="Período 2026">
           </div>
           <div>
-            <label class="text-xs text-gray-600">Apertura inscripciones</label>
-            <input type="date" [(ngModel)]="periodoForm.apertura" class="border rounded px-2 py-1.5 text-sm block mt-1">
+            <label class="text-xs text-ink-muted block mb-1">Apertura inscripciones</label>
+            <app-fecha-picker [(ngModel)]="periodoForm.apertura" [anchoCompleto]="true" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">Cierre inscripciones</label>
-            <input type="date" [(ngModel)]="periodoForm.cierre" class="border rounded px-2 py-1.5 text-sm block mt-1">
+            <label class="text-xs text-ink-muted block mb-1">Cierre inscripciones</label>
+            <app-fecha-picker [(ngModel)]="periodoForm.cierre" [anchoCompleto]="true" />
           </div>
           <button (click)="guardarPeriodo()" class="text-sm bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700">
             Guardar período
@@ -81,25 +83,25 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
 
       @if (showModal) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div class="bg-white rounded-xl p-6 w-full max-w-md">
+          <div class="bg-surface rounded-xl p-6 w-full max-w-md">
             <h2 class="text-xl font-bold mb-4">Nueva actividad extracurricular</h2>
             <form [formGroup]="form" (ngSubmit)="guardar()">
               <div class="space-y-3">
                 <div>
-                  <label class="text-sm font-medium text-gray-700">Nombre (tipo)</label>
+                  <label class="text-sm font-medium text-ink-secondary">Nombre (tipo)</label>
                   <input formControlName="tipo" class="w-full border rounded-lg px-3 py-2"
                          placeholder="Ej: Cocina, Zumba, Fútbol">
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700">Descripción</label>
+                  <label class="text-sm font-medium text-ink-secondary">Descripción</label>
                   <textarea formControlName="descripcion" rows="3" class="w-full border rounded-lg px-3 py-2"></textarea>
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700">Capacidad</label>
+                  <label class="text-sm font-medium text-ink-secondary">Capacidad</label>
                   <input formControlName="capacidad" type="number" class="w-full border rounded-lg px-3 py-2">
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700">URL imagen (opcional)</label>
+                  <label class="text-sm font-medium text-ink-secondary">URL imagen (opcional)</label>
                   <input formControlName="imagenUrl" type="url" class="w-full border rounded-lg px-3 py-2">
                 </div>
               </div>
@@ -114,19 +116,19 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
 
       <div class="grid gap-4">
         @for (t of actividades; track t.id) {
-          <div class="bg-white rounded-xl shadow p-5 border-l-4"
-               [class.border-gray-300]="t.estado === 'BORRADOR'"
+          <div class="bg-surface rounded-xl shadow p-5 border-l-4"
+               [class.border-line-strong]="t.estado === 'BORRADOR'"
                [class.border-amber-400]="t.estado === 'ESPERA_DOCENTE'"
                [class.border-blue-400]="t.estado === 'ESPERA_HORARIO'"
                [class.border-green-500]="t.estado === 'PUBLICADO'"
                [class.border-red-400]="t.estado === 'CERRADO'">
             <div class="flex flex-wrap justify-between gap-2 mb-2">
               <div>
-                <h3 class="text-xl font-semibold text-gray-800">{{ t.tipo }}</h3>
-                <p class="text-sm text-gray-600">{{ t.descripcion }}</p>
+                <h3 class="text-xl font-semibold text-ink">{{ t.tipo }}</h3>
+                <p class="text-sm text-ink-muted">{{ t.descripcion }}</p>
               </div>
               <span class="text-xs font-bold px-3 py-1 rounded-full h-fit"
-                    [class.bg-gray-100]="t.estado === 'BORRADOR'"
+                    [class.bg-muted]="t.estado === 'BORRADOR'"
                     [class.bg-amber-100]="t.estado === 'ESPERA_DOCENTE'"
                     [class.bg-blue-100]="t.estado === 'ESPERA_HORARIO'"
                     [class.bg-green-100]="t.estado === 'PUBLICADO'"
@@ -135,7 +137,7 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
               </span>
             </div>
 
-            <p class="text-sm text-gray-500 mb-3">
+            <p class="text-sm text-ink-muted mb-3">
               Capacidad: {{ t.capacidad }}
               @if (horariosGuardados(t).length) {
                 · {{ tituloHorariosResumen(t) }} ({{ horariosGuardados(t).length }})
@@ -145,9 +147,9 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
             </p>
 
             @if (t.estado === 'BORRADOR') {
-              <div class="flex flex-wrap items-end gap-2 bg-gray-50 p-3 rounded-lg">
+              <div class="flex flex-wrap items-end gap-2 bg-page p-3 rounded-lg">
                 <div>
-                  <label class="text-xs text-gray-600">Asignar docente</label>
+                  <label class="text-xs text-ink-muted">Asignar docente</label>
                   <select [(ngModel)]="profesorPorActividad[t.id]" class="border rounded px-2 py-1.5 text-sm block mt-1">
                     <option [ngValue]="null">Seleccionar...</option>
                     @for (p of profesores; track p.id) {
@@ -187,8 +189,8 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
                 <div class="md:hidden space-y-2 max-h-80 overflow-y-auto pr-1">
                   @if (modoHorarioDraft[t.id] === 'POR_SECCION') {
                     @for (s of secciones; track s) {
-                      <div class="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
-                        <p class="font-semibold text-gray-800">Sección {{ s }}</p>
+                      <div class="bg-surface border border-blue-200 rounded-lg p-3 space-y-2">
+                        <p class="font-semibold text-ink">Sección {{ s }}</p>
                         <select [(ngModel)]="horariosSeccionDraft[t.id][s].diaSemana" class="w-full border rounded px-2 py-2 text-sm">
                           @for (d of dias; track d.v) { <option [ngValue]="d.v">{{ d.l }}</option> }
                         </select>
@@ -200,8 +202,8 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
                     }
                   } @else {
                     @for (c of cursos; track c.code) {
-                      <div class="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
-                        <p class="font-semibold text-gray-800 text-sm">{{ c.label }}</p>
+                      <div class="bg-surface border border-blue-200 rounded-lg p-3 space-y-2">
+                        <p class="font-semibold text-ink text-sm">{{ c.label }}</p>
                         <select [(ngModel)]="horariosCursoDraft[t.id][c.code].diaSemana" class="w-full border rounded px-2 py-2 text-sm">
                           @for (d of dias; track d.v) { <option [ngValue]="d.v">{{ d.l }}</option> }
                         </select>
@@ -215,9 +217,9 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
                 </div>
 
                 <!-- Escritorio: tabla -->
-                <div class="hidden md:block overflow-x-auto border border-blue-200 rounded-lg bg-white">
+                <div class="hidden md:block overflow-x-auto border border-blue-200 rounded-lg bg-surface">
                   <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-gray-600">
+                    <thead class="bg-page text-ink-muted">
                       <tr>
                         <th class="text-left px-2 py-2">{{ modoHorarioDraft[t.id] === 'POR_SECCION' ? 'Sección' : 'Curso' }}</th>
                         <th class="text-left px-2 py-2">Día</th>
@@ -260,9 +262,15 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
                   Guardar horarios
                 </button>
                 @if (tieneHorarioGuardado(t)) {
-                  <div class="flex flex-wrap gap-2 items-end pt-2 border-t border-blue-200">
-                    <input type="date" [(ngModel)]="publicarDraft[t.id].apertura" class="border rounded px-2 py-1.5 text-sm" title="Apertura inscripciones">
-                    <input type="date" [(ngModel)]="publicarDraft[t.id].cierre" class="border rounded px-2 py-1.5 text-sm" title="Cierre inscripciones">
+                  <div class="flex flex-wrap gap-3 items-end pt-2 border-t border-blue-200">
+                    <div class="min-w-[12rem]">
+                      <label class="text-xs text-ink-muted block mb-1">Apertura</label>
+                      <app-fecha-picker [(ngModel)]="publicarDraft[t.id].apertura" [anchoCompleto]="true" />
+                    </div>
+                    <div class="min-w-[12rem]">
+                      <label class="text-xs text-ink-muted block mb-1">Cierre</label>
+                      <app-fecha-picker [(ngModel)]="publicarDraft[t.id].cierre" [anchoCompleto]="true" />
+                    </div>
                     <button (click)="publicar(t.id)" class="text-sm bg-green-600 text-white px-3 py-2 rounded-lg">
                       Publicar catálogo
                     </button>
@@ -291,7 +299,7 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
           </div>
         }
         @if (actividades.length === 0) {
-          <p class="text-center text-gray-500 py-12">No hay actividades. Crea la primera (Cocina, Zumba, etc.)</p>
+          <p class="text-center text-ink-muted py-12">No hay actividades. Crea la primera (Cocina, Zumba, etc.)</p>
         }
       </div>
     </div>
@@ -511,28 +519,10 @@ export class GestionActividadesComponent implements OnInit {
   descargarReporte(tallerId: number) {
     this.api.getReporteActividad(tallerId).subscribe({
       next: (r) => {
-        const txt =
-          `REPORTE FINAL — ACTIVIDAD: ${r.actividad.tipo}\n` +
-          `Estado: ${r.actividad.estado}\n` +
-          (r.periodoAcademico
-            ? `Período: ${r.periodoAcademico.nombre} (${r.periodoAcademico.fechaApertura} a ${r.periodoAcademico.fechaCierre})\n`
-            : '') +
-          `Docente: ${r.docente?.nombre ?? '—'}\n` +
-          `Inscripciones: ${r.inscripciones.total} (aceptados: ${r.inscripciones.aceptados}, pendientes: ${r.inscripciones.pendientes})\n` +
-          (r.asistencia
-            ? `Asistencia: ${r.asistencia.sesionesRealizadas} sesiones, ${r.asistencia.registrosPresentes} presentes, ${r.asistencia.registrosAusentes} ausentes\n`
-            : '') +
-          `\nALUMNOS:\n` +
-          r.alumnos.map((al: any) => {
-            const d = this.priv.alumno(al);
-            return `- ${d.nombre} (${d.rut}): ${al.estado}`;
-          }).join('\n');
-        const blob = new Blob([txt], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `reporte-${r.actividad.tipo}.txt`;
-        a.click();
+        const txt = textoReporteActividad(r, 'REPORTE FINAL', (al) => this.priv.alumno(al));
+        descargarTextoReporte(txt, `reporte-${r.actividad.tipo}.txt`);
       },
+      error: (e) => alert(e?.error?.message || 'No se pudo generar el reporte'),
     });
   }
 }

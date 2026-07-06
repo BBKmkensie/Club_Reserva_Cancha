@@ -14,18 +14,18 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="space-y-6">
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Gestión de Inscripciones</h1>
-        <p class="text-gray-600">
+      <div class="bg-surface rounded-xl shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Gestión de Inscripciones</h1>
+        <p class="text-ink-muted">
           Como profesor/coordinador revisas las solicitudes, apruebas o rechazas alumnos y monitoreas la capacidad del taller.
         </p>
       </div>
 
       @if (auth.isCoordinacion()) {
-        <div class="bg-white rounded-lg shadow p-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Seleccionar taller</label>
+        <div class="bg-surface rounded-lg shadow p-4">
+          <label class="block text-sm font-medium text-ink-secondary mb-2">Seleccionar taller</label>
           <select [(ngModel)]="tallerIdSeleccionado" (ngModelChange)="cargarResumen()"
-                  class="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2">
+                  class="w-full max-w-md border border-line-strong rounded-lg px-3 py-2">
             <option [ngValue]="null">— Elegir taller —</option>
             @for (t of talleres; track t.id) {
               <option [ngValue]="t.id">{{ t.tipo }}</option>
@@ -35,8 +35,8 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
       }
 
       @if (!tallerIdSeleccionado) {
-        <p class="text-gray-500 bg-white rounded-lg shadow p-6 text-center">
-          @if (auth.isAdmin()) {
+        <p class="text-ink-muted bg-surface rounded-lg shadow p-6 text-center">
+          @if (auth.isProfesor()) {
             No se detectó tu taller. Cierra sesión y entra de nuevo como profesor.
           } @else {
             Selecciona un taller para ver las inscripciones.
@@ -47,31 +47,31 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div class="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
             <div class="text-2xl font-bold text-blue-700">{{ resumen.resumen.capacidad }}</div>
-            <div class="text-sm text-gray-600">Capacidad</div>
+            <div class="text-sm text-ink-muted">Capacidad</div>
           </div>
           <div class="bg-amber-50 rounded-xl p-4 text-center border border-amber-200">
             <div class="text-2xl font-bold text-amber-700">{{ resumen.resumen.pendientes }}</div>
-            <div class="text-sm text-gray-600">Pendientes</div>
+            <div class="text-sm text-ink-muted">Pendientes</div>
           </div>
           <div class="bg-green-50 rounded-xl p-4 text-center border border-green-200">
             <div class="text-2xl font-bold text-green-700">{{ resumen.resumen.aceptados }}</div>
-            <div class="text-sm text-gray-600">Aceptados</div>
+            <div class="text-sm text-ink-muted">Aceptados</div>
           </div>
           <div class="bg-red-50 rounded-xl p-4 text-center border border-red-200">
             <div class="text-2xl font-bold text-red-700">{{ resumen.resumen.rechazados }}</div>
-            <div class="text-sm text-gray-600">Rechazados</div>
+            <div class="text-sm text-ink-muted">Rechazados</div>
           </div>
           <div class="bg-purple-50 rounded-xl p-4 text-center border border-purple-200">
             <div class="text-2xl font-bold text-purple-700">{{ resumen.resumen.cuposDisponibles }}</div>
-            <div class="text-sm text-gray-600">Cupos libres</div>
+            <div class="text-sm text-ink-muted">Cupos libres</div>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="bg-surface rounded-xl shadow-lg p-6">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 class="text-2xl font-bold text-gray-800">{{ resumen.taller.tipo }}</h2>
-              <p class="text-sm text-gray-500">{{ textoHorario(resumen.taller) }}</p>
+              <h2 class="text-2xl font-bold text-ink">{{ resumen.taller.tipo }}</h2>
+              <p class="text-sm text-ink-muted">{{ textoHorario(resumen.taller) }}</p>
             </div>
             <button (click)="exportarReporte()"
                     class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-900">
@@ -82,16 +82,16 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
           <!-- Solicitudes pendientes -->
           <h3 class="text-lg font-semibold text-amber-800 mb-3">Solicitudes pendientes (revisar y responder)</h3>
           @if (pendientes.length === 0) {
-            <p class="text-gray-500 py-4 bg-gray-50 rounded-lg text-center mb-6">No hay solicitudes pendientes</p>
+            <p class="text-ink-muted py-4 bg-page rounded-lg text-center mb-6">No hay solicitudes pendientes</p>
           } @else {
             <ul class="space-y-3 mb-8">
               @for (s of pendientes; track s.id) {
                 <li class="flex flex-wrap items-center justify-between gap-3 py-3 px-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div>
-                    <span class="font-semibold text-gray-800">{{ priv.alumno(s.alumno).nombre }}</span>
-                    <span class="text-sm text-gray-500 ml-2">({{ priv.alumno(s.alumno).rut }})</span>
-                    <p class="text-xs text-gray-400 mt-1">Solicitud #{{ s.id }}</p>
-                    <p class="text-xs text-gray-600 mt-2">
+                    <span class="font-semibold text-ink">{{ priv.alumno(s.alumno).nombre }}</span>
+                    <span class="text-sm text-ink-muted ml-2">({{ priv.alumno(s.alumno).rut }})</span>
+                    <p class="text-xs text-ink-muted mt-1">Solicitud #{{ s.id }}</p>
+                    <p class="text-xs text-ink-muted mt-2">
                       Ficha: {{ textoFicha(s) }}
                     </p>
                   </div>
@@ -112,10 +112,10 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
           }
 
           <!-- Fichas de alumnos por taller -->
-          <h3 class="text-lg font-semibold text-gray-800 mb-3">Fichas de alumnos (por taller)</h3>
+          <h3 class="text-lg font-semibold text-ink mb-3">Fichas de alumnos (por taller)</h3>
           <div class="overflow-x-auto mb-8">
-            <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-              <thead class="bg-gray-100">
+            <table class="w-full text-sm border border-line rounded-lg overflow-hidden">
+              <thead class="bg-muted">
                 <tr>
                   <th class="text-left p-3">Alumno</th>
                   <th class="text-left p-3">RUT</th>
@@ -129,7 +129,7 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
               </thead>
               <tbody>
                 @for (s of resumen.inscripciones; track s.id) {
-                  <tr class="border-t border-gray-100 hover:bg-gray-50">
+                  <tr class="border-t border-line hover:bg-page">
                     <td class="p-3 font-medium">{{ priv.alumno(s.alumno).nombre }}</td>
                     <td class="p-3">{{ priv.alumno(s.alumno).rut }}</td>
                     <td class="p-3">{{ s.altura != null ? s.altura + ' cm' : '—' }}</td>
@@ -167,27 +167,27 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 
       @if (fichaEditando) {
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-1">Editar ficha</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ priv.alumno(fichaEditando.alumno).nombre }} — {{ resumen?.taller?.tipo }}</p>
+          <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 class="text-xl font-bold text-ink mb-1">Editar ficha</h3>
+            <p class="text-sm text-ink-muted mb-4">{{ priv.alumno(fichaEditando.alumno).nombre }} — {{ resumen?.taller?.tipo }}</p>
             <div class="grid grid-cols-2 gap-3 text-sm mb-4">
               <label class="block">
-                <span class="text-gray-700">Altura (cm)</span>
+                <span class="text-ink-secondary">Altura (cm)</span>
                 <input type="number" [(ngModel)]="fichaForm.altura" min="50" max="250" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">Peso (kg)</span>
+                <span class="text-ink-secondary">Peso (kg)</span>
                 <input type="number" [(ngModel)]="fichaForm.peso" min="20" max="300" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">% grasa</span>
+                <span class="text-ink-secondary">% grasa</span>
                 <input type="number" [(ngModel)]="fichaForm.porcentajeGrasa" min="1" max="60" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">Sedentario</span>
+                <span class="text-ink-secondary">Sedentario</span>
                 <select [(ngModel)]="fichaForm.sedentario" class="mt-1 w-full border rounded-lg px-2 py-1.5">
                   <option [ngValue]="true">Sí</option>
                   <option [ngValue]="false">No</option>
@@ -195,7 +195,7 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
               </label>
             </div>
             <div class="flex gap-3 justify-end">
-              <button (click)="cerrarEditarFicha()" class="px-4 py-2 rounded-lg border border-gray-300">Cancelar</button>
+              <button (click)="cerrarEditarFicha()" class="px-4 py-2 rounded-lg border border-line-strong">Cancelar</button>
               <button (click)="guardarFicha()" class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Guardar</button>
             </div>
           </div>
@@ -222,7 +222,7 @@ export class GestionInscripcionesComponent implements OnInit {
   }
 
   ngOnInit() {
-    if (this.auth.isAdmin() && this.auth.currentTallerId()) {
+    if (this.auth.isProfesor() && this.auth.currentTallerId()) {
       this.tallerIdSeleccionado = this.auth.currentTallerId();
       this.cargarResumen();
     }

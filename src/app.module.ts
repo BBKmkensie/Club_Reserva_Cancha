@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
+import mailConfig from './config/mail.config';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { TallerModule } from './taller/taller.module';
@@ -17,6 +18,8 @@ import { InscripcionTallerModule } from './inscripcion-taller/inscripcion-taller
 import { PeriodoModule } from './periodo/periodo.module';
 import { AsistenciaModule } from './asistencia/asistencia.module';
 import { FichaAlumnoModule } from './ficha-alumno/ficha-alumno.module';
+import { NotificacionModule } from './notificacion/notificacion.module';
+import { ApoderadoModule } from './apoderado/apoderado.module';
 import { Admin } from './entities/admin.entity';
 import { Taller } from './entities/taller.entity';
 import { Alumno } from './entities/alumno.entity';
@@ -30,7 +33,7 @@ import { InscripcionTaller } from './entities/inscripcion-taller.entity';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig],
+      load: [databaseConfig, jwtConfig, mailConfig],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -59,6 +62,8 @@ import { InscripcionTaller } from './entities/inscripcion-taller.entity';
     InscripcionTallerModule,
     AsistenciaModule,
     FichaAlumnoModule,
+    NotificacionModule,
+    ApoderadoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

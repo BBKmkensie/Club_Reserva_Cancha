@@ -5,15 +5,19 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { Taller } from '../entities/taller.entity';
 import { Alumno } from '../entities/alumno.entity';
 import { CreateInscripcionTallerDto } from '../dto/create-inscripcion-taller.dto';
 import { ResponderInscripcionTallerDto } from '../dto/responder-inscripcion-taller.dto';
 import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
+import { ProponerInscripcionDirectivaDto } from '../dto/proponer-inscripcion-directiva.dto';
+import { ResponderPropuestaInscripcionDto } from '../dto/responder-propuesta-inscripcion.dto';
+import { PropuestaInscripcionTaller } from '../entities/propuesta-inscripcion-taller.entity';
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
+import { MailService } from '../mail/mail.service';
 
 export interface ValidacionInscripcion {
   puedeInscribirse: boolean;
@@ -21,6 +25,7 @@ export interface ValidacionInscripcion {
   cuposDisponibles: number;
   capacidad: number;
   conflictoHorario: boolean;
+  sinCupo?: boolean;
   tallerConflicto?: string;
   motivo?: string;
 }
@@ -34,11 +39,19 @@ export class InscripcionTallerService {
     private tallerRepo: Repository<Taller>,
     @InjectRepository(Alumno)
     private alumnoRepo: Repository<Alumno>,
+    @InjectRepository(PropuestaInscripcionTaller)
+    private propuestaRepo: Repository<PropuestaInscripcionTaller>,
     private notificacionService: NotificacionService,
     private periodoService: PeriodoService,
+    private mailService: MailService,
+    private dataSource: DataSource,
   ) {}
 
-  async validar(alumnoId: number, tallerId: number): Promise<ValidacionInscripcion> {
+  async validar(
+    alumnoId: number,
+    tallerId: number,
+    notificar = false,
+  ): Promise<ValidacionInscripcion> {
     const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
     if (!taller) {
       throw new NotFoundException('Taller no encontrado');
@@ -123,19 +136,9 @@ export class InscripcionTallerService {
     const cuposDisponibles = Math.max(0, taller.capacidad - cuposOcupados);
     const conflicto = await this.buscarConflictoHorario(alumnoId, taller);
 
-    if (cuposDisponibles <= 0) {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: 'No hay cupos disponibles en este taller',
-      };
-    }
-
+    // Diagrama BPMN: primero conflicto horario, luego cupos
     if (conflicto) {
-      return {
+      const resultado: ValidacionInscripcion = {
         puedeInscribirse: false,
         cuposOcupados,
         cuposDisponibles,
@@ -144,6 +147,22 @@ export class InscripcionTallerService {
         tallerConflicto: conflicto.tipo,
         motivo: `Conflicto de horario con el taller "${conflicto.tipo}"`,
       };
+      if (notificar) await this.notificarBloqueoInscripcion(alumnoId, resultado, taller.tipo);
+      return resultado;
+    }
+
+    if (cuposDisponibles <= 0) {
+      const resultado: ValidacionInscripcion = {
+        puedeInscribirse: false,
+        cuposOcupados,
+        cuposDisponibles: 0,
+        capacidad: taller.capacidad,
+        conflictoHorario: false,
+        sinCupo: true,
+        motivo: 'No hay cupos disponibles en este taller',
+      };
+      if (notificar) await this.notificarBloqueoInscripcion(alumnoId, resultado, taller.tipo);
+      return resultado;
     }
 
     return {
@@ -155,6 +174,30 @@ export class InscripcionTallerService {
     };
   }
 
+  private async notificarBloqueoInscripcion(
+    alumnoId: number,
+    validacion: ValidacionInscripcion,
+    tallerNombre: string,
+  ): Promise<void> {
+    if (validacion.conflictoHorario) {
+      await this.notificacionService.crear(
+        alumnoId,
+        'Conflicto de horario',
+        `No puedes inscribirte en "${tallerNombre}" porque coincide con el horario del taller "${validacion.tallerConflicto}".`,
+        'inscripcion_conflicto',
+      );
+      return;
+    }
+    if (validacion.sinCupo) {
+      await this.notificacionService.crear(
+        alumnoId,
+        'Sin cupos disponibles',
+        `No hay cupos disponibles en el taller "${tallerNombre}". Puedes intentar con otra actividad.`,
+        'inscripcion_sin_cupo',
+      );
+    }
+  }
+
   async solicitar(dto: CreateInscripcionTallerDto): Promise<InscripcionTaller> {
     const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
     if (!alumno) {
@@ -162,11 +205,16 @@ export class InscripcionTallerService {
     }
 
     const validacion = await this.validar(dto.alumnoId, dto.tallerId);
+    const taller = await this.tallerRepo.findOne({ where: { id: dto.tallerId } });
     if (!validacion.puedeInscribirse) {
+      await this.notificarBloqueoInscripcion(
+        dto.alumnoId,
+        validacion,
+        taller?.tipo ?? 'taller',
+      );
       throw new ConflictException(validacion.motivo ?? 'No puedes inscribirte en este taller');
     }
 
-    const taller = await this.tallerRepo.findOne({ where: { id: dto.tallerId } });
     const existente = await this.repo.findOne({
       where: { alumnoId: dto.alumnoId, tallerId: dto.tallerId },
     });
@@ -269,53 +317,88 @@ export class InscripcionTallerService {
     id: number,
     dto: ResponderInscripcionTallerDto,
   ): Promise<InscripcionTaller> {
+    if (dto.estado === 'RECHAZADO') {
+      return this.responderRechazo(id);
+    }
+    return this.responderAceptacionTransaccional(id);
+  }
+
+  private async responderRechazo(id: number): Promise<InscripcionTaller> {
     const inscripcion = await this.repo.findOne({
       where: { id },
       relations: ['alumno', 'taller'],
     });
-    if (!inscripcion) {
-      throw new NotFoundException('Solicitud no encontrada');
-    }
+    if (!inscripcion) throw new NotFoundException('Solicitud no encontrada');
     if (inscripcion.estado !== 'PENDIENTE') {
       throw new BadRequestException('Esta solicitud ya fue respondida');
     }
 
-    if (dto.estado === 'ACEPTADO') {
-      const cuposOcupados = await this.contarCuposOcupados(inscripcion.tallerId);
-      if (cuposOcupados >= inscripcion.taller.capacidad) {
+    inscripcion.estado = 'RECHAZADO';
+    const guardada = await this.repo.save(inscripcion);
+    const nombreTaller = inscripcion.taller?.tipo ?? 'taller';
+    await this.notificacionService.crear(
+      inscripcion.alumnoId,
+      'Inscripción rechazada',
+      `Tu solicitud al taller "${nombreTaller}" fue rechazada. Puedes intentar con otro taller.`,
+    );
+    return guardada;
+  }
+
+  private async responderAceptacionTransaccional(id: number): Promise<InscripcionTaller> {
+    const guardada = await this.dataSource.transaction(async (manager) => {
+      const inscripcion = await manager.findOne(InscripcionTaller, {
+        where: { id },
+        relations: ['alumno', 'taller'],
+      });
+      if (!inscripcion) throw new NotFoundException('Solicitud no encontrada');
+      if (inscripcion.estado !== 'PENDIENTE') {
+        throw new BadRequestException('Esta solicitud ya fue respondida');
+      }
+
+      const taller = await manager.findOne(Taller, {
+        where: { id: inscripcion.tallerId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!taller) throw new NotFoundException('Taller no encontrado');
+
+      const aceptados = await manager.count(InscripcionTaller, {
+        where: { tallerId: inscripcion.tallerId, estado: 'ACEPTADO' },
+      });
+      if (aceptados >= taller.capacidad) {
         throw new ConflictException('No hay cupos disponibles para aceptar esta solicitud');
       }
+
       const conflicto = await this.buscarConflictoHorario(
         inscripcion.alumnoId,
         inscripcion.taller,
         inscripcion.tallerId,
+        manager,
       );
       if (conflicto) {
         throw new ConflictException(
           `El alumno tiene conflicto de horario con el taller "${conflicto.tipo}"`,
         );
       }
+
+      inscripcion.estado = 'ACEPTADO';
       inscripcion.alumno.tallerId = inscripcion.tallerId;
-      await this.alumnoRepo.save(inscripcion.alumno);
-    }
+      await manager.save(inscripcion.alumno);
+      return manager.save(inscripcion);
+    });
 
-    inscripcion.estado = dto.estado;
-    const guardada = await this.repo.save(inscripcion);
-
-    const nombreTaller = inscripcion.taller?.tipo ?? 'taller';
-    if (dto.estado === 'ACEPTADO') {
-      await this.notificacionService.crear(
-        inscripcion.alumnoId,
-        'Inscripción aceptada',
-        `¡Felicitaciones! Fuiste aceptado en el taller "${nombreTaller}".`,
-      );
-    } else {
-      await this.notificacionService.crear(
-        inscripcion.alumnoId,
-        'Inscripción rechazada',
-        `Tu solicitud al taller "${nombreTaller}" fue rechazada. Puedes intentar con otro taller.`,
-      );
-    }
+    const nombreTaller = guardada.taller?.tipo ?? 'taller';
+    await this.notificacionService.crear(
+      guardada.alumnoId,
+      'Inscripción aceptada',
+      `¡Felicitaciones! Fuiste aceptado en el taller "${nombreTaller}".`,
+    );
+    await this.mailService.inscripcionTallerApoderado(
+      guardada.alumno?.apoderadoEmail,
+      guardada.alumno?.nombre ?? 'Alumno',
+      nombreTaller,
+      guardada.alumno?.apoderadoNombre,
+      guardada.taller ? this.formatHorarioTaller(guardada.taller) : null,
+    );
     return guardada;
   }
 
@@ -332,6 +415,7 @@ export class InscripcionTallerService {
     alumnoId: number,
     tallerDestino: Taller,
     excluirTallerId?: number,
+    manager?: EntityManager,
   ): Promise<Taller | null> {
     if (
       tallerDestino.diaSemana == null ||
@@ -341,13 +425,15 @@ export class InscripcionTallerService {
       return null;
     }
 
-    const inscripciones = await this.repo.find({
-      where: {
-        alumnoId,
-        estado: In(['PENDIENTE', 'ACEPTADO']),
-      },
-      relations: ['taller'],
-    });
+    const inscripciones = manager
+      ? await manager.find(InscripcionTaller, {
+          where: { alumnoId, estado: In(['PENDIENTE', 'ACEPTADO']) },
+          relations: ['taller'],
+        })
+      : await this.repo.find({
+          where: { alumnoId, estado: In(['PENDIENTE', 'ACEPTADO']) },
+          relations: ['taller'],
+        });
 
     for (const insc of inscripciones) {
       if (excluirTallerId && insc.tallerId === excluirTallerId) continue;
@@ -377,5 +463,126 @@ export class InscripcionTallerService {
 
   private normalizarHora(hora: string): string {
     return hora.length >= 5 ? hora.slice(0, 5) : hora;
+  }
+
+  private formatHorarioTaller(taller: Taller): string | null {
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    if (taller.diaSemana == null || !taller.horaInicio || !taller.horaFin) return null;
+    return `${dias[taller.diaSemana]} ${this.normalizarHora(taller.horaInicio)} - ${this.normalizarHora(taller.horaFin)}`;
+  }
+
+  async proponerDirectiva(dto: ProponerInscripcionDirectivaDto) {
+    const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
+    if (!alumno) throw new NotFoundException('Alumno no encontrado');
+
+    const taller = await this.tallerRepo.findOne({ where: { id: dto.tallerId } });
+    if (!taller) throw new NotFoundException('Taller no encontrado');
+    if (taller.estado !== 'PUBLICADO') {
+      throw new BadRequestException('Solo se pueden proponer actividades publicadas en el catálogo');
+    }
+
+    const validacion = await this.validar(dto.alumnoId, dto.tallerId);
+    if (!validacion.puedeInscribirse) {
+      throw new ConflictException(validacion.motivo ?? 'No se puede proponer esta inscripción');
+    }
+
+    const existente = await this.propuestaRepo.findOne({
+      where: { alumnoId: dto.alumnoId, tallerId: dto.tallerId },
+    });
+    if (existente?.estado === 'PENDIENTE') {
+      throw new ConflictException('Ya existe una propuesta pendiente para este taller');
+    }
+
+    const propuesta = existente
+      ? Object.assign(existente, { estado: 'PENDIENTE', motivoRechazo: null, respondedAt: null })
+      : this.propuestaRepo.create({
+          alumnoId: dto.alumnoId,
+          tallerId: dto.tallerId,
+          estado: 'PENDIENTE',
+        });
+    const guardada = await this.propuestaRepo.save(propuesta);
+
+    const apoderadoNombre = alumno.apoderadoNombre ?? 'Apoderado';
+    await this.notificacionService.notificarCoordinadores(
+      'Nueva propuesta de actividad',
+      `${apoderadoNombre} propuso la actividad "${taller.tipo}" para el estudiante ${alumno.nombre}. Revisa la bandeja de propuestas.`,
+      'propuesta_actividad',
+      guardada.id,
+    );
+
+    return guardada;
+  }
+
+  async getPropuestasPendientes() {
+    const propuestas = await this.propuestaRepo.find({
+      where: { estado: 'PENDIENTE' },
+      relations: ['alumno', 'taller'],
+      order: { createdAt: 'DESC' },
+    });
+    return propuestas.map((p) => ({
+      id: p.id,
+      alumnoId: p.alumnoId,
+      alumnoNombre: p.alumno?.nombre,
+      alumnoRut: p.alumno?.rut,
+      tallerId: p.tallerId,
+      tallerNombre: p.taller?.tipo,
+      apoderadoNombre: p.alumno?.apoderadoNombre,
+      apoderadoEmail: p.alumno?.apoderadoEmail,
+      createdAt: p.createdAt,
+    }));
+  }
+
+  async responderPropuesta(id: number, dto: ResponderPropuestaInscripcionDto) {
+    const propuesta = await this.propuestaRepo.findOne({
+      where: { id },
+      relations: ['alumno', 'taller'],
+    });
+    if (!propuesta) throw new NotFoundException('Propuesta no encontrada');
+    if (propuesta.estado !== 'PENDIENTE') {
+      throw new BadRequestException('Esta propuesta ya fue respondida');
+    }
+
+    propuesta.respondedAt = new Date();
+
+    if (dto.acepta) {
+      propuesta.estado = 'ACEPTADA';
+      await this.propuestaRepo.save(propuesta);
+
+      const inscripcionExistente = await this.repo.findOne({
+        where: { alumnoId: propuesta.alumnoId, tallerId: propuesta.tallerId },
+      });
+      if (!inscripcionExistente) {
+        await this.repo.save(
+          this.repo.create({
+            alumnoId: propuesta.alumnoId,
+            tallerId: propuesta.tallerId,
+            estado: 'PENDIENTE',
+          }),
+        );
+      } else if (inscripcionExistente.estado === 'RECHAZADO') {
+        inscripcionExistente.estado = 'PENDIENTE';
+        await this.repo.save(inscripcionExistente);
+      }
+
+      await this.notificacionService.crear(
+        propuesta.alumnoId,
+        'Propuesta aceptada por directiva',
+        `La directiva aceptó tu propuesta al taller "${propuesta.taller?.tipo}". Tu solicitud quedó pendiente de aprobación del profesor.`,
+        'propuesta_aceptada',
+      );
+    } else {
+      propuesta.estado = 'RECHAZADA';
+      propuesta.motivoRechazo = dto.motivoRechazo ?? null;
+      await this.propuestaRepo.save(propuesta);
+
+      await this.notificacionService.crear(
+        propuesta.alumnoId,
+        'Propuesta rechazada',
+        `La directiva rechazó la propuesta al taller "${propuesta.taller?.tipo}".${dto.motivoRechazo ? ` Motivo: ${dto.motivoRechazo}` : ''}`,
+        'propuesta_rechazada',
+      );
+    }
+
+    return propuesta;
   }
 }

@@ -26,6 +26,10 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/auth/login`, { usuario, password });
   }
 
+  getApoderadoResumen(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/apoderado/resumen`);
+  }
+
   // Admin
   getAdmins(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/admin`);
@@ -350,6 +354,21 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/inscripcion-taller/proponer-directiva`, { alumnoId, tallerId });
   }
 
+  proponerInscripcionApoderado(tallerId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/apoderado/proponer-inscripcion/${tallerId}`, {});
+  }
+
+  getPropuestasPendientes(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/propuestas/pendientes`);
+  }
+
+  responderPropuestaInscripcion(id: number, acepta: boolean, motivoRechazo?: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/propuestas/${id}/responder`, {
+      acepta,
+      motivoRechazo,
+    });
+  }
+
   responderInscripcionTaller(id: number, estado: 'ACEPTADO' | 'RECHAZADO'): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/${id}/responder`, { estado });
   }
@@ -406,7 +425,7 @@ export class ApiService {
   }
 
   actualizarUmbralAusencias(tallerId: number, umbral: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/asistencia/umbral/${tallerId}`, { umbral });
+    return this.http.patch<any>(`${this.apiUrl}/asistencia/umbral/${tallerId}`, { umbralAusencias: umbral });
   }
 
   contactarApoderado(alertaId: number, notas: string): Observable<any> {
@@ -449,5 +468,39 @@ export class ApiService {
 
   marcarTodasNotificacionesLeidas(alumnoId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas/${alumnoId}`, {});
+  }
+
+  getNotificacionesProfesor(profesorId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-profesor/${profesorId}`);
+  }
+
+  marcarNotificacionLeidaProfesor(id: number, profesorId: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer-profesor/${profesorId}`, {});
+  }
+
+  marcarTodasNotificacionesLeidasProfesor(profesorId: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas-profesor/${profesorId}`, {});
+  }
+
+  getNotificacionesAdmin(adminId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-admin/${adminId}`);
+  }
+
+  marcarNotificacionLeidaAdmin(id: number, adminId: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer-admin/${adminId}`, {});
+  }
+
+  marcarTodasNotificacionesLeidasAdmin(adminId: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas-admin/${adminId}`, {});
+  }
+
+  eliminarNotificacion(id: number, userId: number, rol: 'alumno' | 'profesor' | 'admin'): Observable<void> {
+    const path =
+      rol === 'alumno'
+        ? `notificacion/${id}/alumno/${userId}`
+        : rol === 'profesor'
+          ? `notificacion/${id}/profesor/${userId}`
+          : `notificacion/${id}/admin/${userId}`;
+    return this.http.delete<void>(`${this.apiUrl}/${path}`);
   }
 }

@@ -12,9 +12,9 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
   imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-6">
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Fichas de alumnos</h1>
-        <p class="text-gray-600 mb-4">
+      <div class="bg-surface rounded-xl shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Fichas de alumnos</h1>
+        <p class="text-ink-muted mb-4">
           @if (auth.canVerTodasFichasAlumnos()) {
             Como directiva puedes ver <strong>todos los estudiantes</strong> o filtrar solo los
             <strong>inscritos (aceptados)</strong> en cada taller.
@@ -26,9 +26,9 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
         @if (auth.canVerTodasFichasAlumnos()) {
           <div class="flex flex-wrap gap-4 mb-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Taller</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Taller</label>
               <select [(ngModel)]="tallerId" (ngModelChange)="cargarFichas()"
-                      class="border border-gray-300 rounded-lg px-3 py-2 min-w-[200px]">
+                      class="border border-line-strong rounded-lg px-3 py-2 min-w-[200px]">
                 <option [ngValue]="null">Selecciona un taller</option>
                 @for (t of talleres; track t.id) {
                   <option [ngValue]="t.id">{{ t.tipo }}</option>
@@ -36,9 +36,9 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Mostrar</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Mostrar</label>
               <select [(ngModel)]="modoVista" (ngModelChange)="cargarFichas()"
-                      class="border border-gray-300 rounded-lg px-3 py-2 min-w-[220px]">
+                      class="border border-line-strong rounded-lg px-3 py-2 min-w-[220px]">
                 <option value="todos">Todos los estudiantes</option>
                 <option value="inscritos">Solo inscritos en el taller</option>
               </select>
@@ -47,7 +47,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
         }
 
         @if (tallerId && !cargando) {
-          <p class="text-sm text-gray-500 mb-4">
+          <p class="text-sm text-ink-muted mb-4">
             {{ fichas.length }} alumno(s)
             @if (auth.canVerTodasFichasAlumnos()) {
               · {{ modoVista === 'todos' ? 'todos los estudiantes del club' : 'solo inscritos aceptados' }}
@@ -56,31 +56,31 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
         }
 
         @if (cargando) {
-          <p class="text-gray-500">Cargando fichas…</p>
+          <p class="text-ink-muted">Cargando fichas…</p>
         } @else if (error) {
           <p class="text-red-600">{{ error }}</p>
         } @else if (!tallerId) {
-          <p class="text-gray-500">Selecciona un taller para ver las fichas.</p>
+          <p class="text-ink-muted">Selecciona un taller para ver las fichas.</p>
         } @else if (fichas.length === 0) {
-          <p class="text-gray-500">No hay alumnos para mostrar con este filtro.</p>
+          <p class="text-ink-muted">No hay alumnos para mostrar con este filtro.</p>
         } @else {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             @for (f of fichas; track f.alumnoId) {
-              <div class="border border-gray-200 rounded-lg p-4 bg-gray-50"
+              <div class="border border-line rounded-lg p-4 bg-page"
                    [class.ring-2]="f.inscrito"
                    [class.ring-green-300]="f.inscrito">
                 <div class="flex justify-between items-start gap-2">
                   <div>
-                    <p class="font-semibold text-gray-800">{{ priv.nombre(f.nombre) }}</p>
-                    <p class="text-xs text-gray-500">{{ priv.rut(f.rut) }}</p>
+                    <p class="font-semibold text-ink">{{ priv.nombre(f.nombre) }}</p>
+                    <p class="text-xs text-ink-muted">{{ priv.rut(f.rut) }}</p>
                   </div>
                   @if (f.inscrito) {
                     <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full shrink-0">Inscrito</span>
                   } @else if (auth.canVerTodasFichasAlumnos() && modoVista === 'todos') {
-                    <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full shrink-0">No inscrito</span>
+                    <span class="text-xs bg-gray-200 text-ink-muted px-2 py-0.5 rounded-full shrink-0">No inscrito</span>
                   }
                 </div>
-                <ul class="text-sm text-gray-700 space-y-1 mt-3">
+                <ul class="text-sm text-ink-secondary space-y-1 mt-3">
                   <li>Altura: {{ f.altura ?? '—' }} cm</li>
                   <li>Peso: {{ f.peso ?? '—' }} kg</li>
                   <li>% grasa: {{ f.porcentajeGrasa ?? '—' }}</li>

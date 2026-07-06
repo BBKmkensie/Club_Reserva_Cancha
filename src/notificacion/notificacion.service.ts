@@ -33,7 +33,9 @@ export class NotificacionService {
     const guardada = await this.repo.save(notificacion);
 
     const alumno = await this.alumnoRepo.findOne({ where: { id: alumnoId } });
-    await this.mailService.notificarAlumno(alumno?.email, titulo, mensaje);
+    if (alumno?.email) {
+      await this.mailService.notificarAlumno(alumno.email, titulo, mensaje);
+    }
     this.streamService.emitAlumno(alumnoId, guardada);
 
     return guardada;
@@ -62,6 +64,7 @@ export class NotificacionService {
     titulo: string,
     mensaje: string,
     tipo = 'ausencia_recurrente',
+    refId?: number,
   ): Promise<Notificacion> {
     const notificacion = this.repo.create({
       adminId,
@@ -70,6 +73,7 @@ export class NotificacionService {
       titulo,
       mensaje,
       tipo,
+      refId: refId ?? null,
     });
     const guardada = await this.repo.save(notificacion);
 
@@ -94,12 +98,13 @@ export class NotificacionService {
     titulo: string,
     mensaje: string,
     tipo = 'sistema',
+    refId?: number,
   ): Promise<void> {
     const coordinadores = await this.adminRepo.find({
       where: { rol: In(['super_admin', 'directiva']) },
     });
     for (const admin of coordinadores) {
-      await this.crearParaAdmin(admin.id, titulo, mensaje, tipo);
+      await this.crearParaAdmin(admin.id, titulo, mensaje, tipo, refId);
     }
   }
 
@@ -160,5 +165,36 @@ export class NotificacionService {
 
   async marcarTodasLeidasAdmin(adminId: number): Promise<void> {
     await this.repo.update({ adminId, leida: false }, { leida: true });
+  }
+
+  async marcarLeidaProfesor(id: number, profesorId: number): Promise<Notificacion> {
+    const notificacion = await this.repo.findOne({ where: { id, profesorId } });
+    if (!notificacion) {
+      throw new NotFoundException('Notificación no encontrada');
+    }
+    notificacion.leida = true;
+    return await this.repo.save(notificacion);
+  }
+
+  async marcarTodasLeidasProfesor(profesorId: number): Promise<void> {
+    await this.repo.update({ profesorId, leida: false }, { leida: true });
+  }
+
+  async eliminarAlumno(id: number, alumnoId: number): Promise<void> {
+    const notificacion = await this.repo.findOne({ where: { id, alumnoId } });
+    if (!notificacion) throw new NotFoundException('Notificación no encontrada');
+    await this.repo.remove(notificacion);
+  }
+
+  async eliminarProfesor(id: number, profesorId: number): Promise<void> {
+    const notificacion = await this.repo.findOne({ where: { id, profesorId } });
+    if (!notificacion) throw new NotFoundException('Notificación no encontrada');
+    await this.repo.remove(notificacion);
+  }
+
+  async eliminarAdmin(id: number, adminId: number): Promise<void> {
+    const notificacion = await this.repo.findOne({ where: { id, adminId } });
+    if (!notificacion) throw new NotFoundException('Notificación no encontrada');
+    await this.repo.remove(notificacion);
   }
 }

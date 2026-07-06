@@ -19,28 +19,28 @@ import {
   template: `
     @if (filas.length) {
       @if (mostrarTitulo) {
-        <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-2">{{ titulo }}</h3>
+        <h3 class="text-base sm:text-lg font-semibold text-ink mb-2">{{ titulo }}</h3>
       }
 
       <!-- Móvil: lista de tarjetas -->
       <ul class="md:hidden space-y-2">
         @for (h of filas; track trackHorario(h)) {
-          <li class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <li class="rounded-lg border border-line bg-page p-3">
             <div class="flex items-start justify-between gap-2">
-              <p class="font-semibold text-gray-800 text-sm leading-snug">{{ etiqueta(h) }}</p>
+              <p class="font-semibold text-ink text-sm leading-snug">{{ etiqueta(h) }}</p>
               <span class="shrink-0 text-xs font-medium text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full">
                 {{ fmtHora(h.horaInicio) }}–{{ fmtHora(h.horaFin) }}
               </span>
             </div>
-            <p class="text-xs text-gray-500 mt-1">{{ diaLabel(h.diaSemana) }}</p>
+            <p class="text-xs text-ink-muted mt-1">{{ diaLabel(h.diaSemana) }}</p>
           </li>
         }
       </ul>
 
       <!-- Tablet / escritorio: tabla -->
-      <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg">
+      <div class="hidden md:block overflow-x-auto border border-line rounded-lg">
         <table class="min-w-full text-sm">
-          <thead class="bg-gray-50 text-gray-600">
+          <thead class="bg-page text-ink-muted">
             <tr>
               <th class="text-left px-3 py-2 font-medium">{{ etiquetaColumna }}</th>
               <th class="text-left px-3 py-2 font-medium">Día</th>
@@ -49,17 +49,17 @@ import {
           </thead>
           <tbody>
             @for (h of filas; track trackHorario(h)) {
-              <tr class="border-t border-gray-100">
-                <td class="px-3 py-2 font-medium text-gray-800">{{ etiqueta(h) }}</td>
-                <td class="px-3 py-2 text-gray-600">{{ diaLabel(h.diaSemana) }}</td>
-                <td class="px-3 py-2 text-gray-600 whitespace-nowrap">{{ fmtHora(h.horaInicio) }} – {{ fmtHora(h.horaFin) }}</td>
+              <tr class="border-t border-line">
+                <td class="px-3 py-2 font-medium text-ink">{{ etiqueta(h) }}</td>
+                <td class="px-3 py-2 text-ink-muted">{{ diaLabel(h.diaSemana) }}</td>
+                <td class="px-3 py-2 text-ink-muted whitespace-nowrap">{{ fmtHora(h.horaInicio) }} – {{ fmtHora(h.horaFin) }}</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
     } @else if (textoFallback) {
-      <p class="text-sm text-gray-500">{{ textoFallback }}</p>
+      <p class="text-sm text-ink-muted">{{ textoFallback }}</p>
     }
   `,
 })

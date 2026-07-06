@@ -32,24 +32,24 @@ interface ValidacionInscripcion {
   imports: [CommonModule, FormsModule, RouterLink, HorariosTallerComponent],
   template: `
     <div class="space-y-6">
-      <div class="bg-white rounded-lg shadow p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Inscripción en Talleres</h1>
-        <p class="text-gray-600">
+      <div class="bg-surface rounded-lg shadow p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Inscripción en Talleres</h1>
+        <p class="text-ink-muted">
           Explora el catálogo, selecciona un taller y confirma tu inscripción.
           El sistema valida cupos y conflictos de horario antes de registrar tu solicitud.
         </p>
       </div>
 
       @if (auth.canInscribirseTalleres()) {
-        <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-primary-200">
-          <h2 class="text-2xl font-bold text-gray-800 mb-1">Estado de tus solicitudes</h2>
-          <p class="text-gray-600 text-sm mb-4">Aquí ves si fuiste <strong>aceptado</strong> o <strong>rechazado</strong> en cada taller.</p>
+        <div class="bg-surface rounded-xl shadow-lg p-6 border-2 border-primary-200">
+          <h2 class="text-2xl font-bold text-ink mb-1">Estado de tus solicitudes</h2>
+          <p class="text-ink-muted text-sm mb-4">Aquí ves si fuiste <strong>aceptado</strong> o <strong>rechazado</strong> en cada taller.</p>
           @if (!alumnoId) {
             <p class="text-amber-700 bg-amber-50 py-3 px-4 rounded-lg">
               Inicia sesión como estudiante eligiendo tu nombre en /login.
             </p>
           } @else if (misSolicitudes.length === 0) {
-            <p class="text-gray-500 py-2">Aún no has enviado solicitudes. Elige un taller abajo.</p>
+            <p class="text-ink-muted py-2">Aún no has enviado solicitudes. Elige un taller abajo.</p>
           } @else {
             <ul class="space-y-3">
               @for (s of misSolicitudes; track s.id) {
@@ -60,7 +60,7 @@ interface ValidacionInscripcion {
                     [class.border-green-300]="s.estado === 'ACEPTADO'"
                     [class.bg-red-50]="s.estado === 'RECHAZADO'"
                     [class.border-red-300]="s.estado === 'RECHAZADO'">
-                  <span class="font-semibold text-gray-800">{{ nombreTaller(s) }}</span>
+                  <span class="font-semibold text-ink">{{ nombreTaller(s) }}</span>
                   <span class="text-base font-bold px-3 py-1 rounded-full"
                         [class.text-amber-800]="s.estado === 'PENDIENTE'"
                         [class.bg-amber-200]="s.estado === 'PENDIENTE'"
@@ -77,16 +77,16 @@ interface ValidacionInscripcion {
         </div>
       }
 
-      <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Catálogo de actividades publicadas</h2>
+      <div class="bg-surface rounded-lg shadow p-6">
+        <h2 class="text-2xl font-semibold mb-4 text-ink">Catálogo de actividades publicadas</h2>
         <div class="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
           @for (taller of talleres; track taller.id) {
             <div class="border rounded-lg p-4 flex flex-col hover:shadow-md transition">
-              <h3 class="font-semibold text-gray-800 text-lg">{{ taller.tipo }}</h3>
-              <p class="text-sm text-gray-600 mt-1 flex-1">{{ taller.descripcion }}</p>
+              <h3 class="font-semibold text-ink text-lg">{{ taller.tipo }}</h3>
+              <p class="text-sm text-ink-muted mt-1 flex-1">{{ taller.descripcion }}</p>
               <app-horarios-taller [taller]="taller" [mostrarTitulo]="true" />
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
-                <span class="text-sm text-gray-500">
+                <span class="text-sm text-ink-muted">
                   Cupos: {{ cuposPorTaller[taller.id]?.cuposDisponibles ?? '—' }} / {{ taller.capacidad }}
                 </span>
                 @if (auth.canInscribirseTalleres() && alumnoId) {
@@ -117,18 +117,18 @@ interface ValidacionInscripcion {
           }
         </div>
         @if (talleres.length === 0) {
-          <p class="text-gray-500 py-6 text-center">No hay actividades publicadas en el catálogo</p>
+          <p class="text-ink-muted py-6 text-center">No hay actividades publicadas en el catálogo</p>
         }
       </div>
     </div>
 
     @if (tallerConfirmando) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-          <h3 class="text-xl font-bold text-gray-800 mb-2">Confirmar inscripción</h3>
-          <p class="text-gray-600 mb-4">¿Deseas inscribirte en <strong>{{ tallerConfirmando.tipo }}</strong>?</p>
+        <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 class="text-xl font-bold text-ink mb-2">Confirmar inscripción</h3>
+          <p class="text-ink-muted mb-4">¿Deseas inscribirte en <strong>{{ tallerConfirmando.tipo }}</strong>?</p>
 
-          <div class="bg-gray-50 rounded-lg p-4 text-sm space-y-2 mb-4">
+          <div class="bg-page rounded-lg p-4 text-sm space-y-2 mb-4">
             <app-horarios-taller *ngIf="tallerConfirmando" [taller]="tallerConfirmando" [mostrarTitulo]="false" />
             @if (validacionActual) {
               <p><strong>Cupos disponibles:</strong> {{ validacionActual.cuposDisponibles }} de {{ validacionActual.capacidad }}</p>
@@ -136,26 +136,26 @@ interface ValidacionInscripcion {
           </div>
 
           <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
-            <h4 class="font-semibold text-gray-800 mb-2">Ficha del alumno (por taller)</h4>
-            <p class="text-xs text-gray-600 mb-3">Completa tus datos físicos. El profesor los verá al revisar tu solicitud.</p>
+            <h4 class="font-semibold text-ink mb-2">Ficha del alumno (por taller)</h4>
+            <p class="text-xs text-ink-muted mb-3">Completa tus datos físicos. El profesor los verá al revisar tu solicitud.</p>
             <div class="grid grid-cols-2 gap-3 text-sm">
               <label class="block">
-                <span class="text-gray-700">Altura (cm)</span>
+                <span class="text-ink-secondary">Altura (cm)</span>
                 <input type="number" [(ngModel)]="fichaForm.altura" min="50" max="250" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">Peso (kg)</span>
+                <span class="text-ink-secondary">Peso (kg)</span>
                 <input type="number" [(ngModel)]="fichaForm.peso" min="20" max="300" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">% grasa corporal</span>
+                <span class="text-ink-secondary">% grasa corporal</span>
                 <input type="number" [(ngModel)]="fichaForm.porcentajeGrasa" min="1" max="60" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">¿Sedentario?</span>
+                <span class="text-ink-secondary">¿Sedentario?</span>
                 <select [(ngModel)]="fichaForm.sedentario" class="mt-1 w-full border rounded-lg px-2 py-1.5">
                   <option [ngValue]="true">Sí</option>
                   <option [ngValue]="false">No</option>
@@ -169,7 +169,7 @@ interface ValidacionInscripcion {
           }
 
           <div class="flex gap-3 justify-end">
-            <button (click)="cerrarConfirmacion()" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+            <button (click)="cerrarConfirmacion()" class="px-4 py-2 rounded-lg border border-line-strong text-ink-secondary hover:bg-page">
               Cancelar
             </button>
             <button (click)="confirmarInscripcion()"
@@ -261,7 +261,7 @@ export class InscripcionTalleresComponent implements OnInit {
     this.validacionActual = null;
     this.errorConfirmacion = '';
     this.fichaForm = { altura: null, peso: null, porcentajeGrasa: null, sedentario: false };
-    this.apiService.validarInscripcionTaller(this.alumnoId, taller.id).subscribe({
+    this.apiService.validarInscripcionTaller(this.alumnoId, taller.id, true).subscribe({
       next: (v) => {
         this.validacionActual = v;
         if (!v.puedeInscribirse) {
@@ -306,6 +306,7 @@ export class InscripcionTalleresComponent implements OnInit {
       error: (err) => {
         this.confirmando = false;
         this.errorConfirmacion = err?.error?.message || 'No se pudo enviar la solicitud.';
+        this.cargarMisSolicitudes();
       }
     });
   }

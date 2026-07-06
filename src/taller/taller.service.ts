@@ -12,6 +12,7 @@ import { Profesor } from '../entities/profesor.entity';
 import { AsignacionDocente } from '../entities/asignacion-docente.entity';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { SesionAsistencia } from '../entities/sesion-asistencia.entity';
+import { Reserva } from '../entities/reserva.entity';
 import { CreateTallerDto } from '../dto/create-taller.dto';
 import { AsignarDocenteDto } from '../dto/asignar-docente.dto';
 import { ResponderAsignacionDto } from '../dto/responder-asignacion.dto';
@@ -39,6 +40,8 @@ export class TallerService {
     private inscripcionRepository: Repository<InscripcionTaller>,
     @InjectRepository(SesionAsistencia)
     private sesionAsistenciaRepository: Repository<SesionAsistencia>,
+    @InjectRepository(Reserva)
+    private reservaRepository: Repository<Reserva>,
     @InjectRepository(TallerHorario)
     private tallerHorarioRepository: Repository<TallerHorario>,
     private notificacionService: NotificacionService,
@@ -409,6 +412,11 @@ export class TallerService {
     const sesiones = await this.sesionAsistenciaRepository.find({
       where: { tallerId, estado: 'CERRADA' },
       relations: ['registros'],
+      order: { fecha: 'ASC' },
+    });
+    const reservas = await this.reservaRepository.find({
+      where: { tallerId },
+      order: { fecha: 'ASC' },
     });
 
     let registrosPresentes = 0;
@@ -419,6 +427,44 @@ export class TallerService {
         if (reg.estado === 'PRESENTE') registrosPresentes++;
         else if (reg.estado === 'AUSENTE') registrosAusentes++;
         else if (reg.estado === 'TARDE') registrosTardes++;
+      }
+    }
+
+    const totalSesiones = sesiones.length;
+    const umbral = taller.umbralAusencias ?? 3;
+
+    const asistenciaPorAlumno = (alumnoId: number) => {
+      let presentes = 0;
+      let ausentes = 0;
+      let tardes = 0;
+      for (const sesion of sesiones) {
+        const reg = sesion.registros?.find((r) => r.alumnoId === alumnoId);
+        if (!reg) continue;
+        if (reg.estado === 'PRESENTE') presentes++;
+        else if (reg.estado === 'AUSENTE') ausentes++;
+        else if (reg.estado === 'TARDE') tardes++;
+      }
+      const porcentajeAsistencia =
+        totalSesiones > 0 ? Math.round((presentes / totalSesiones) * 100) : 0;
+      return {
+        presentes,
+        ausentes,
+        tardes,
+        totalSesiones,
+        porcentajeAsistencia,
+        alertaAusencia: ausentes >= umbral,
+      };
+    };
+
+    const porEspacio = new Map<string, number>();
+    let minutosReservados = 0;
+    for (const reserva of reservas) {
+      porEspacio.set(reserva.espacio, (porEspacio.get(reserva.espacio) ?? 0) + 1);
+      if (reserva.horaInicio && reserva.horaFin) {
+        minutosReservados += Math.max(
+          0,
+          this.minutosDesdeHora(reserva.horaFin) - this.minutosDesdeHora(reserva.horaInicio),
+        );
       }
     }
 
@@ -456,17 +502,37 @@ export class TallerService {
         rechazados: inscripciones.filter((i) => i.estado === 'RECHAZADO').length,
       },
       asistencia: {
-        sesionesRealizadas: sesiones.length,
+        sesionesRealizadas: totalSesiones,
         registrosPresentes,
         registrosAusentes,
         registrosTardes,
+        umbralAusencias: umbral,
       },
-      alumnos: inscripciones.map((i) => ({
-        nombre: i.alumno?.nombre,
-        rut: i.alumno?.rut,
-        estado: i.estado,
-      })),
+      utilizacionEspacios: {
+        totalReservas: reservas.length,
+        horasReservadas: Math.round((minutosReservados / 60) * 10) / 10,
+        porEspacio: [...porEspacio.entries()].map(([espacio, cantidad]) => ({
+          espacio,
+          cantidad,
+        })),
+      },
+      alumnos: inscripciones.map((i) => {
+        const stats =
+          i.estado === 'ACEPTADO' ? asistenciaPorAlumno(i.alumnoId) : null;
+        return {
+          nombre: i.alumno?.nombre,
+          rut: i.alumno?.rut,
+          estado: i.estado,
+          ...(stats ?? {}),
+        };
+      }),
     };
+  }
+
+  private minutosDesdeHora(hora: string): number {
+    const normalizada = hora.length >= 5 ? hora.slice(0, 5) : hora;
+    const [h, m] = normalizada.split(':').map(Number);
+    return (h ?? 0) * 60 + (m ?? 0);
   }
 
   private inscripcionesAbiertas(taller: Taller, hoy: string): boolean {

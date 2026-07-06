@@ -12,7 +12,7 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
   template: `
     <div class="space-y-6">
       <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Alumnos</h1>
+        <h1 class="text-3xl font-bold text-ink">Alumnos</h1>
         <button (click)="openModal()" 
                 class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
           + Nuevo Alumno
@@ -21,39 +21,39 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
 
       <!-- Modal -->
       <div *ngIf="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="bg-surface rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
           <h2 class="text-2xl font-bold mb-4">{{ editingAlumno ? 'Editar' : 'Nuevo' }} Alumno</h2>
           <form [formGroup]="alumnoForm" (ngSubmit)="saveAlumno()">
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Nombre</label>
                 <input formControlName="nombre" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">RUT</label>
                 <input formControlName="rut" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Email</label>
                 <input formControlName="email" type="email" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Teléfono</label>
                 <input formControlName="telefono" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Edad</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Edad</label>
                 <input formControlName="edad" type="number" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
               <button type="button" (click)="closeModal()" 
-                      class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                      class="px-4 py-2 border border-line-strong rounded-md hover:bg-page">
                 Cancelar
               </button>
               <button type="submit" 
@@ -66,18 +66,18 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
       </div>
 
       <!-- Lista de Alumnos -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+      <div class="bg-surface rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-line">
+          <thead class="bg-page">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RUT</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Taller</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Nombre</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">RUT</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Email</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Taller</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Acciones</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="bg-surface divide-y divide-line">
             <tr *ngFor="let alumno of alumnos">
               <td class="px-6 py-4 whitespace-nowrap">{{ priv.nombre(alumno.nombre) }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ priv.rut(alumno.rut) }}</td>
@@ -89,7 +89,7 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
               </td>
             </tr>
             <tr *ngIf="alumnos.length === 0">
-              <td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay alumnos registrados</td>
+              <td colspan="5" class="px-6 py-4 text-center text-ink-muted">No hay alumnos registrados</td>
             </tr>
           </tbody>
         </table>

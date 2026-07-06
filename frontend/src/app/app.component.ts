@@ -1,10 +1,8 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
-import { SidebarService } from './shared/services/sidebar.service';
 import { AuthRoleService } from './shared/services/auth-role.service';
-import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -12,12 +10,12 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [RouterOutlet, NavbarComponent, SidebarComponent, CommonModule],
   template: `
-    <div class="min-h-screen bg-gray-50 flex">
+    <div class="min-h-screen bg-page overflow-x-hidden">
+      <app-navbar></app-navbar>
       <app-sidebar></app-sidebar>
-      <div class="flex-1 w-full transition-all duration-300 min-w-0"
-           [ngClass]="{ 'lg:ml-64': auth.isLoggedIn() && sidebarOpen }">
-        <app-navbar></app-navbar>
-        <main class="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-full">
+      <div class="flex flex-col min-h-screen w-full min-w-0 box-border pt-14 sm:pt-16 transition-all duration-300"
+           [class.lg:pl-64]="auth.isLoggedIn()">
+        <main class="flex-1 w-full min-w-0 max-w-full px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
           <router-outlet></router-outlet>
         </main>
       </div>
@@ -25,22 +23,7 @@ import { CommonModule } from '@angular/common';
   `,
   styles: []
 })
-export class AppComponent implements OnInit, OnDestroy {
+export class AppComponent {
   title = 'Reservas de Cancha';
   auth = inject(AuthRoleService);
-  sidebarOpen = false;
-  private subscription?: Subscription;
-
-  constructor(private sidebarService: SidebarService) {}
-
-  ngOnInit() {
-    this.subscription = this.sidebarService.isOpen$.subscribe(isOpen => {
-      this.sidebarOpen = isOpen;
-    });
-  }
-
-  ngOnDestroy() {
-    this.subscription?.unsubscribe();
-  }
 }
-

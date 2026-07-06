@@ -9,6 +9,8 @@ export interface NotificacionActualizada {
   noLeidas: number;
 }
 
+type Destinatario = 'alumno' | 'profesor' | 'admin';
+
 @Injectable({ providedIn: 'root' })
 export class NotificacionPollService implements OnDestroy {
   private api = inject(ApiService);
@@ -16,20 +18,34 @@ export class NotificacionPollService implements OnDestroy {
   private actualizaciones$ = new Subject<NotificacionActualizada>();
   private eventSource?: EventSource;
   private fallbackSub?: Subscription;
+  private destinatario: Destinatario | null = null;
+  private userId: number | null = null;
 
   readonly cambios$ = this.actualizaciones$.asObservable();
 
-  iniciar(_intervaloMs = 15000): void {
+  iniciar(): void {
     this.detener();
-    const alumnoId = this.auth.currentUserId();
-    if (!this.auth.canInscribirseTalleres() || !alumnoId) return;
+    const userId = this.auth.currentUserId();
+    if (!this.auth.isLoggedIn() || !userId) return;
+
+    this.destinatario = this.resolverDestinatario();
+    this.userId = userId;
+    if (!this.destinatario) return;
 
     this.refrescar();
-    this.conectarSse(alumnoId);
+    this.conectarSse();
   }
 
-  private conectarSse(alumnoId: number): void {
-    const url = `${environment.apiUrl}/notificacion/sse/alumno/${alumnoId}`;
+  private resolverDestinatario(): Destinatario | null {
+    if (this.auth.canInscribirseTalleres()) return 'alumno';
+    if (this.auth.isProfesor()) return 'profesor';
+    if (this.auth.isCoordinacion() || this.auth.isSuperAdmin() || this.auth.isAdmin()) return 'admin';
+    return null;
+  }
+
+  private conectarSse(): void {
+    if (!this.destinatario || !this.userId) return;
+    const url = `${environment.apiUrl}/notificacion/sse/${this.destinatario}/${this.userId}`;
     this.eventSource = new EventSource(url);
 
     this.eventSource.onmessage = (event) => {
@@ -37,7 +53,7 @@ export class NotificacionPollService implements OnDestroy {
         const data = JSON.parse(event.data);
         if (data?.type === 'ping') return;
       } catch {
-        // notificación nueva u otro payload
+        // nueva notificación
       }
       this.refrescar();
     };
@@ -54,7 +70,7 @@ export class NotificacionPollService implements OnDestroy {
     this.fallbackSub = interval(intervaloMs)
       .pipe(
         startWith(0),
-        filter(() => this.auth.canInscribirseTalleres() && !!this.auth.currentUserId()),
+        filter(() => !!this.auth.isLoggedIn() && !!this.destinatario && !!this.userId),
       )
       .subscribe(() => this.refrescar());
   }
@@ -64,12 +80,25 @@ export class NotificacionPollService implements OnDestroy {
     this.eventSource = undefined;
     this.fallbackSub?.unsubscribe();
     this.fallbackSub = undefined;
+    this.destinatario = null;
+    this.userId = null;
   }
 
   refrescar(): void {
-    const alumnoId = this.auth.currentUserId();
-    if (!alumnoId || !this.auth.canInscribirseTalleres()) return;
-    this.api.getNotificaciones(alumnoId).subscribe({
+    if (!this.destinatario || !this.userId) {
+      this.destinatario = this.resolverDestinatario();
+      this.userId = this.auth.currentUserId();
+    }
+    if (!this.destinatario || !this.userId) return;
+
+    const obs =
+      this.destinatario === 'alumno'
+        ? this.api.getNotificaciones(this.userId)
+        : this.destinatario === 'profesor'
+          ? this.api.getNotificacionesProfesor(this.userId)
+          : this.api.getNotificacionesAdmin(this.userId);
+
+    obs.subscribe({
       next: (notificaciones) => {
         const list = notificaciones ?? [];
         this.actualizaciones$.next({
@@ -77,6 +106,35 @@ export class NotificacionPollService implements OnDestroy {
           noLeidas: list.filter((n) => !n.leida).length,
         });
       },
+    });
+  }
+
+  marcarLeida(id: number): void {
+    if (!this.destinatario || !this.userId) return;
+    const obs =
+      this.destinatario === 'alumno'
+        ? this.api.marcarNotificacionLeida(id, this.userId)
+        : this.destinatario === 'profesor'
+          ? this.api.marcarNotificacionLeidaProfesor(id, this.userId)
+          : this.api.marcarNotificacionLeidaAdmin(id, this.userId);
+    obs.subscribe({ next: () => this.refrescar() });
+  }
+
+  marcarTodasLeidas(): void {
+    if (!this.destinatario || !this.userId) return;
+    const obs =
+      this.destinatario === 'alumno'
+        ? this.api.marcarTodasNotificacionesLeidas(this.userId)
+        : this.destinatario === 'profesor'
+          ? this.api.marcarTodasNotificacionesLeidasProfesor(this.userId)
+          : this.api.marcarTodasNotificacionesLeidasAdmin(this.userId);
+    obs.subscribe({ next: () => this.refrescar() });
+  }
+
+  eliminar(id: number): void {
+    if (!this.destinatario || !this.userId) return;
+    this.api.eliminarNotificacion(id, this.userId, this.destinatario).subscribe({
+      next: () => this.refrescar(),
     });
   }
 

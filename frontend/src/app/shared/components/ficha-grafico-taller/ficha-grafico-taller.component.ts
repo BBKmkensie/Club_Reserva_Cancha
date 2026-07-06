@@ -24,27 +24,27 @@ interface BarraAlumno {
   imports: [CommonModule],
   template: `
     @if (!inscripciones.length) {
-      <p class="text-gray-500 py-4 text-center text-sm">No hay alumnos inscritos para mostrar estadísticas.</p>
+      <p class="text-ink-muted py-4 text-center text-sm">No hay alumnos inscritos para mostrar estadísticas.</p>
     } @else if (!tieneDatos) {
-      <p class="text-gray-500 py-4 text-center text-sm">Los alumnos aún no tienen ficha física registrada.</p>
+      <p class="text-ink-muted py-4 text-center text-sm">Los alumnos aún no tienen ficha física registrada.</p>
     } @else {
       <div class="space-y-6">
         <!-- Promedios -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="rounded-lg bg-blue-50 border border-blue-100 p-3 text-center">
-            <p class="text-xs text-gray-600">Altura prom.</p>
+            <p class="text-xs text-ink-muted">Altura prom.</p>
             <p class="text-lg font-bold text-blue-800">{{ fmt(promedios.altura) }}<span class="text-sm font-normal"> cm</span></p>
           </div>
           <div class="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-center">
-            <p class="text-xs text-gray-600">Peso prom.</p>
+            <p class="text-xs text-ink-muted">Peso prom.</p>
             <p class="text-lg font-bold text-emerald-800">{{ fmt(promedios.peso) }}<span class="text-sm font-normal"> kg</span></p>
           </div>
           <div class="rounded-lg bg-amber-50 border border-amber-100 p-3 text-center">
-            <p class="text-xs text-gray-600">% grasa prom.</p>
+            <p class="text-xs text-ink-muted">% grasa prom.</p>
             <p class="text-lg font-bold text-amber-800">{{ fmt(promedios.grasa) }}%</p>
           </div>
           <div class="rounded-lg bg-purple-50 border border-purple-100 p-3 text-center col-span-2 sm:col-span-1">
-            <p class="text-xs text-gray-600">Estilo de vida</p>
+            <p class="text-xs text-ink-muted">Estilo de vida</p>
             <p class="text-sm font-semibold text-purple-800 mt-1">
               {{ sedentarioStats.activos }} activos · {{ sedentarioStats.sedentarios }} sedentarios
             </p>
@@ -55,15 +55,15 @@ interface BarraAlumno {
           <!-- % grasa -->
           @if (barrasGrasa.length) {
             <div>
-              <h3 class="text-sm font-semibold text-gray-800 mb-3">% grasa corporal por alumno</h3>
+              <h3 class="text-sm font-semibold text-ink mb-3">% grasa corporal por alumno</h3>
               <ul class="space-y-2.5">
                 @for (b of barrasGrasa; track b.nombreCompleto) {
                   <li>
-                    <div class="flex items-center justify-between gap-2 text-xs text-gray-600 mb-0.5">
-                      <span class="truncate font-medium text-gray-800" [title]="b.nombreCompleto">{{ b.etiqueta }}</span>
+                    <div class="flex items-center justify-between gap-2 text-xs text-ink-muted mb-0.5">
+                      <span class="truncate font-medium text-ink" [title]="b.nombreCompleto">{{ b.etiqueta }}</span>
                       <span class="shrink-0 font-semibold">{{ fmt(b.valor) }}%</span>
                     </div>
-                    <div class="h-3 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="h-3 rounded-full bg-muted overflow-hidden">
                       <div class="h-full rounded-full transition-all duration-500"
                            [style.width.%]="b.anchoPct"
                            [class]="colorGrasa(b.valor)"></div>
@@ -71,52 +71,52 @@ interface BarraAlumno {
                   </li>
                 }
               </ul>
-              <p class="text-[11px] text-gray-400 mt-2">Escala 0–60%</p>
+              <p class="text-[11px] text-ink-muted mt-2">Escala 0–60%</p>
             </div>
           }
 
           <!-- Peso -->
           @if (barrasPeso.length) {
             <div>
-              <h3 class="text-sm font-semibold text-gray-800 mb-3">Peso por alumno (kg)</h3>
+              <h3 class="text-sm font-semibold text-ink mb-3">Peso por alumno (kg)</h3>
               <ul class="space-y-2.5">
                 @for (b of barrasPeso; track b.nombreCompleto) {
                   <li>
-                    <div class="flex items-center justify-between gap-2 text-xs text-gray-600 mb-0.5">
-                      <span class="truncate font-medium text-gray-800" [title]="b.nombreCompleto">{{ b.etiqueta }}</span>
+                    <div class="flex items-center justify-between gap-2 text-xs text-ink-muted mb-0.5">
+                      <span class="truncate font-medium text-ink" [title]="b.nombreCompleto">{{ b.etiqueta }}</span>
                       <span class="shrink-0 font-semibold">{{ fmt(b.valor) }} kg</span>
                     </div>
-                    <div class="h-3 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="h-3 rounded-full bg-muted overflow-hidden">
                       <div class="h-full rounded-full bg-primary-500 transition-all duration-500"
                            [style.width.%]="b.anchoPct"></div>
                     </div>
                   </li>
                 }
               </ul>
-              <p class="text-[11px] text-gray-400 mt-2">Escala 0–{{ maxPesoEscala }} kg</p>
+              <p class="text-[11px] text-ink-muted mt-2">Escala 0–{{ maxPesoEscala }} kg</p>
             </div>
           }
         </div>
 
         <!-- Distribución sedentario / activo -->
         @if (sedentarioStats.total > 0) {
-          <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-2 border-t border-gray-100">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-2 border-t border-line">
             <div class="relative w-28 h-28 mx-auto sm:mx-0 shrink-0 rounded-full"
                  [style.background]="conicSedentario()"
                  aria-hidden="true">
-              <div class="absolute inset-3 rounded-full bg-white flex items-center justify-center">
-                <span class="text-xs font-bold text-gray-700 text-center leading-tight">
+              <div class="absolute inset-3 rounded-full bg-surface flex items-center justify-center">
+                <span class="text-xs font-bold text-ink-secondary text-center leading-tight">
                   {{ sedentarioStats.total }}<br>alumnos
                 </span>
               </div>
             </div>
             <div class="text-sm space-y-1.5 flex-1">
-              <p class="font-semibold text-gray-800">Distribución sedentarismo</p>
-              <p class="flex items-center gap-2 text-gray-600">
+              <p class="font-semibold text-ink">Distribución sedentarismo</p>
+              <p class="flex items-center gap-2 text-ink-muted">
                 <span class="inline-block w-3 h-3 rounded-full bg-emerald-500"></span>
                 Activos: {{ sedentarioStats.activos }} ({{ pct(sedentarioStats.activos, sedentarioStats.total) }}%)
               </p>
-              <p class="flex items-center gap-2 text-gray-600">
+              <p class="flex items-center gap-2 text-ink-muted">
                 <span class="inline-block w-3 h-3 rounded-full bg-rose-400"></span>
                 Sedentarios: {{ sedentarioStats.sedentarios }} ({{ pct(sedentarioStats.sedentarios, sedentarioStats.total) }}%)
               </p>

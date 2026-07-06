@@ -5,6 +5,10 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -17,7 +21,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "seed:apoderados": "nest build && node dist/scripts/seed-apoderados.js",
+    "fix:apoderado-nombres": "nest build && node dist/scripts/fix-apoderado-nombres.js",
+    "fix:apoderado-emails": "nest build && node dist/scripts/fix-apoderado-emails.js",
+    "notify:apoderados": "nest build && node dist/scripts/notify-apoderados.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

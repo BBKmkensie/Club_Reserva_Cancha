@@ -5,15 +5,16 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Taller, CreateTallerDto } from '../../models/taller.model';
+import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
 @Component({
   selector: 'app-talleres',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, RouterLink, FechaPickerComponent],
   template: `
     <div class="space-y-6">
       <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Talleres</h1>
+        <h1 class="text-3xl font-bold text-ink">Talleres</h1>
         @if (auth.canAccessTalleresCRUD()) {
           <button (click)="openModal()" 
                   class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
@@ -24,39 +25,38 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
 
       <!-- Modal -->
       <div *ngIf="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <div class="bg-surface rounded-lg p-6 w-full max-w-md">
           <h2 class="text-2xl font-bold mb-4">{{ editingTaller ? 'Editar' : 'Nuevo' }} Taller</h2>
           <form [formGroup]="tallerForm" (ngSubmit)="saveTaller()">
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Tipo</label>
                 <input formControlName="tipo" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Descripción</label>
                 <textarea formControlName="descripcion" rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                          class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Capacidad</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Capacidad</label>
                 <input formControlName="capacidad" type="number" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio</label>
-                <input formControlName="fechaInicio" type="date" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <label class="block text-sm font-medium text-ink-secondary mb-2">Fecha de Inicio</label>
+                <app-fecha-picker formControlName="fechaInicio" [anchoCompleto]="true" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">URL de imagen</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">URL de imagen</label>
                 <input formControlName="imagenUrl" type="url" placeholder="https://..."
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
               <button type="button" (click)="closeModal()" 
-                      class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                      class="px-4 py-2 border border-line-strong rounded-md hover:bg-page">
                 Cancelar
               </button>
               <button type="submit" 
@@ -85,12 +85,12 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
       <!-- Lista de Talleres -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div *ngFor="let taller of talleresFiltrados" 
-             class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+             class="bg-surface rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
              [routerLink]="['/taller', taller.id]">
           <img *ngIf="taller.imagenUrl" [src]="taller.imagenUrl" alt="{{ taller.tipo }}" 
                class="w-full h-32 object-cover rounded-lg mb-3">
           <div class="flex justify-between items-start mb-4">
-            <h3 class="text-xl font-semibold text-gray-800">{{ taller.tipo }}</h3>
+            <h3 class="text-xl font-semibold text-ink">{{ taller.tipo }}</h3>
             @if (auth.canAccessTalleresCRUD()) {
               <div class="flex space-x-2" (click)="$event.stopPropagation()">
                 <button (click)="editTaller(taller)" 
@@ -104,8 +104,8 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
               </div>
             }
           </div>
-          <p class="text-gray-600 mb-3">{{ taller.descripcion }}</p>
-          <div class="flex justify-between text-sm text-gray-500 mb-3">
+          <p class="text-ink-muted mb-3">{{ taller.descripcion }}</p>
+          <div class="flex justify-between text-sm text-ink-muted mb-3">
             <span>Capacidad: {{ taller.capacidad }}</span>
             <span *ngIf="taller.fechaInicio">{{ taller.fechaInicio | date:'short' }}</span>
           </div>
@@ -115,7 +115,7 @@ import { Taller, CreateTallerDto } from '../../models/taller.model';
             Ver Detalles
           </button>
         </div>
-        <div *ngIf="talleresFiltrados.length === 0" class="col-span-full text-center text-gray-500 py-12">
+        <div *ngIf="talleresFiltrados.length === 0" class="col-span-full text-center text-ink-muted py-12">
           <div *ngIf="tipoFiltro">
             No hay talleres de tipo "{{ tipoFiltro }}" registrados
           </div>

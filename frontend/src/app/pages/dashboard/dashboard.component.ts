@@ -18,18 +18,18 @@ interface CardTaller {
   standalone: true,
   imports: [CommonModule, DatePipe, RouterLink],
   template: `
-    <div class="space-y-8">
+    <div class="space-y-6 sm:space-y-8 min-w-0 max-w-full">
       @if (auth.isLoggedIn()) {
         @if (auth.isProfesor() && asignacionesPendientes.length > 0) {
-          <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-indigo-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-2">Asignaciones de actividades</h2>
-            <p class="text-gray-600 text-sm mb-4">El coordinador te asignó nuevas actividades. Confirma tu disponibilidad.</p>
+          <div class="bg-surface rounded-xl shadow-lg p-6 border-2 border-indigo-200">
+            <h2 class="text-xl font-bold text-ink mb-2">Asignaciones de actividades</h2>
+            <p class="text-ink-muted text-sm mb-4">El coordinador te asignó nuevas actividades. Confirma tu disponibilidad.</p>
             <ul class="space-y-3">
               @for (a of asignacionesPendientes; track a.id) {
                 <li class="flex flex-wrap items-center justify-between gap-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
                   <div>
-                    <p class="font-semibold text-gray-800">{{ a.taller?.tipo ?? 'Actividad' }}</p>
-                    <p class="text-sm text-gray-600">{{ a.taller?.descripcion }}</p>
+                    <p class="font-semibold text-ink">{{ a.taller?.tipo ?? 'Actividad' }}</p>
+                    <p class="text-sm text-ink-muted">{{ a.taller?.descripcion }}</p>
                   </div>
                   <div class="flex gap-2">
                     <button (click)="responderAsignacion(a.id, true)"
@@ -48,9 +48,9 @@ interface CardTaller {
         }
 
         @if (auth.canGestionarInscripcionesTaller() && auth.isProfesor() && tallerIdProfesor) {
-          <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-amber-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-2">Panel del profesor — Inscripciones</h2>
-            <p class="text-gray-600 text-sm mb-4">Revisa solicitudes pendientes, aprueba o rechaza alumnos y monitorea la capacidad.</p>
+          <div class="bg-surface rounded-xl shadow-lg p-6 border-2 border-amber-200">
+            <h2 class="text-xl font-bold text-ink mb-2">Panel del profesor — Inscripciones</h2>
+            <p class="text-ink-muted text-sm mb-4">Revisa solicitudes pendientes, aprueba o rechaza alumnos y monitorea la capacidad.</p>
             <div class="flex flex-wrap items-center gap-4">
               @if (resumenProfesor) {
                 <div class="flex gap-3 text-sm">
@@ -74,9 +74,39 @@ interface CardTaller {
         }
       }
 
-      <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold text-gray-800 mb-2">Sistema de Gestión de Talleres</h1>
-        <p class="text-gray-600">
+        @if (auth.canInscribirseTalleres() && alumnoId) {
+          @if (notificaciones.length > 0) {
+            <div class="bg-surface rounded-xl shadow-lg p-6 border-2 border-line">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-xl font-bold text-ink">
+                  Notificaciones
+                  @if (notificacionesNoLeidas > 0) {
+                    <span class="ml-2 bg-palette-magenta text-white text-xs px-2 py-0.5 rounded-full">{{ notificacionesNoLeidas }} nueva(s)</span>
+                  }
+                </h2>
+                @if (notificacionesNoLeidas > 0) {
+                  <button (click)="marcarTodasLeidas()" class="text-sm text-primary-500 hover:underline">Marcar todas como leídas</button>
+                }
+              </div>
+              <ul class="space-y-2 max-h-48 overflow-y-auto">
+                @for (n of notificaciones; track n.id) {
+                  <li class="p-3 rounded-lg border text-sm cursor-pointer dash-notif"
+                      [class.dash-notif--leida]="n.leida"
+                      (click)="marcarLeida(n)">
+                    <p class="font-semibold text-ink">{{ n.titulo }}</p>
+                    <p class="text-ink-muted">{{ n.mensaje }}</p>
+                    <p class="text-xs text-ink-muted mt-1">{{ n.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+                  </li>
+                }
+              </ul>
+              <p class="text-xs text-ink-muted mt-3">También recibirás estas alertas en tu correo si tienes email registrado.</p>
+            </div>
+          }
+        }
+
+      <div class="text-center mb-6 sm:mb-8 px-1">
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-ink mb-2">Sistema de Gestión de Talleres</h1>
+        <p class="text-ink-muted">
           @if (auth.isLoggedIn()) {
             @if (auth.isProfesor()) {
               Gestiona tu taller
@@ -89,13 +119,13 @@ interface CardTaller {
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
         @for (act of actividadesPublicadas; track act.id) {
           <button type="button" (click)="navegarATallerPorId(act.id)"
-                  class="group rounded-xl shadow-lg p-8 text-white hover:shadow-2xl hover:scale-105 transition-all duration-300 text-center"
+                  class="group rounded-xl shadow-lg p-5 sm:p-8 text-white hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full"
                   [class]="estiloTarjeta(act.tipo).classes">
-            <div class="text-6xl mb-4">{{ estiloTarjeta(act.tipo).icon }}</div>
-            <h2 class="text-3xl font-bold mb-2">{{ act.tipo }}</h2>
+            <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">{{ estiloTarjeta(act.tipo).icon }}</div>
+            <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">{{ act.tipo }}</h2>
             <p class="text-sm opacity-90 mb-4 line-clamp-2">
               {{ estiloTarjeta(act.tipo).descripcion }}
             </p>
@@ -107,7 +137,7 @@ interface CardTaller {
         }
 
         @if (actividadesPublicadas.length === 0) {
-          <div class="col-span-full text-center text-gray-500 py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+          <div class="col-span-full text-center text-ink-muted py-12 bg-page rounded-xl border border-dashed border-line">
             @if (auth.isProfesor()) {
               No tienes un taller asignado o publicado aún.
             } @else {
@@ -118,9 +148,9 @@ interface CardTaller {
 
         @if (!auth.isProfesor()) {
         <a [routerLink]="auth.isLoggedIn() ? '/salidas' : '/login'"
-           class="group rounded-xl shadow-lg p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl hover:scale-105 transition-all duration-300 text-center">
-          <div class="text-6xl mb-4">🚌</div>
-          <h2 class="text-3xl font-bold mb-2">Salidas</h2>
+           class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
+          <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
+          <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Salidas</h2>
           <p class="text-purple-100 text-sm mb-4">Gestiona las salidas programadas</p>
           @if (auth.isLoggedIn()) {
             <div class="text-purple-200">
@@ -143,31 +173,40 @@ interface CardTaller {
       }
 
       @if (mostrarEstadisticas()) {
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-2xl font-bold text-gray-800 mb-4">Estadísticas Generales</h2>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-blue-50 rounded-lg p-4 text-center">
-              <div class="text-3xl font-bold text-blue-600">{{ stats.talleres }}</div>
-              <div class="text-sm text-gray-600 mt-1">Total Talleres</div>
+        <div class="bg-surface rounded-lg shadow p-4 sm:p-6 min-w-0">
+          <h2 class="text-xl sm:text-2xl font-bold text-ink mb-4">Estadísticas Generales</h2>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-blue-50 rounded-lg p-3 sm:p-4 text-center min-w-0">
+              <div class="text-2xl sm:text-3xl font-bold text-blue-600">{{ stats.talleres }}</div>
+              <div class="text-xs sm:text-sm text-ink-muted mt-1">Total Talleres</div>
             </div>
-            <div class="bg-green-50 rounded-lg p-4 text-center">
-              <div class="text-3xl font-bold text-green-600">{{ stats.alumnos }}</div>
-              <div class="text-sm text-gray-600 mt-1">Total Alumnos</div>
+            <div class="bg-green-50 rounded-lg p-3 sm:p-4 text-center min-w-0">
+              <div class="text-2xl sm:text-3xl font-bold text-green-600">{{ stats.alumnos }}</div>
+              <div class="text-xs sm:text-sm text-ink-muted mt-1">Total Alumnos</div>
             </div>
-            <div class="bg-purple-50 rounded-lg p-4 text-center">
-              <div class="text-3xl font-bold text-purple-600">{{ stats.profesores }}</div>
-              <div class="text-sm text-gray-600 mt-1">Total Profesores</div>
+            <div class="bg-purple-50 rounded-lg p-3 sm:p-4 text-center min-w-0">
+              <div class="text-2xl sm:text-3xl font-bold text-purple-600">{{ stats.profesores }}</div>
+              <div class="text-xs sm:text-sm text-ink-muted mt-1">Total Profesores</div>
             </div>
-            <div class="bg-orange-50 rounded-lg p-4 text-center">
-              <div class="text-3xl font-bold text-orange-600">{{ stats.reservas }}</div>
-              <div class="text-sm text-gray-600 mt-1">Total Reservas</div>
+            <div class="bg-orange-50 rounded-lg p-3 sm:p-4 text-center min-w-0">
+              <div class="text-2xl sm:text-3xl font-bold text-orange-600">{{ stats.reservas }}</div>
+              <div class="text-xs sm:text-sm text-ink-muted mt-1">Total Reservas</div>
             </div>
           </div>
         </div>
       }
     </div>
   `,
-  styles: []
+  styles: [`
+    .dash-notif:not(.dash-notif--leida) {
+      background: rgb(var(--color-accent-soft));
+      border-color: rgb(var(--color-accent));
+    }
+    .dash-notif--leida {
+      background: rgb(var(--color-muted));
+      border-color: rgb(var(--color-border));
+    }
+  `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private apiService = inject(ApiService);
@@ -185,6 +224,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tallerIdProfesor: number | null = null;
   resumenProfesor: any = null;
   notificaciones: any[] = [];
+  notificacionesNoLeidas = 0;
   actividadesPublicadas: any[] = [];
   asignacionesPendientes: any[] = [];
 
@@ -215,11 +255,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
     }
     if (this.auth.canInscribirseTalleres() && this.alumnoId) {
-      this.pollSub = this.notificacionPoll.cambios$.subscribe(({ notificaciones }) => {
+      this.pollSub = this.notificacionPoll.cambios$.subscribe(({ notificaciones, noLeidas }) => {
         this.notificaciones = notificaciones;
+        this.notificacionesNoLeidas = noLeidas;
       });
-      this.notificacionPoll.refrescar();
     }
+  }
+
+  marcarLeida(n: any): void {
+    if (!this.alumnoId || n.leida) return;
+    this.notificacionPoll.marcarLeida(n.id);
+  }
+
+  marcarTodasLeidas(): void {
+    if (!this.alumnoId) return;
+    this.notificacionPoll.marcarTodasLeidas();
   }
 
   ngOnDestroy() {

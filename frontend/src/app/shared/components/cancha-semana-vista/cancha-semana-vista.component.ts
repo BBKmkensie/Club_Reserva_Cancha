@@ -38,7 +38,7 @@ interface DiaSemana {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="cal-wrap bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+    <section class="cal-wrap bg-surface rounded-xl shadow-lg overflow-hidden border border-line">
       <!-- Selector semanal (estilo referencia) -->
       <div class="px-4 sm:px-5 pt-5 pb-0">
         <div class="cal-header flex items-center justify-between mb-4">
@@ -55,7 +55,7 @@ interface DiaSemana {
             <button type="button"
                     (click)="seleccionarDia(d.fecha)"
                     class="cal-celda flex flex-col items-center border-0 bg-transparent p-0 cursor-pointer">
-              <span class="cal-letra text-[13px] font-medium text-gray-800 mb-2">{{ letraDia(d.fecha) }}</span>
+              <span class="cal-letra text-[13px] font-medium text-ink mb-2">{{ letraDia(d.fecha) }}</span>
               <span class="cal-num w-[34px] h-[34px] flex items-center justify-center rounded-full text-[15px] font-semibold leading-none"
                     [class.cal-num--sel]="fechaSeleccionada === d.fecha"
                     [class.cal-num--hoy]="esHoy(d.fecha) && fechaSeleccionada !== d.fecha"
@@ -65,7 +65,7 @@ interface DiaSemana {
               <span class="h-[10px] mt-1 flex items-end justify-center">
                 @if (tieneOcupados(d)) {
                   <span class="cal-dot w-[5px] h-[5px] rounded-full"
-                        [class.bg-white]="fechaSeleccionada === d.fecha"
+                        [class.bg-surface]="fechaSeleccionada === d.fecha"
                         [class.bg-gray-400]="fechaSeleccionada !== d.fecha"></span>
                 }
               </span>
@@ -73,8 +73,8 @@ interface DiaSemana {
           }
         </div>
 
-        <div class="cal-barra-fecha mt-3 -mx-4 sm:-mx-5 px-4 py-3 bg-gray-100 text-center">
-          <p class="text-[15px] font-bold text-gray-900">{{ etiquetaDiaSeleccionado }}</p>
+        <div class="cal-barra-fecha mt-3 -mx-4 sm:-mx-5 px-4 py-3 bg-muted text-center">
+          <p class="text-[15px] font-bold text-ink">{{ etiquetaDiaSeleccionado }}</p>
         </div>
       </div>
 
@@ -82,67 +82,53 @@ interface DiaSemana {
       @if (diaVisible) {
         <div class="px-4 sm:px-6 pb-6 pt-4 anim-dia">
           @if (cargando) {
-            <p class="text-gray-400 text-center py-16 text-sm">Cargando...</p>
+            <p class="text-ink-muted text-center py-16 text-sm">Cargando...</p>
           } @else if (!slotsSeleccionados.length) {
-            <p class="text-gray-400 text-center py-16 text-base">Sin horarios este día</p>
-          } @else if (!tieneOcupados(diaVisible)) {
-            <p class="text-gray-400 text-center py-16 text-base">Sin reservas</p>
-            <p class="text-center text-sm text-emerald-600 -mt-10 mb-6">
-              La cancha está libre en todos los horarios habilitados
-            </p>
-            <button type="button" (click)="mostrarHorarioCompleto = !mostrarHorarioCompleto"
-                    class="w-full text-sm text-primary-600 font-medium py-2 hover:text-primary-800">
-              {{ mostrarHorarioCompleto ? 'Ocultar horarios' : 'Ver horarios del día' }}
-            </button>
-            @if (mostrarHorarioCompleto) {
-              <ng-container *ngTemplateOutlet="listaHorarios" />
-            }
+            <p class="text-ink-muted text-center py-16 text-base">Sin horarios este día</p>
           } @else {
-            <div class="space-y-3 mb-4">
-              <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Reservas del día</h3>
-              @for (slot of slotsOcupados; track slot.horaInicio) {
-                <article class="rounded-xl border border-red-100 bg-red-50/60 shadow-sm px-4 py-3">
-                  <p class="font-bold text-gray-900">{{ slot.tallerNombre || 'Reservado' }}</p>
-                  <p class="text-sm text-red-800 mt-0.5">{{ slot.horaInicio }} – {{ slot.horaFin }}</p>
-                  @if (slot.profesorNombre) {
-                    <p class="text-xs text-gray-600 mt-1">Prof. {{ slot.profesorNombre }}</p>
-                  }
-                </article>
-              }
-            </div>
-
-            <button type="button" (click)="mostrarHorarioCompleto = !mostrarHorarioCompleto"
-                    class="w-full text-sm text-primary-600 font-medium py-2 hover:text-primary-800 border-t border-gray-100">
-              {{ mostrarHorarioCompleto ? 'Ocultar horario completo' : 'Ver horario completo (09:00–20:00)' }}
-            </button>
-
-            @if (mostrarHorarioCompleto) {
-              <ng-container *ngTemplateOutlet="listaHorarios" />
+            @if (slotsOcupados.length) {
+              <div class="space-y-3 mb-4">
+                <h3 class="text-xs font-semibold text-ink-muted uppercase tracking-wide">Reservas del día</h3>
+                @for (slot of slotsOcupados; track slot.horaInicio) {
+                  <article class="rounded-xl border border-red-100 bg-red-50/60 shadow-sm px-4 py-3">
+                    <p class="font-bold text-ink">{{ slot.tallerNombre || 'Reservado' }}</p>
+                    <p class="text-sm text-red-800 mt-0.5">{{ slot.horaInicio }} – {{ slot.horaFin }}</p>
+                    @if (slot.profesorNombre) {
+                      <p class="text-xs text-ink-muted mt-1">Prof. {{ slot.profesorNombre }}</p>
+                    }
+                  </article>
+                }
+              </div>
             } @else {
-              <p class="text-xs text-gray-500 text-center mt-3">{{ resumenDia }}</p>
+              <p class="text-xs text-emerald-600 mb-3">{{ resumenDia }}</p>
             }
+
+            <h3 class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+              Horarios (09:00 – 20:00)
+            </h3>
+            <ng-container *ngTemplateOutlet="listaHorarios" />
           }
         </div>
       }
 
       <ng-template #listaHorarios>
-        <ul class="space-y-2 mt-4 max-h-[24rem] overflow-y-auto">
+        <ul class="space-y-2 max-h-[24rem] overflow-y-auto">
           @for (slot of slotsSeleccionados; track slot.horaInicio) {
             <li class="rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 text-sm"
                 [class.bg-emerald-50]="slot.estado === 'disponible'"
                 [class.border-emerald-200]="slot.estado === 'disponible'"
                 [class.bg-red-50]="slot.estado === 'ocupada'"
                 [class.border-red-200]="slot.estado === 'ocupada'"
-                [class.bg-gray-50]="slot.estado === 'no_habilitada'"
-                [class.border-gray-200]="slot.estado === 'no_habilitada'">
+                [class.bg-page]="slot.estado === 'no_habilitada'"
+                [class.border-line]="slot.estado === 'no_habilitada'">
               <div class="min-w-0">
-                <span class="font-semibold text-gray-800">{{ slot.horaInicio }} – {{ slot.horaFin }}</span>
+                <span class="font-semibold text-ink">{{ slot.horaInicio }} – {{ slot.horaFin }}</span>
                 @if (slot.estado === 'ocupada') {
                   <span class="block text-red-800 truncate">{{ slot.tallerNombre }}</span>
                 } @else if (slot.estado === 'disponible') {
                   <span class="block text-emerald-700 text-xs">Disponible</span>
                 } @else {
-                  <span class="block text-gray-500 text-xs">No habilitada</span>
+                  <span class="block text-ink-muted text-xs">No habilitada</span>
                 }
               </div>
               <span class="shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
@@ -151,23 +137,23 @@ interface DiaSemana {
                     [class.bg-red-100]="slot.estado === 'ocupada'"
                     [class.text-red-800]="slot.estado === 'ocupada'"
                     [class.bg-gray-200]="slot.estado === 'no_habilitada'"
-                    [class.text-gray-600]="slot.estado === 'no_habilitada'">
+                    [class.text-ink-muted]="slot.estado === 'no_habilitada'">
                 {{ etiquetaEstado(slot.estado) }}
               </span>
             </li>
           }
         </ul>
-        <p class="mt-3 text-xs text-gray-500 text-center">{{ resumenDia }}</p>
+        <p class="mt-3 text-xs text-ink-muted text-center">{{ resumenDia }}</p>
       </ng-template>
     </section>
   `,
   styles: [`
     .cal-mes,
     .cal-nav {
-      color: #2f7cf6;
+      color: rgb(var(--color-accent));
     }
     .cal-nav button {
-      color: #2f7cf6;
+      color: rgb(var(--color-accent));
       background: none;
       border: none;
       padding: 0;
@@ -175,21 +161,22 @@ interface DiaSemana {
       line-height: 1;
     }
     .cal-nav button:hover {
-      color: #1d5fd4;
+      color: rgb(var(--color-accent-hover));
     }
     .cal-num--sel {
-      background-color: #2f7cf6;
+      background-color: rgb(var(--color-accent));
       color: #fff;
     }
     .cal-num--hoy {
-      color: #2f7cf6;
+      color: rgb(var(--color-accent));
     }
     .cal-num--normal {
-      color: #111827;
+      color: rgb(var(--color-ink));
     }
     .cal-barra-fecha {
-      border-top: 1px solid #eceef1;
-      border-bottom: 1px solid #eceef1;
+      border-top: 1px solid rgb(var(--color-border));
+      border-bottom: 1px solid rgb(var(--color-border));
+      @apply bg-muted;
     }
     .cal-grid-7 {
       width: 100%;
@@ -220,7 +207,6 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
   fechaSeleccionada = parseFechaIso(new Date());
   inicioSemana = lunesDeSemana();
   cargando = false;
-  mostrarHorarioCompleto = false;
 
   get mesVisible(): string {
     const ref = this.diaVisible ?? this.dias[0];
@@ -275,6 +261,10 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     return DIAS_CORTO[diaSemanaDesdeFecha(fecha)];
   }
 
+  fmtHora(h: number): string {
+    return `${String(h).padStart(2, '0')}:00`;
+  }
+
   etiquetaEstado(estado: EstadoSlot): string {
     if (estado === 'disponible') return 'Libre';
     if (estado === 'ocupada') return 'Ocupada';
@@ -287,14 +277,12 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
 
   seleccionarDia(fecha: string): void {
     this.fechaSeleccionada = fecha;
-    this.mostrarHorarioCompleto = false;
   }
 
   irHoy(): void {
     const hoy = parseFechaIso(new Date());
     this.inicioSemana = lunesDeSemana(hoy);
     this.fechaSeleccionada = hoy;
-    this.mostrarHorarioCompleto = false;
     this.dias = this.armarEstructuraSemana();
     this.cargarSemana();
   }
@@ -302,7 +290,6 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
   cambiarSemana(delta: number): void {
     this.inicioSemana = sumarDias(this.inicioSemana, delta * 7);
     this.fechaSeleccionada = this.inicioSemana;
-    this.mostrarHorarioCompleto = false;
     this.dias = this.armarEstructuraSemana();
     this.cargarSemana();
   }

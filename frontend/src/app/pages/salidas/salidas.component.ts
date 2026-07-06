@@ -11,27 +11,27 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
   template: `
     <div class="space-y-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-800">Salidas programadas</h1>
-        <p class="text-gray-600 mt-1">Historial con profesor responsable, origen y resultado al cerrar.</p>
+        <h1 class="text-3xl font-bold text-ink">Salidas programadas</h1>
+        <p class="text-ink-muted mt-1">Historial con profesor responsable, origen y resultado al cerrar.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @for (salida of salidas; track salida.id) {
-          <div class="bg-white rounded-xl shadow p-6 border-l-4"
+          <div class="bg-surface rounded-xl shadow p-6 border-l-4"
                [class.border-purple-500]="salida.estado === 'PUBLICADA'"
                [class.border-blue-500]="salida.estado === 'EN_CURSO'"
                [class.border-green-500]="salida.estado === 'CERRADA' && salida.resultado === 'EXITO'"
                [class.border-red-500]="salida.estado === 'CERRADA' && salida.resultado === 'FRACASO'"
                [class.border-amber-500]="salida.estado === 'PENDIENTE_PROFESOR' || salida.estado === 'PENDIENTE_DIRECTIVA'">
-            <h3 class="text-xl font-semibold text-gray-800">{{ salida.destino }}</h3>
-            <p class="text-sm text-gray-500 mt-1">{{ salida.fecha | date:'fullDate' }} @if (salida.hora) { · {{ salida.hora }} }</p>
-            <p class="text-sm text-gray-600 mt-2">Profesor: <strong>{{ salida.profesor?.nombre || '—' }}</strong></p>
-            <p class="text-sm text-gray-600">Taller: {{ salida.taller?.tipo || '—' }}</p>
+            <h3 class="text-xl font-semibold text-ink">{{ salida.destino }}</h3>
+            <p class="text-sm text-ink-muted mt-1">{{ salida.fecha | date:'fullDate' }} @if (salida.hora) { · {{ salida.hora }} }</p>
+            <p class="text-sm text-ink-muted mt-2">Profesor: <strong>{{ salida.profesor?.nombre || '—' }}</strong></p>
+            <p class="text-sm text-ink-muted">Taller: {{ salida.taller?.tipo || '—' }}</p>
             @if (salida.descripcion) {
-              <p class="text-sm text-gray-500 mt-2">{{ salida.descripcion }}</p>
+              <p class="text-sm text-ink-muted mt-2">{{ salida.descripcion }}</p>
             }
             <p class="text-xs text-primary-700 mt-2">{{ etiqueta(salida) }}</p>
-            <span class="inline-block mt-2 text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+            <span class="inline-block mt-2 text-xs font-medium px-2 py-1 rounded-full bg-muted text-ink-secondary">
               {{ estadoLabel(salida) }}
             </span>
             @if (salida.estado === 'CERRADA') {
@@ -49,7 +49,7 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
           </div>
         }
         @if (salidas.length === 0) {
-          <div class="col-span-full text-center text-gray-500 py-12">No hay salidas registradas</div>
+          <div class="col-span-full text-center text-ink-muted py-12">No hay salidas registradas</div>
         }
       </div>
     </div>

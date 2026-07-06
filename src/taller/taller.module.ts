@@ -8,6 +8,7 @@ import { AsignacionDocente } from '../entities/asignacion-docente.entity';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { SesionAsistencia } from '../entities/sesion-asistencia.entity';
 import { TallerHorario } from '../entities/taller-horario.entity';
+import { Reserva } from '../entities/reserva.entity';
 import { NotificacionModule } from '../notificacion/notificacion.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { NotificacionModule } from '../notificacion/notificacion.module';
       InscripcionTaller,
       SesionAsistencia,
       TallerHorario,
+      Reserva,
     ]),
     NotificacionModule,
   ],

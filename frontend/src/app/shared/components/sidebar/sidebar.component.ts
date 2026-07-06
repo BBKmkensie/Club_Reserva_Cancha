@@ -20,85 +20,92 @@ import { ApiService } from '../../../services/api.service';
       }
 
       @if (isOpen) {
-        <!-- Móvil: menú completo (equivalente a la navbar) -->
         <aside
-          class="lg:hidden bg-white w-72 max-w-[85vw] fixed left-0 top-16 z-40 border-r border-gray-200 overflow-y-auto shadow-lg"
-          [style.height]="'calc(100vh - 4rem)'">
+          class="lg:hidden bg-surface w-72 max-w-[85vw] fixed left-0 top-14 sm:top-16 z-40 border-r border-line overflow-y-auto shadow-lg h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)]">
           <nav class="p-4 pt-5">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Menú</p>
+            <p class="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 px-2">Menú</p>
             <app-nav-links mode="sidebar" (navigated)="sidebarService.close()" />
-            <div class="mt-6 pt-4 border-t border-gray-100 px-2 space-y-1">
+            <ng-container *ngTemplateOutlet="accesosRapidos" />
+            <div class="mt-6 pt-4 border-t border-line px-2 space-y-1">
               @if (auth.currentNombre()) {
-                <p class="text-xs text-gray-700 font-semibold truncate" [title]="auth.currentNombre()!">
+                <p class="text-xs text-ink-secondary font-semibold truncate" [title]="auth.currentNombre()!">
                   {{ auth.currentNombre() }}
                 </p>
               }
-              <p class="text-xs text-gray-500">
-                Rol: <span class="font-semibold text-gray-700">{{ auth.roleLabel() }}</span>
+              <p class="text-xs text-ink-muted">
+                Rol: <span class="font-semibold text-ink-secondary">{{ auth.roleLabel() }}</span>
               </p>
             </div>
           </nav>
         </aside>
-
-        <!-- Escritorio: solo accesos rápidos (la navbar ya tiene el menú completo) -->
-        <aside
-          class="hidden lg:block bg-white w-64 fixed left-0 top-16 z-40 border-r border-gray-200 overflow-y-auto shadow-sm"
-          [style.height]="'calc(100vh - 4rem)'">
-          <nav class="p-4 pt-5">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Accesos rápidos</p>
-            <div class="space-y-2">
-              @if (auth.canInscribirseTalleres()) {
-                <a routerLink="/inscripcion-talleres"
-                   routerLinkActive="bg-blue-50 text-blue-700 border-blue-400"
-                   [routerLinkActiveOptions]="{ exact: false }"
-                   class="block px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors border-l-4 border-yellow-400 bg-gray-50">
-                  <div class="flex items-center gap-3">
-                    <span class="text-2xl">📚</span>
-                    <span class="font-semibold text-gray-700 text-sm">Inscripción de Talleres</span>
-                  </div>
-                </a>
-
-                @if (puedeVerMisSalidas) {
-                  <a routerLink="/mis-salidas"
-                     routerLinkActive="bg-blue-50 text-blue-700 border-blue-400"
-                     [routerLinkActiveOptions]="{ exact: false }"
-                     class="block px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors border-l-4 border-yellow-400 bg-gray-50">
-                    <div class="flex items-center gap-3">
-                      <span class="text-2xl">🎫</span>
-                      <span class="font-semibold text-gray-700 text-sm">Mis salidas</span>
-                    </div>
-                  </a>
-                }
-              }
-
-              @if (auth.canGestionarSalidas()) {
-                <a routerLink="/inscripcion-salidas"
-                   routerLinkActive="bg-blue-50 text-blue-700 border-blue-400"
-                   [routerLinkActiveOptions]="{ exact: false }"
-                   class="block px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors border-l-4 border-yellow-400 bg-gray-50">
-                  <div class="flex items-center gap-3">
-                    <span class="text-2xl">🚌</span>
-                    <span class="font-semibold text-gray-700 text-sm">Abrir Salidas</span>
-                  </div>
-                </a>
-
-                <a routerLink="/salidas"
-                   routerLinkActive="bg-blue-50 text-blue-700 border-blue-400"
-                   [routerLinkActiveOptions]="{ exact: false }"
-                   class="block px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors border-l-4 border-yellow-400 bg-gray-50">
-                  <div class="flex items-center gap-3">
-                    <span class="text-2xl">👁️</span>
-                    <span class="font-semibold text-gray-700 text-sm">Ver Salidas</span>
-                  </div>
-                </a>
-              }
-            </div>
-          </nav>
-        </aside>
       }
+
+      <aside
+        class="hidden lg:block bg-surface w-64 fixed left-0 top-14 sm:top-16 z-40 border-r border-line overflow-y-auto shadow-sm h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)]">
+        <nav class="p-4 pt-5 pb-8">
+          <p class="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 px-2">Menú</p>
+          <app-nav-links mode="sidebar" />
+          <ng-container *ngTemplateOutlet="accesosRapidos" />
+        </nav>
+      </aside>
     }
+
+    <ng-template #accesosRapidos>
+      @if (tieneAccesosRapidos()) {
+        <div class="mt-6 pt-4 border-t border-line">
+          <p class="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 px-2">Accesos rápidos</p>
+          <div class="space-y-2">
+            @if (auth.canInscribirseTalleres()) {
+              <a routerLink="/inscripcion-talleres"
+                 routerLinkActive="!bg-primary-500/15 !text-primary-500 !border-palette-sky"
+                 [routerLinkActiveOptions]="{ exact: false }"
+                 class="block px-4 py-3 rounded-lg hover:bg-muted transition-colors border-l-4 border-yellow-400 bg-page">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl shrink-0">📚</span>
+                  <span class="font-semibold text-ink-secondary text-sm">Inscripción de Talleres</span>
+                </div>
+              </a>
+
+              @if (puedeVerMisSalidas) {
+                <a routerLink="/mis-salidas"
+                   routerLinkActive="!bg-primary-500/15 !text-primary-500 !border-palette-sky"
+                   [routerLinkActiveOptions]="{ exact: false }"
+                   class="block px-4 py-3 rounded-lg hover:bg-muted transition-colors border-l-4 border-yellow-400 bg-page">
+                  <div class="flex items-center gap-3">
+                    <span class="text-2xl shrink-0">🎫</span>
+                    <span class="font-semibold text-ink-secondary text-sm">Mis salidas</span>
+                  </div>
+                </a>
+              }
+            }
+
+            @if (auth.canGestionarSalidas()) {
+              <a routerLink="/inscripcion-salidas"
+                 routerLinkActive="!bg-primary-500/15 !text-primary-500 !border-palette-sky"
+                 [routerLinkActiveOptions]="{ exact: false }"
+                 class="block px-4 py-3 rounded-lg hover:bg-muted transition-colors border-l-4 border-yellow-400 bg-page">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl shrink-0">🚌</span>
+                  <span class="font-semibold text-ink-secondary text-sm">Abrir Salidas</span>
+                </div>
+              </a>
+
+              <a routerLink="/salidas"
+                 routerLinkActive="!bg-primary-500/15 !text-primary-500 !border-palette-sky"
+                 [routerLinkActiveOptions]="{ exact: false }"
+                 class="block px-4 py-3 rounded-lg hover:bg-muted transition-colors border-l-4 border-yellow-400 bg-page">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl shrink-0">👁️</span>
+                  <span class="font-semibold text-ink-secondary text-sm">Ver Salidas</span>
+                </div>
+              </a>
+            }
+          </div>
+        </div>
+      }
+    </ng-template>
   `,
-  styles: []
+  styles: [],
 })
 export class SidebarComponent implements OnInit, OnDestroy {
   auth = inject(AuthRoleService);
@@ -113,6 +120,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
       this.isOpen = isOpen;
     });
     this.actualizarMisSalidas();
+  }
+
+  tieneAccesosRapidos(): boolean {
+    return this.auth.canInscribirseTalleres() || this.auth.canGestionarSalidas();
   }
 
   private actualizarMisSalidas(): void {

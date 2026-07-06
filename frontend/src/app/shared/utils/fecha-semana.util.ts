@@ -48,3 +48,29 @@ export function etiquetaDiaCorto(fecha: string): string {
   const mes = MESES[d.getMonth()].slice(0, 3);
   return `${dia}, ${mes}. ${d.getDate()}. ${d.getFullYear()}`;
 }
+
+export interface CeldaMes {
+  fecha: string;
+  num: number;
+  mesActual: boolean;
+}
+
+/** Grilla de 6 semanas para un mes (empieza en lunes) */
+export function celdasDelMes(anio: number, mes: number): CeldaMes[] {
+  const primerDia = new Date(anio, mes, 1);
+  const inicio = new Date(primerDia);
+  const js = inicio.getDay();
+  inicio.setDate(inicio.getDate() + (js === 0 ? -6 : 1 - js));
+
+  const celdas: CeldaMes[] = [];
+  const cursor = new Date(inicio);
+  for (let i = 0; i < 42; i++) {
+    celdas.push({
+      fecha: parseFechaIso(cursor),
+      num: cursor.getDate(),
+      mesActual: cursor.getMonth() === mes,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return celdas;
+}

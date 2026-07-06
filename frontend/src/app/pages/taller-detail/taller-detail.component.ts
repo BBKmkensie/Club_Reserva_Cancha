@@ -20,12 +20,12 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
   template: `
     <div class="space-y-4 sm:space-y-6">
       <!-- Título del Taller -->
-      <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <h1 class="text-2xl sm:text-4xl font-bold text-gray-800 text-center uppercase break-words">{{ taller?.tipo }}</h1>
+      <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
+        <h1 class="text-2xl sm:text-4xl font-bold text-ink text-center uppercase break-words">{{ taller?.tipo }}</h1>
       </div>
 
       <!-- Descripción del Taller -->
-      <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+      <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
           <!-- Foto del Profesor -->
           <div class="flex-shrink-0 mx-auto sm:mx-0">
@@ -38,11 +38,11 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
                 <div class="w-24 h-24 rounded-full bg-primary-500 flex items-center justify-center text-white text-4xl font-bold mx-auto mb-2">
                   {{ profesor.nombre.charAt(0) }}
                 </div>
-                <p class="text-sm text-gray-600">Foto del profesor</p>
+                <p class="text-sm text-ink-muted">Foto del profesor</p>
               </div>
             </div>
-            <div *ngIf="!profesor" class="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center border-2 border-dashed border-gray-300">
-              <p class="text-sm text-gray-500 text-center">Foto del profesor</p>
+            <div *ngIf="!profesor" class="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center border-2 border-dashed border-line-strong">
+              <p class="text-sm text-ink-muted text-center">Foto del profesor</p>
             </div>
           </div>
 
@@ -50,7 +50,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
           <div class="flex-1 flex flex-col space-y-4">
             <div>
               <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <h2 class="text-xl font-semibold text-gray-800">Descripción del Taller</h2>
+                <h2 class="text-xl font-semibold text-ink">Descripción del Taller</h2>
                 @if (taller && puedeEditarPresentacion()) {
                   <button type="button" (click)="abrirEditarPresentacion()"
                           class="text-sm text-primary-600 hover:text-primary-800 font-medium px-3 py-1 rounded-lg border border-primary-200 hover:bg-primary-50 transition">
@@ -58,12 +58,12 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
                   </button>
                 }
               </div>
-              <p class="text-gray-700 leading-relaxed whitespace-pre-line">{{ descripcionTexto }}</p>
+              <p class="text-ink-secondary leading-relaxed whitespace-pre-line">{{ descripcionTexto }}</p>
             </div>
 
             <div *ngIf="profesor">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Profesor</h3>
-              <p class="text-gray-700">{{ profesor.nombre }}</p>
+              <h3 class="text-lg font-semibold text-ink mb-2">Profesor</h3>
+              <p class="text-ink-secondary">{{ profesor.nombre }}</p>
             </div>
 
             <!-- Botón Inscribirse (solo alumno logueado) -->
@@ -95,23 +95,23 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
             <img [src]="taller.imagenUrl" [alt]="'Imagen del taller ' + (taller.tipo || '')" 
                  class="w-full h-full object-cover">
           </div>
-          <div *ngIf="!taller || !taller.imagenUrl" class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-            <p class="text-gray-500">Imagen del taller {{ taller?.tipo || '' }}</p>
+          <div *ngIf="!taller || !taller.imagenUrl" class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-line-strong">
+            <p class="text-ink-muted">Imagen del taller {{ taller?.tipo || '' }}</p>
           </div>
         </div>
       </div>
 
       <!-- Solicitudes pendientes (solo profesor/admin) -->
       @if (auth.canGestionarInscripcionesTaller() && taller && puedeGestionarEsteTaller()) {
-        <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-          <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">Solicitudes de inscripción</h2>
+        <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
+          <h2 class="text-xl sm:text-2xl font-semibold text-ink mb-4">Solicitudes de inscripción</h2>
           @if (solicitudesPendientes.length > 0) {
             <ul class="space-y-2">
               @for (s of solicitudesPendientes; track s.id) {
                 <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2 px-3 bg-amber-50 rounded-lg border border-amber-200">
                   <div class="min-w-0">
                     <span class="font-medium break-words">{{ textoAlumno(s.alumno) }}</span>
-                    <p class="text-xs text-gray-600 mt-1">{{ textoFicha(s) }}</p>
+                    <p class="text-xs text-ink-muted mt-1">{{ textoFicha(s) }}</p>
                   </div>
                   <div class="flex gap-2 shrink-0">
                     <button (click)="responderSolicitud(s.id, 'ACEPTADO')" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Aceptar</button>
@@ -121,64 +121,64 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
               }
             </ul>
           } @else {
-            <p class="text-gray-500">No hay solicitudes pendientes</p>
+            <p class="text-ink-muted">No hay solicitudes pendientes</p>
           }
         </div>
       }
 
       @if (taller) {
-        <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+        <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
           <button (click)="toggleHorarios()" type="button"
-                  class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-gray-50 transition">
-            <h2 class="text-xl sm:text-2xl font-semibold text-gray-800">{{ tituloHorariosSeccion() }}</h2>
-            <svg class="w-6 h-6 text-gray-600 transition-transform flex-shrink-0"
+                  class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
+            <h2 class="text-xl sm:text-2xl font-semibold text-ink">{{ tituloHorariosSeccion() }}</h2>
+            <svg class="w-6 h-6 text-ink-muted transition-transform flex-shrink-0"
                  [class.rotate-180]="horariosExpanded"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
-          <div *ngIf="horariosExpanded" class="mt-4 pt-4 border-t border-gray-100">
+          <div *ngIf="horariosExpanded" class="mt-4 pt-4 border-t border-line">
             <app-horarios-taller [taller]="taller" [mostrarTitulo]="false" />
           </div>
         </div>
       }
 
       <!-- Alumnos inscritos (aceptados) -->
-      <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+      <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
         <button (click)="toggleAlumnos()" type="button"
-                class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-gray-50 transition">
-          <h2 class="text-xl sm:text-2xl font-semibold text-gray-800">Alumnos inscritos</h2>
-          <svg class="w-6 h-6 text-gray-600 transition-transform flex-shrink-0"
+                class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
+          <h2 class="text-xl sm:text-2xl font-semibold text-ink">Alumnos inscritos</h2>
+          <svg class="w-6 h-6 text-ink-muted transition-transform flex-shrink-0"
                [class.rotate-180]="alumnosExpanded"
                fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
-        <div *ngIf="alumnosExpanded" class="mt-4 pt-4 border-t border-gray-100">
+        <div *ngIf="alumnosExpanded" class="mt-4 pt-4 border-t border-line">
           <ul class="space-y-2">
             @for (insc of listaInscritosAceptados; track insc.id) {
-              <li class="py-2 px-3 bg-gray-50 rounded-lg text-gray-800">
+              <li class="py-2 px-3 bg-page rounded-lg text-ink">
                 <span class="font-medium">{{ priv.alumno(insc.alumno).nombre }} {{ priv.alumno(insc.alumno).rut }}</span>
-                <p class="text-xs text-gray-600 mt-1">{{ textoFicha(insc) }}</p>
+                <p class="text-xs text-ink-muted mt-1">{{ textoFicha(insc) }}</p>
               </li>
             }
           </ul>
-          <p *ngIf="listaInscritosAceptados.length === 0" class="text-gray-500 py-4 text-center">No hay alumnos inscritos en este taller</p>
+          <p *ngIf="listaInscritosAceptados.length === 0" class="text-ink-muted py-4 text-center">No hay alumnos inscritos en este taller</p>
         </div>
       </div>
 
       <!-- Gráfico ficha física (después de alumnos inscritos) -->
-      <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+      <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
         <button (click)="toggleGrafico()" type="button"
-                class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-gray-50 transition">
-          <h2 class="text-xl sm:text-2xl font-semibold text-gray-800">Gráfico ficha física</h2>
-          <svg class="w-6 h-6 text-gray-600 transition-transform flex-shrink-0"
+                class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
+          <h2 class="text-xl sm:text-2xl font-semibold text-ink">Gráfico ficha física</h2>
+          <svg class="w-6 h-6 text-ink-muted transition-transform flex-shrink-0"
                [class.rotate-180]="graficoExpanded"
                fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
-        <div *ngIf="graficoExpanded" class="mt-4 pt-4 border-t border-gray-100">
+        <div *ngIf="graficoExpanded" class="mt-4 pt-4 border-t border-line">
           <app-ficha-grafico-taller [inscripciones]="listaInscritosAceptados" [enmascararNombres]="priv.debeEnmascarar()" />
         </div>
       </div>
@@ -186,25 +186,25 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
 
     @if (editandoPresentacion && taller) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
-          <h3 class="text-xl font-bold text-gray-800 mb-1">Editar presentación del taller</h3>
-          <p class="text-sm text-gray-600 mb-4">{{ taller.tipo }}</p>
+        <div class="bg-surface rounded-xl shadow-xl max-w-lg w-full p-6">
+          <h3 class="text-xl font-bold text-ink mb-1">Editar presentación del taller</h3>
+          <p class="text-sm text-ink-muted mb-4">{{ taller.tipo }}</p>
           <div class="space-y-4">
             <label class="block text-sm">
-              <span class="font-medium text-gray-700">Descripción del taller</span>
+              <span class="font-medium text-ink-secondary">Descripción del taller</span>
               <textarea [(ngModel)]="presentacionForm.descripcion" rows="5"
-                        class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"></textarea>
+                        class="mt-1 w-full border border-line-strong rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"></textarea>
             </label>
             @if (profesor) {
               <label class="block text-sm">
-                <span class="font-medium text-gray-700">URL foto del profesor ({{ profesor.nombre }})</span>
+                <span class="font-medium text-ink-secondary">URL foto del profesor ({{ profesor.nombre }})</span>
                 <input type="url" [(ngModel)]="presentacionForm.fotoPath" placeholder="https://..."
-                       class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                       class="mt-1 w-full border border-line-strong rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none">
               </label>
               @if (presentacionForm.fotoPath) {
                 <div class="flex justify-center">
                   <img [src]="presentacionForm.fotoPath" alt="Vista previa"
-                       class="w-24 h-32 object-cover rounded-lg border border-gray-200"
+                       class="w-24 h-32 object-cover rounded-lg border border-line"
                        (error)="$any($event.target).style.display='none'">
                 </div>
               }
@@ -219,7 +219,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
           }
           <div class="flex gap-3 justify-end mt-6">
             <button type="button" (click)="cerrarEditarPresentacion()"
-                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    class="px-4 py-2 rounded-lg border border-line-strong text-ink-secondary hover:bg-page">
               Cancelar
             </button>
             <button type="button" (click)="guardarPresentacion()"
@@ -234,35 +234,35 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
 
     @if (mostrarConfirmacion && taller) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-          <h3 class="text-xl font-bold text-gray-800 mb-2">Confirmar inscripción</h3>
-          <p class="text-gray-600 mb-4">¿Deseas inscribirte en <strong>{{ taller.tipo }}</strong>?</p>
-          <div class="bg-gray-50 rounded-lg p-4 text-sm space-y-2 mb-4">
+        <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 class="text-xl font-bold text-ink mb-2">Confirmar inscripción</h3>
+          <p class="text-ink-muted mb-4">¿Deseas inscribirte en <strong>{{ taller.tipo }}</strong>?</p>
+          <div class="bg-page rounded-lg p-4 text-sm space-y-2 mb-4">
             <p><strong>Horario:</strong> {{ textoHorario(taller) }}</p>
             @if (validacion) {
               <p><strong>Cupos disponibles:</strong> {{ validacion.cuposDisponibles }} de {{ validacion.capacidad }}</p>
             }
           </div>
           <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
-            <h4 class="font-semibold text-gray-800 mb-2">Ficha del alumno</h4>
+            <h4 class="font-semibold text-ink mb-2">Ficha del alumno</h4>
             <div class="grid grid-cols-2 gap-3 text-sm">
               <label class="block">
-                <span class="text-gray-700">Altura (cm)</span>
+                <span class="text-ink-secondary">Altura (cm)</span>
                 <input type="number" [(ngModel)]="fichaForm.altura" min="50" max="250" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">Peso (kg)</span>
+                <span class="text-ink-secondary">Peso (kg)</span>
                 <input type="number" [(ngModel)]="fichaForm.peso" min="20" max="300" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">% grasa</span>
+                <span class="text-ink-secondary">% grasa</span>
                 <input type="number" [(ngModel)]="fichaForm.porcentajeGrasa" min="1" max="60" step="0.1"
                        class="mt-1 w-full border rounded-lg px-2 py-1.5">
               </label>
               <label class="block">
-                <span class="text-gray-700">Sedentario</span>
+                <span class="text-ink-secondary">Sedentario</span>
                 <select [(ngModel)]="fichaForm.sedentario" class="mt-1 w-full border rounded-lg px-2 py-1.5">
                   <option [ngValue]="true">Sí</option>
                   <option [ngValue]="false">No</option>
@@ -274,7 +274,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
             <p class="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3 mb-4">{{ errorInscripcion }}</p>
           }
           <div class="flex gap-3 justify-end">
-            <button (click)="cerrarConfirmacion()" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">Cancelar</button>
+            <button (click)="cerrarConfirmacion()" class="px-4 py-2 rounded-lg border border-line-strong text-ink-secondary">Cancelar</button>
             <button (click)="confirmarInscripcion()"
                     [disabled]="!validacion?.puedeInscribirse || confirmando || !fichaValida()"
                     class="px-4 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50">

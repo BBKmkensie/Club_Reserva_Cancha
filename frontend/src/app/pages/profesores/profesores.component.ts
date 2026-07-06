@@ -12,7 +12,7 @@ import { Taller } from '../../models/taller.model';
   template: `
     <div class="space-y-6">
       <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Profesores</h1>
+        <h1 class="text-3xl font-bold text-ink">Profesores</h1>
         <button (click)="openModal()" 
                 class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
           + Nuevo Profesor
@@ -21,34 +21,34 @@ import { Taller } from '../../models/taller.model';
 
       <!-- Modal -->
       <div *ngIf="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="bg-surface rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
           <h2 class="text-2xl font-bold mb-4">{{ editingProfesor ? 'Editar' : 'Nuevo' }} Profesor</h2>
           <form [formGroup]="profesorForm" (ngSubmit)="saveProfesor()">
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Nombre</label>
                 <input formControlName="nombre" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">RUT</label>
                 <input formControlName="rut" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Email</label>
                 <input formControlName="email" type="email" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Teléfono</label>
                 <input formControlName="telefono" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Taller</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Taller</label>
                 <select formControlName="tallerId" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
                   <option value="">Seleccione un taller</option>
                   <option *ngFor="let taller of talleres" [value]="taller.id">
                     {{ taller.tipo }}
@@ -58,7 +58,7 @@ import { Taller } from '../../models/taller.model';
             </div>
             <div class="flex justify-end space-x-3 mt-6">
               <button type="button" (click)="closeModal()" 
-                      class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                      class="px-4 py-2 border border-line-strong rounded-md hover:bg-page">
                 Cancelar
               </button>
               <button type="submit" 
@@ -73,11 +73,11 @@ import { Taller } from '../../models/taller.model';
       <!-- Lista de Profesores -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div *ngFor="let profesor of profesores" 
-             class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
+             class="bg-surface rounded-lg shadow p-6 hover:shadow-lg transition">
           <div class="flex justify-between items-start mb-4">
             <div>
-              <h3 class="text-xl font-semibold text-gray-800">{{ profesor.nombre }}</h3>
-              <p class="text-sm text-gray-500">{{ profesor.rut }}</p>
+              <h3 class="text-xl font-semibold text-ink">{{ profesor.nombre }}</h3>
+              <p class="text-sm text-ink-muted">{{ profesor.rut }}</p>
             </div>
             <div class="flex space-x-2">
               <button (click)="editProfesor(profesor)" class="text-primary-600 hover:text-primary-700">✏️</button>
@@ -90,7 +90,7 @@ import { Taller } from '../../models/taller.model';
             <div><span class="font-medium">Taller:</span> {{ profesor.taller?.tipo || '-' }}</div>
           </div>
         </div>
-        <div *ngIf="profesores.length === 0" class="col-span-full text-center text-gray-500 py-12">
+        <div *ngIf="profesores.length === 0" class="col-span-full text-center text-ink-muted py-12">
           No hay profesores registrados
         </div>
       </div>

@@ -6,16 +6,17 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 import { Taller } from '../../models/taller.model';
 import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-picker.component';
+import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
 @Component({
   selector: 'app-inscripcion-salidas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, HoraPickerComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, HoraPickerComponent, FechaPickerComponent],
   template: `
     <div class="space-y-8">
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Salidas y partidos</h1>
-        <p class="text-gray-600">
+      <div class="bg-surface rounded-xl shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Salidas y partidos</h1>
+        <p class="text-ink-muted">
           @if (auth.isCoordinacion()) {
             Asigna partidos a profesores o aprueba propuestas. Al aceptarse, la salida se publica a los estudiantes.
           } @else {
@@ -25,11 +26,11 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
       </div>
 
       @if (auth.isCoordinacion()) {
-        <section class="bg-white rounded-xl shadow-lg p-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Asignar partido a profesor</h2>
+        <section class="bg-surface rounded-xl shadow-lg p-6">
+          <h2 class="text-xl font-semibold text-ink mb-4">Asignar partido a profesor</h2>
           <form [formGroup]="asignarForm" (ngSubmit)="asignarPartido()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Profesor</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Profesor</label>
               <select formControlName="profesorId" class="w-full border rounded-lg px-3 py-2">
                 <option value="">Seleccione</option>
                 @for (p of profesores; track p.id) {
@@ -38,7 +39,7 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Taller</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Taller</label>
               <select formControlName="tallerId" class="w-full border rounded-lg px-3 py-2">
                 <option value="">Seleccione</option>
                 @for (t of talleres; track t.id) {
@@ -47,20 +48,20 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
               </select>
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Destino / partido</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Destino / partido</label>
               <input formControlName="destino" type="text" placeholder="Ej: Partido vs Colegio X"
                      class="w-full border rounded-lg px-3 py-2">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-              <input formControlName="fecha" type="date" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-ink-secondary mb-2">Fecha</label>
+              <app-fecha-picker formControlName="fecha" [anchoCompleto]="true" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-gray-400 font-normal">(opcional)</span></label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Hora <span class="text-ink-muted font-normal">(opcional)</span></label>
               <app-hora-picker formControlName="hora" />
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Descripción</label>
               <textarea formControlName="descripcion" rows="2" class="w-full border rounded-lg px-3 py-2"></textarea>
             </div>
             <div class="md:col-span-2">
@@ -77,10 +78,10 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
             <h2 class="text-xl font-semibold text-amber-900 mb-4">Propuestas pendientes de aprobación</h2>
             <ul class="space-y-3">
               @for (s of pendientesDirectiva; track s.id) {
-                <li class="bg-white rounded-lg p-4 flex flex-wrap justify-between gap-3 border border-amber-100">
+                <li class="bg-surface rounded-lg p-4 flex flex-wrap justify-between gap-3 border border-amber-100">
                   <div>
-                    <p class="font-semibold text-gray-800">{{ s.destino }}</p>
-                    <p class="text-sm text-gray-600">{{ s.fecha | date:'fullDate' }} · Prof. {{ s.profesor?.nombre }}</p>
+                    <p class="font-semibold text-ink">{{ s.destino }}</p>
+                    <p class="text-sm text-ink-muted">{{ s.fecha | date:'fullDate' }} · Prof. {{ s.profesor?.nombre }}</p>
                     <p class="text-xs text-amber-700 mt-1">{{ etiqueta(s) }}</p>
                   </div>
                   <div class="flex gap-2">
@@ -95,23 +96,23 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
       }
 
       @if (auth.isProfesor()) {
-        <section class="bg-white rounded-xl shadow-lg p-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Proponer partido / salida</h2>
+        <section class="bg-surface rounded-xl shadow-lg p-6">
+          <h2 class="text-xl font-semibold text-ink mb-4">Proponer partido / salida</h2>
           <form [formGroup]="proponerForm" (ngSubmit)="proponerPartido()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Destino / partido</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Destino / partido</label>
               <input formControlName="destino" type="text" class="w-full border rounded-lg px-3 py-2">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-              <input formControlName="fecha" type="date" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-ink-secondary mb-2">Fecha</label>
+              <app-fecha-picker formControlName="fecha" [anchoCompleto]="true" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-gray-400 font-normal">(opcional)</span></label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Hora <span class="text-ink-muted font-normal">(opcional)</span></label>
               <app-hora-picker formControlName="hora" />
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Descripción</label>
               <textarea formControlName="descripcion" rows="2" class="w-full border rounded-lg px-3 py-2"></textarea>
             </div>
             <div class="md:col-span-2">
@@ -128,10 +129,10 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
             <h2 class="text-xl font-semibold text-indigo-900 mb-4">Asignaciones de la directiva</h2>
             <ul class="space-y-3">
               @for (s of pendientesProfesor; track s.id) {
-                <li class="bg-white rounded-lg p-4 flex flex-wrap justify-between gap-3">
+                <li class="bg-surface rounded-lg p-4 flex flex-wrap justify-between gap-3">
                   <div>
                     <p class="font-semibold">{{ s.destino }}</p>
-                    <p class="text-sm text-gray-600">{{ s.fecha | date:'fullDate' }} · {{ s.taller?.tipo }}</p>
+                    <p class="text-sm text-ink-muted">{{ s.fecha | date:'fullDate' }} · {{ s.taller?.tipo }}</p>
                     <p class="text-xs text-indigo-700 mt-1">{{ etiqueta(s) }}</p>
                   </div>
                   <div class="flex gap-2">
@@ -145,16 +146,16 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
         }
       }
 
-      <section class="bg-white rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Todas las salidas</h2>
+      <section class="bg-surface rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold text-ink mb-4">Todas las salidas</h2>
         <div class="space-y-3">
           @for (s of salidas; track s.id) {
             <div class="border rounded-lg p-4">
               <div class="flex flex-wrap justify-between gap-2">
                 <div>
-                  <p class="font-semibold text-gray-800">{{ s.destino }}</p>
-                  <p class="text-sm text-gray-600">{{ s.fecha | date:'fullDate' }} @if (s.hora) { · {{ s.hora }} }</p>
-                  <p class="text-sm text-gray-600">Profesor: <strong>{{ s.profesor?.nombre || '—' }}</strong> · Taller: {{ s.taller?.tipo }}</p>
+                  <p class="font-semibold text-ink">{{ s.destino }}</p>
+                  <p class="text-sm text-ink-muted">{{ s.fecha | date:'fullDate' }} @if (s.hora) { · {{ s.hora }} }</p>
+                  <p class="text-sm text-ink-muted">Profesor: <strong>{{ s.profesor?.nombre || '—' }}</strong> · Taller: {{ s.taller?.tipo }}</p>
                   <p class="text-xs text-primary-700 mt-1">{{ etiqueta(s) }}</p>
                   <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full"
                         [class.bg-green-100]="s.estado === 'PUBLICADA' || s.estado === 'CERRADA' && s.resultado === 'EXITO'"
@@ -181,14 +182,14 @@ import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-pi
                 }
               </div>
               @if (s.estado === 'CERRADA' && s.comentarioCierre) {
-                <p class="mt-2 text-sm text-gray-700 bg-gray-50 p-2 rounded">
+                <p class="mt-2 text-sm text-ink-secondary bg-page p-2 rounded">
                   <strong>Comentario del profesor:</strong> {{ s.comentarioCierre }}
                 </p>
               }
             </div>
           }
           @if (salidas.length === 0) {
-            <p class="text-gray-500 text-center py-6">No hay salidas registradas</p>
+            <p class="text-ink-muted text-center py-6">No hay salidas registradas</p>
           }
         </div>
       </section>

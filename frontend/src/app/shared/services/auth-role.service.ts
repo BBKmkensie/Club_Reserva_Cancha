@@ -192,7 +192,12 @@ export class AuthRoleService {
   }
 
   canInscribirseTalleres(): boolean {
+    if (this.isApoderado()) return false;
     return this.roleSignal() === 'usuario';
+  }
+
+  canVerPortalApoderado(): boolean {
+    return this.isApoderado();
   }
 
   canGestionarInscripcionesTaller(): boolean {
@@ -229,6 +234,7 @@ export class AuthRoleService {
   }
 
   canInscribirseSalidas(): boolean {
+    if (this.isApoderado()) return false;
     return this.roleSignal() === 'usuario';
   }
 

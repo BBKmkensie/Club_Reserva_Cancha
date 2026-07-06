@@ -36,19 +36,19 @@ export interface NavLinkItem {
   `,
   styles: [`
     .nav-link {
-      @apply text-gray-700 hover:text-primary-600 px-2.5 py-2 rounded-md transition whitespace-nowrap text-sm;
+      @apply text-ink-secondary hover:text-primary-500 px-2.5 py-2 rounded-md transition whitespace-nowrap text-sm;
     }
     .nav-active {
-      @apply text-primary-600 font-semibold;
+      @apply text-primary-500 font-semibold;
     }
     .nav-scroll {
       scrollbar-width: thin;
     }
     .sidebar-link {
-      @apply block px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors;
+      @apply block px-4 py-2.5 rounded-lg text-sm font-medium text-ink-secondary hover:bg-muted transition-colors;
     }
     .sidebar-active {
-      @apply bg-primary-50 text-primary-700 font-semibold;
+      @apply bg-primary-500/15 text-primary-500 font-semibold;
     }
   `],
 })
@@ -95,13 +95,24 @@ export class NavLinksComponent implements OnInit {
   }
 
   private buildLinks(): void {
-    const items: NavLinkItem[] = [
+    const items: NavLinkItem[] = [];
+
+    if (this.auth.isApoderado()) {
+      items.push({ path: '/portal-apoderado', label: 'Mi hijo/a' });
+      this.links = items;
+      return;
+    }
+
+    items.push(
       { path: '/dashboard', label: 'Dashboard' },
       { path: '/talleres', label: 'Talleres' },
-    ];
+    );
 
     if (this.auth.canAccessTalleresCRUD()) {
       items.push({ path: '/gestion-actividades', label: 'Gestión actividades' });
+    }
+    if (this.auth.canGestionarPropuestas()) {
+      items.push({ path: '/propuestas-actividad', label: 'Propuestas' });
     }
     if (this.auth.canGestionarInscripcionesTaller()) {
       items.push({ path: '/gestion-inscripciones', label: 'Gestión inscripciones' });

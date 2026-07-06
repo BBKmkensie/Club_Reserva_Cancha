@@ -18,7 +18,7 @@ import { HORAS_SELECTOR } from '../../utils/cancha.constants';
     <div class="hora-picker w-full">
       <div class="flex items-center gap-2">
         <select
-          class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:text-gray-500"
+          class="flex-1 min-w-0 border border-line-strong rounded-lg px-3 py-2 bg-surface text-ink focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-muted disabled:text-ink-muted"
           [(ngModel)]="hora"
           (ngModelChange)="emitir()"
           [disabled]="disabled"
@@ -30,9 +30,9 @@ import { HORAS_SELECTOR } from '../../utils/cancha.constants';
             <option [value]="h">{{ h }}</option>
           }
         </select>
-        <span class="text-gray-400 font-semibold select-none">:</span>
+        <span class="text-ink-muted font-semibold select-none">:</span>
         <select
-          class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:text-gray-500"
+          class="flex-1 min-w-0 border border-line-strong rounded-lg px-3 py-2 bg-surface text-ink focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-muted disabled:text-ink-muted"
           [(ngModel)]="minuto"
           (ngModelChange)="emitir()"
           [disabled]="disabled || !hora"
@@ -43,7 +43,7 @@ import { HORAS_SELECTOR } from '../../utils/cancha.constants';
         </select>
       </div>
       @if (hora && minuto) {
-        <p class="mt-1.5 text-xs text-gray-500">
+        <p class="mt-1.5 text-xs text-ink-muted">
           {{ hora }}:{{ minuto }} hrs
         </p>
       }

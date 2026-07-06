@@ -4,13 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
+import { descargarTextoReporte, textoReporteActividad } from '../../shared/utils/reporte-actividad.util';
 
 interface RegistroUI {
   alumnoId: number;
   nombre: string;
   rut: string;
-  estado: 'PRESENTE' | 'AUSENTE';
+  estado: 'PRESENTE' | 'AUSENTE' | 'TARDE';
   observacion: string;
+  expandido: boolean;
 }
 
 @Component({
@@ -19,10 +21,10 @@ interface RegistroUI {
   imports: [CommonModule, FormsModule, DatePipe],
   template: `
     <div class="space-y-6">
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Asistencia</h1>
-        <p class="text-gray-600">
-          Abre una sesión de clase y marca solo los alumnos <strong>ausentes</strong>. El resto queda como presente por defecto.
+      <div class="bg-surface rounded-xl shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Control de Asistencia</h1>
+        <p class="text-ink-muted">
+          Abre una sesión, marca asistencia (presente, tarde o ausente) y registra observaciones por alumno.
         </p>
       </div>
 
@@ -31,11 +33,11 @@ interface RegistroUI {
           Entra como profesor para gestionar la asistencia de tu taller.
         </p>
       } @else {
-        <div class="bg-white rounded-xl shadow p-6">
+        <div class="bg-surface rounded-xl shadow p-6">
           <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
-              <h2 class="text-xl font-bold text-gray-800">{{ nombreTaller }}</h2>
-              <p class="text-sm text-gray-500">Fecha: {{ fechaHoy | date:'dd/MM/yyyy' }}</p>
+              <h2 class="text-xl font-bold text-ink">{{ nombreTaller }}</h2>
+              <p class="text-sm text-ink-muted">Fecha: {{ fechaHoy | date:'dd/MM/yyyy' }}</p>
             </div>
             @if (!sesion) {
               <button (click)="abrirSesion()" [disabled]="cargando"
@@ -45,7 +47,7 @@ interface RegistroUI {
             } @else if (sesion.estado === 'ABIERTA') {
               <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">Sesión abierta</span>
             } @else {
-              <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold">Sesión cerrada</span>
+              <span class="bg-gray-200 text-ink-secondary px-3 py-1 rounded-full text-sm font-bold">Sesión cerrada</span>
             }
           </div>
 
@@ -55,10 +57,12 @@ interface RegistroUI {
 
           @if (sesion && sesion.estado === 'ABIERTA') {
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h3 class="text-lg font-semibold text-gray-800">Pasar lista</h3>
+              <h3 class="text-lg font-semibold text-ink">Pasar lista</h3>
               <div class="flex flex-wrap items-center gap-3">
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-ink-muted">
                   <span class="text-green-700 font-semibold">{{ contarPresentes() }} presentes</span>
+                  ·
+                  <span class="text-amber-700 font-semibold">{{ contarTardes() }} tarde</span>
                   ·
                   <span class="text-red-700 font-semibold">{{ contarAusentes() }} ausentes</span>
                   · {{ registros.length }} alumnos
@@ -69,47 +73,65 @@ interface RegistroUI {
                 </button>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mb-3">
-              Toca el círculo para marcar ausente. Vuelve a tocar para dejarlo presente.
+            <p class="text-xs text-ink-muted mb-3">
+              Toca el círculo para cambiar estado: presente → tarde → ausente. Usa «Obs.» para notas por alumno.
             </p>
-            <div class="flex flex-wrap gap-4 text-xs text-gray-500 mb-4">
+            <div class="flex flex-wrap gap-4 text-xs text-ink-muted mb-4">
               <span class="inline-flex items-center gap-1.5">
                 <span class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[10px]">✓</span>
                 Presente
               </span>
               <span class="inline-flex items-center gap-1.5">
-                <span class="w-6 h-6 rounded-full border-2 border-red-400 bg-white"></span>
+                <span class="w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center text-white text-[10px] font-bold">T</span>
+                Tarde
+              </span>
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-6 h-6 rounded-full border-2 border-red-400 bg-surface"></span>
                 Ausente
               </span>
             </div>
-            <ul class="mb-4 max-h-[32rem] overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100 bg-white">
+            <ul class="mb-4 max-h-[32rem] overflow-y-auto rounded-xl border border-line divide-y divide-gray-100 bg-surface">
               @for (r of registros; track r.alumnoId) {
-                <li class="flex items-center gap-3 px-3 sm:px-4 py-3 transition-colors"
-                    [ngClass]="r.estado === 'PRESENTE' ? 'fila-presente' : 'fila-ausente'">
-                  <div class="min-w-0 flex-1">
-                    <p class="font-medium text-gray-800 truncate">{{ priv.nombre(r.nombre) }}</p>
-                    <p class="text-xs text-gray-500">{{ priv.rut(r.rut) }}</p>
+                <li class="px-3 sm:px-4 py-3 transition-colors"
+                    [ngClass]="claseFila(r.estado)">
+                  <div class="flex items-center gap-3">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-ink truncate">{{ priv.nombre(r.nombre) }}</p>
+                      <p class="text-xs text-ink-muted">{{ priv.rut(r.rut) }}</p>
+                    </div>
+                    <button type="button" (click)="r.expandido = !r.expandido"
+                            class="text-xs text-primary-600 hover:underline shrink-0">
+                      Obs.
+                    </button>
+                    <button type="button"
+                            (click)="ciclarEstado(r)"
+                            [attr.aria-label]="etiquetaEstado(r.estado)"
+                            class="asistencia-circulo shrink-0"
+                            [class.asistencia-circulo--presente]="r.estado === 'PRESENTE'"
+                            [class.asistencia-circulo--tarde]="r.estado === 'TARDE'"
+                            [class.asistencia-circulo--ausente]="r.estado === 'AUSENTE'">
+                      @if (r.estado === 'PRESENTE') {
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                      } @else if (r.estado === 'TARDE') {
+                        <span class="text-sm font-bold">T</span>
+                      }
+                    </button>
                   </div>
-                  <button type="button"
-                          (click)="toggleAsistencia(r)"
-                          [attr.aria-label]="etiquetaEstado(r.estado)"
-                          class="asistencia-circulo shrink-0"
-                          [class.asistencia-circulo--presente]="r.estado === 'PRESENTE'"
-                          [class.asistencia-circulo--ausente]="r.estado === 'AUSENTE'">
-                    @if (r.estado === 'PRESENTE') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                      </svg>
-                    }
-                  </button>
+                  @if (r.expandido || r.observacion) {
+                    <input type="text" [(ngModel)]="r.observacion"
+                           class="mt-2 w-full border border-line-strong rounded-lg px-3 py-1.5 text-sm"
+                           placeholder="Observación del alumno (opcional)">
+                  }
                 </li>
               }
             </ul>
 
             <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones de la sesión</label>
+              <label class="block text-sm font-medium text-ink-secondary mb-1">Observaciones de la sesión</label>
               <textarea [(ngModel)]="observacionesSesion" rows="2"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        class="w-full border border-line-strong rounded-lg px-3 py-2"
                         placeholder="Notas generales de la clase..."></textarea>
             </div>
 
@@ -132,9 +154,9 @@ interface RegistroUI {
           }
         </div>
 
-        <div class="bg-white rounded-xl shadow p-6 border-2 border-indigo-100">
-          <h3 class="text-lg font-semibold text-gray-800 mb-2">Reporte final (docente)</h3>
-          <p class="text-sm text-gray-600 mb-3">
+        <div class="bg-surface rounded-xl shadow p-6 border-2 border-indigo-100">
+          <h3 class="text-lg font-semibold text-ink mb-2">Reporte final (docente)</h3>
+          <p class="text-sm text-ink-muted mb-3">
             Genera el reporte de participación, inscripciones y asistencia de tu actividad.
           </p>
           <button (click)="generarReporteFinal()"
@@ -144,14 +166,15 @@ interface RegistroUI {
         </div>
 
         @if (historial.length > 0) {
-          <div class="bg-white rounded-xl shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3">Historial de sesiones</h3>
+          <div class="bg-surface rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-ink mb-3">Historial de sesiones</h3>
             <ul class="space-y-2 text-sm">
               @for (h of historial; track h.id) {
-                <li class="flex justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                <li class="flex justify-between py-2 px-3 bg-page rounded-lg">
                   <span>{{ h.fecha | date:'dd/MM/yyyy' }} — {{ h.estado }}</span>
-                  <span class="text-gray-500">
+                  <span class="text-ink-muted">
                     {{ contarEstado(h, 'PRESENTE') }} presentes,
+                    {{ contarEstado(h, 'TARDE') }} tarde,
                     {{ contarEstado(h, 'AUSENTE') }} ausentes
                   </span>
                 </li>
@@ -191,8 +214,17 @@ interface RegistroUI {
       border-color: #f87171;
       box-shadow: 0 1px 4px rgba(239, 68, 68, 0.12);
     }
+    .asistencia-circulo--tarde {
+      background-color: #fbbf24;
+      border-color: #d97706;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.35);
+    }
     .fila-presente {
       background-color: rgba(16, 185, 129, 0.08);
+    }
+    .fila-tarde {
+      background-color: rgba(251, 191, 36, 0.1);
     }
     .fila-ausente {
       background-color: rgba(239, 68, 68, 0.06);
@@ -252,8 +284,9 @@ export class ControlAsistenciaComponent implements OnInit {
       alumnoId: r.alumnoId,
       nombre: r.alumno?.nombre ?? 'Alumno',
       rut: r.alumno?.rut ?? '',
-      estado: r.estado === 'AUSENTE' ? 'AUSENTE' : 'PRESENTE',
+      estado: (['PRESENTE', 'AUSENTE', 'TARDE'].includes(r.estado) ? r.estado : 'PRESENTE') as RegistroUI['estado'],
       observacion: r.observacion ?? '',
+      expandido: !!r.observacion,
     }));
     this.observacionesSesion = sesion.observaciones ?? '';
   }
@@ -331,12 +364,29 @@ export class ControlAsistenciaComponent implements OnInit {
     return this.registros.filter((r) => r.estado === 'AUSENTE').length;
   }
 
-  toggleAsistencia(r: RegistroUI) {
-    r.estado = r.estado === 'PRESENTE' ? 'AUSENTE' : 'PRESENTE';
+  contarTardes(): number {
+    return this.registros.filter((r) => r.estado === 'TARDE').length;
+  }
+
+  ciclarEstado(r: RegistroUI) {
+    const orden: RegistroUI['estado'][] = ['PRESENTE', 'TARDE', 'AUSENTE'];
+    const idx = orden.indexOf(r.estado);
+    r.estado = orden[(idx + 1) % orden.length];
+  }
+
+  claseFila(estado: RegistroUI['estado']): string {
+    if (estado === 'TARDE') return 'fila-tarde';
+    if (estado === 'AUSENTE') return 'fila-ausente';
+    return 'fila-presente';
   }
 
   etiquetaEstado(estado: RegistroUI['estado']): string {
-    return estado === 'PRESENTE' ? 'Presente, tocar para marcar ausente' : 'Ausente, tocar para marcar presente';
+    const map: Record<RegistroUI['estado'], string> = {
+      PRESENTE: 'Presente, tocar para marcar tarde',
+      TARDE: 'Tarde, tocar para marcar ausente',
+      AUSENTE: 'Ausente, tocar para marcar presente',
+    };
+    return map[estado];
   }
 
   marcarTodosPresentes() {
@@ -347,31 +397,8 @@ export class ControlAsistenciaComponent implements OnInit {
     if (!this.tallerId) return;
     this.api.getReporteActividad(this.tallerId).subscribe({
       next: (r) => {
-        const txt =
-          `REPORTE FINAL DEL DOCENTE — ${r.actividad.tipo}\n` +
-          `Generado por: ${r.docente?.nombre ?? 'Docente'}\n` +
-          `Estado actividad: ${r.actividad.estado}\n` +
-          (r.periodoAcademico
-            ? `Período académico: ${r.periodoAcademico.nombre}\n`
-            : '') +
-          `\nINSCRIPCIONES\n` +
-          `Total: ${r.inscripciones.total} | Aceptados: ${r.inscripciones.aceptados} | Pendientes: ${r.inscripciones.pendientes}\n` +
-          `\nASISTENCIA\n` +
-          `Sesiones: ${r.asistencia?.sesionesRealizadas ?? 0} | Presentes: ${r.asistencia?.registrosPresentes ?? 0} | Ausentes: ${r.asistencia?.registrosAusentes ?? 0}\n` +
-          `\nALUMNOS:\n` +
-          (r.alumnos ?? []).map((al: any) => {
-            const d = this.priv.alumno(al);
-            const f = al.ficha;
-            const fichaTxt = f
-              ? ` | ${f.altura ?? '—'}cm ${f.peso ?? '—'}kg ${f.porcentajeGrasa ?? '—'}% grasa ${f.sedentario ? 'sedentario' : 'activo'}`
-              : '';
-            return `- ${d.nombre} (${d.rut}): ${al.estado}${fichaTxt}`;
-          }).join('\n');
-        const blob = new Blob([txt], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `reporte-docente-${r.actividad.tipo}.txt`;
-        a.click();
+        const txt = textoReporteActividad(r, 'REPORTE FINAL DEL DOCENTE', (al) => this.priv.alumno(al));
+        descargarTextoReporte(txt, `reporte-docente-${r.actividad.tipo}.txt`);
       },
       error: (e) => alert(e?.error?.message || 'No se pudo generar el reporte'),
     });

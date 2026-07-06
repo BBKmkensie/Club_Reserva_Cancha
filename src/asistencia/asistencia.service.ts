@@ -18,6 +18,7 @@ import { ActualizarAsistenciaDto } from '../dto/actualizar-asistencia.dto';
 import { CerrarSesionDto } from '../dto/cerrar-sesion.dto';
 import { GestionarAlertaDto } from '../dto/gestionar-alerta.dto';
 import { NotificacionService } from '../notificacion/notificacion.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AsistenciaService {
@@ -37,6 +38,7 @@ export class AsistenciaService {
     @InjectRepository(AlertaAusencia)
     private alertaRepo: Repository<AlertaAusencia>,
     private notificacionService: NotificacionService,
+    private mailService: MailService,
   ) {}
 
   async abrirSesion(dto: AbrirSesionDto): Promise<SesionAsistencia> {
@@ -165,7 +167,26 @@ export class AsistenciaService {
 
     await this.evaluarAusenciasRecurrentes(sesion.tallerId);
 
+    await this.notificarApoderadosSesionCerrada(sesion);
+
     return await this.obtenerSesion(sesionId);
+  }
+
+  private async notificarApoderadosSesionCerrada(sesion: SesionAsistencia) {
+    const tallerNombre = sesion.taller?.tipo ?? 'Taller';
+    for (const reg of sesion.registros ?? []) {
+      const alumno = reg.alumno;
+      if (!alumno?.apoderadoEmail) continue;
+      await this.mailService.asistenciaSesionApoderado(
+        alumno.apoderadoEmail,
+        alumno.nombre,
+        tallerNombre,
+        sesion.fecha,
+        reg.estado,
+        alumno.apoderadoNombre,
+        reg.observacion,
+      );
+    }
   }
 
   private async evaluarAusenciasRecurrentes(tallerId: number) {
@@ -225,6 +246,22 @@ export class AsistenciaService {
             'ausencia_recurrente',
           );
         }
+
+        await this.mailService.alertaApoderado(
+          alumno?.apoderadoEmail,
+          alumno?.nombre ?? `Alumno ${alumnoId}`,
+          taller.tipo,
+          total,
+          umbral,
+          alumno?.apoderadoNombre,
+        );
+
+        const msgCoordinacion = `Alerta de ausencias: ${alumno?.nombre ?? alumnoId} acumuló ${total} ausencias en "${taller.tipo}" (umbral: ${umbral}).`;
+        await this.notificacionService.notificarCoordinadoresAusencia(
+          'Alerta de ausencias recurrentes',
+          msgCoordinacion,
+          'ausencia_recurrente',
+        );
       } else if (alertaExistente.cantidadAusencias < total) {
         alertaExistente.cantidadAusencias = total;
         await this.alertaRepo.save(alertaExistente);
@@ -275,7 +312,18 @@ export class AsistenciaService {
     alerta.estado = 'APODERADO_CONTACTADO';
     alerta.contactadoAt = new Date();
     alerta.notas = dto.notas ?? alerta.notas;
-    return await this.alertaRepo.save(alerta);
+    const guardada = await this.alertaRepo.save(alerta);
+
+    await this.mailService.contactoApoderado(
+      alerta.alumno?.apoderadoEmail,
+      alerta.alumno?.nombre ?? 'Alumno',
+      alerta.taller?.tipo ?? 'Taller',
+      alerta.cantidadAusencias,
+      dto.notas,
+      alerta.alumno?.apoderadoNombre,
+    );
+
+    return guardada;
   }
 
   async resolverAlerta(id: number, dto: GestionarAlertaDto) {
@@ -289,6 +337,9 @@ export class AsistenciaService {
   }
 
   async actualizarUmbral(tallerId: number, umbralAusencias: number) {
+    if (umbralAusencias == null || umbralAusencias < 1) {
+      throw new BadRequestException('Debe indicar un umbral de ausencias válido');
+    }
     const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
     if (!taller) throw new NotFoundException('Taller no encontrado');
     taller.umbralAusencias = umbralAusencias;

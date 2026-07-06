@@ -7,6 +7,7 @@ import { Reserva } from '../../models/reserva.model';
 import { Taller } from '../../models/taller.model';
 import { HORAS_FRANJA_CANCHA, CANCHA_HORA_INICIO, CANCHA_HORA_FIN } from '../../shared/utils/cancha.constants';
 import { CanchaSemanaVistaComponent } from '../../shared/components/cancha-semana-vista/cancha-semana-vista.component';
+import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
 const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const ESPACIO = 'Cancha Principal';
@@ -39,12 +40,12 @@ interface FranjaConfig {
 @Component({
   selector: 'app-reservas',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, CanchaSemanaVistaComponent],
+  imports: [CommonModule, FormsModule, DatePipe, CanchaSemanaVistaComponent, FechaPickerComponent],
   template: `
     <div class="space-y-8">
       <div>
-        <h1 class="text-3xl font-bold text-gray-800">Reserva de cancha</h1>
-        <p class="text-gray-600 mt-1">
+        <h1 class="text-3xl font-bold text-ink">Reserva de cancha</h1>
+        <p class="text-ink-muted mt-1">
           Horarios de <strong>{{ fmtHora(CANCHA_HORA_INICIO) }} a {{ fmtHora(CANCHA_HORA_FIN) }}</strong> (1 hora por reserva). El bloque <strong>13:00–14:00</strong> está habilitado para todos los talleres.
           La directiva puede ampliar franjas a más de 1 hora.
         </p>
@@ -52,20 +53,89 @@ interface FranjaConfig {
 
       @if (auth.isCoordinacion()) {
         <div>
-          <h2 class="text-xl font-semibold text-gray-800 mb-1">Ocupación semanal de la cancha</h2>
-          <p class="text-sm text-gray-600 mb-4">
+          <h2 class="text-xl font-semibold text-ink mb-1">Ocupación semanal de la cancha</h2>
+          <p class="text-sm text-ink-muted mb-4">
             Revisa la semana completa: días, horarios ocupados y franjas disponibles (09:00–20:00).
           </p>
           <app-cancha-semana-vista [version]="versionSemana" [espacio]="ESPACIO" />
         </div>
       }
 
+      <section class="bg-surface rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold text-ink mb-4">Reservar horario</h2>
+        <div class="flex flex-col lg:flex-row gap-6 mb-6">
+          <div class="w-full lg:w-auto shrink-0">
+            <span class="block text-sm text-ink-secondary font-medium mb-2">Fecha</span>
+            <app-fecha-picker [(ngModel)]="fechaSeleccionada" (ngModelChange)="cargarDisponibilidad()" />
+          </div>
+          <div class="flex flex-wrap gap-4 items-end flex-1">
+          @if (auth.isSuperAdmin() || auth.isDirectiva()) {
+            <label class="block min-w-[200px] flex-1">
+              <span class="text-sm text-ink-secondary font-medium">Taller</span>
+              <select [(ngModel)]="tallerReservaId" class="mt-1 w-full border border-line-strong rounded-lg px-3 py-2">
+                <option [ngValue]="null">Seleccione taller</option>
+                @for (t of talleres; track t.id) {
+                  <option [ngValue]="t.id">{{ t.tipo }}</option>
+                }
+              </select>
+            </label>
+          } @else if (auth.isProfesor()) {
+            <p class="text-sm text-ink-muted pb-2">
+              Taller: <strong>{{ nombreTallerProfesor }}</strong>
+            </p>
+          }
+          </div>
+        </div>
+
+        @if (cargandoSlots) {
+          <p class="text-ink-muted">Cargando horarios...</p>
+        } @else {
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            @for (slot of slots; track slot.horaInicio) {
+              <button type="button"
+                      [disabled]="slot.estado !== 'disponible' || reservando"
+                      (click)="reservarSlot(slot)"
+                      class="p-3 rounded-lg border text-left transition"
+                      [class.bg-green-50]="slot.estado === 'disponible'"
+                      [class.border-green-300]="slot.estado === 'disponible'"
+                      [class.hover:bg-green-100]="slot.estado === 'disponible'"
+                      [class.cursor-pointer]="slot.estado === 'disponible'"
+                      [class.bg-red-50]="slot.estado === 'ocupada'"
+                      [class.border-red-300]="slot.estado === 'ocupada'"
+                      [class.bg-page]="slot.estado === 'no_habilitada'"
+                      [class.border-line]="slot.estado === 'no_habilitada'"
+                      [class.opacity-60]="slot.estado !== 'disponible'">
+                <p class="font-semibold text-ink">{{ slot.horaInicio }}–{{ slot.horaFin }}</p>
+                @if (slot.paraTodos) {
+                  <p class="text-xs text-amber-700 mt-0.5">Para todos</p>
+                }
+                @if (slot.duracionHoras && slot.duracionHoras > 1) {
+                  <p class="text-xs text-blue-700">{{ slot.duracionHoras }} horas</p>
+                }
+                @if (slot.estado === 'disponible') {
+                  <p class="text-xs text-green-700 mt-1">Disponible</p>
+                } @else if (slot.estado === 'ocupada') {
+                  <p class="text-xs text-red-700 mt-1">Ocupada</p>
+                  <p class="text-xs text-ink-muted truncate">{{ slot.tallerNombre }}</p>
+                } @else {
+                  <p class="text-xs text-ink-muted mt-1">No habilitada</p>
+                }
+              </button>
+            }
+          </div>
+        }
+
+        @if (errorReserva) {
+          <p class="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{{ errorReserva }}</p>
+        }
+      </section>
+
       @if (auth.canGestionarFranjasCancha()) {
-        <section class="bg-white rounded-xl shadow-lg p-6">
+        <section class="bg-surface rounded-xl shadow-lg p-6">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 class="text-xl font-semibold text-gray-800">Franjas habilitadas (semanal)</h2>
-              <p class="text-sm text-gray-500">Clic para habilitar/deshabilitar. En celdas activas, elige duración (1–3 h). 13:00–14:00 es fijo para todos.</p>
+              <h2 class="text-xl font-semibold text-ink">Franjas habilitadas (semanal)</h2>
+              <p class="text-sm text-ink-muted">Clic para habilitar/deshabilitar. En celdas activas, elige duración (1–3 h). 13:00–14:00 es fijo para todos.</p>
             </div>
             <button (click)="guardarFranjas()" [disabled]="guardandoFranjas || !franjasModificadas"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
@@ -76,16 +146,16 @@ interface FranjaConfig {
             <table class="min-w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th class="p-2 text-left text-gray-500 font-medium">Hora</th>
+                  <th class="p-2 text-left text-ink-muted font-medium">Hora</th>
                   @for (d of [1,2,3,4,5,6,7]; track d) {
-                    <th class="p-2 text-center text-gray-600 font-medium">{{ DIAS_SEMANA[d] }}</th>
+                    <th class="p-2 text-center text-ink-muted font-medium">{{ DIAS_SEMANA[d] }}</th>
                   }
                 </tr>
               </thead>
               <tbody>
                 @for (h of HORAS; track h) {
                   <tr [class.bg-amber-50]="h === HORA_PARA_TODOS">
-                    <td class="p-2 text-gray-700 whitespace-nowrap font-medium">
+                    <td class="p-2 text-ink-secondary whitespace-nowrap font-medium">
                       {{ fmtHora(h) }}–{{ fmtHora(h + 1) }}
                       @if (h === HORA_PARA_TODOS) {
                         <span class="block text-xs text-amber-700 font-normal">Para todos</span>
@@ -104,9 +174,9 @@ interface FranjaConfig {
                                   [class.bg-green-100]="franjaActiva(d, h)"
                                   [class.border-green-400]="franjaActiva(d, h)"
                                   [class.text-green-800]="franjaActiva(d, h)"
-                                  [class.bg-gray-100]="!franjaActiva(d, h)"
-                                  [class.border-gray-300]="!franjaActiva(d, h)"
-                                  [class.text-gray-500]="!franjaActiva(d, h)">
+                                  [class.bg-muted]="!franjaActiva(d, h)"
+                                  [class.border-line-strong]="!franjaActiva(d, h)"
+                                  [class.text-ink-muted]="!franjaActiva(d, h)">
                             {{ franjaActiva(d, h) ? 'Sí' : 'No' }}
                           </button>
                           @if (franjaActiva(d, h)) {
@@ -128,91 +198,23 @@ interface FranjaConfig {
         </section>
       }
 
-      <section class="bg-white rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Reservar horario</h2>
-        <div class="flex flex-wrap gap-4 items-end mb-6">
-          <label class="block">
-            <span class="text-sm text-gray-700 font-medium">Fecha</span>
-            <input type="date" [(ngModel)]="fechaSeleccionada" (ngModelChange)="cargarDisponibilidad()"
-                   class="mt-1 block border border-gray-300 rounded-lg px-3 py-2">
-          </label>
-          @if (auth.isSuperAdmin() || auth.isDirectiva()) {
-            <label class="block min-w-[200px]">
-              <span class="text-sm text-gray-700 font-medium">Taller</span>
-              <select [(ngModel)]="tallerReservaId" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
-                <option [ngValue]="null">Seleccione taller</option>
-                @for (t of talleres; track t.id) {
-                  <option [ngValue]="t.id">{{ t.tipo }}</option>
-                }
-              </select>
-            </label>
-          } @else if (auth.isProfesor()) {
-            <p class="text-sm text-gray-600 pb-2">
-              Taller: <strong>{{ nombreTallerProfesor }}</strong>
-            </p>
-          }
+      <section class="bg-surface rounded-xl shadow-lg overflow-hidden">
+        <div class="p-6 border-b border-line">
+          <h2 class="text-xl font-semibold text-ink">Reservas registradas</h2>
         </div>
-
-        @if (cargandoSlots) {
-          <p class="text-gray-500">Cargando horarios...</p>
-        } @else {
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            @for (slot of slots; track slot.horaInicio) {
-              <button type="button"
-                      [disabled]="slot.estado !== 'disponible' || reservando"
-                      (click)="reservarSlot(slot)"
-                      class="p-3 rounded-lg border text-left transition"
-                      [class.bg-green-50]="slot.estado === 'disponible'"
-                      [class.border-green-300]="slot.estado === 'disponible'"
-                      [class.hover:bg-green-100]="slot.estado === 'disponible'"
-                      [class.cursor-pointer]="slot.estado === 'disponible'"
-                      [class.bg-red-50]="slot.estado === 'ocupada'"
-                      [class.border-red-300]="slot.estado === 'ocupada'"
-                      [class.bg-gray-50]="slot.estado === 'no_habilitada'"
-                      [class.border-gray-200]="slot.estado === 'no_habilitada'"
-                      [class.opacity-60]="slot.estado !== 'disponible'">
-                <p class="font-semibold text-gray-800">{{ slot.horaInicio }}–{{ slot.horaFin }}</p>
-                @if (slot.paraTodos) {
-                  <p class="text-xs text-amber-700 mt-0.5">Para todos</p>
-                }
-                @if (slot.duracionHoras && slot.duracionHoras > 1) {
-                  <p class="text-xs text-blue-700">{{ slot.duracionHoras }} horas</p>
-                }
-                @if (slot.estado === 'disponible') {
-                  <p class="text-xs text-green-700 mt-1">Disponible</p>
-                } @else if (slot.estado === 'ocupada') {
-                  <p class="text-xs text-red-700 mt-1">Ocupada</p>
-                  <p class="text-xs text-gray-600 truncate">{{ slot.tallerNombre }}</p>
-                } @else {
-                  <p class="text-xs text-gray-500 mt-1">No habilitada</p>
-                }
-              </button>
-            }
-          </div>
-        }
-
-        @if (errorReserva) {
-          <p class="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{{ errorReserva }}</p>
-        }
-      </section>
-
-      <section class="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-xl font-semibold text-gray-800">Reservas registradas</h2>
-        </div>
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full divide-y divide-line">
+          <thead class="bg-page">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Horario</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Taller</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profesor</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Fecha</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Horario</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Taller</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Profesor</th>
               @if (auth.canGestionarFranjasCancha() || auth.isProfesor()) {
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Acciones</th>
               }
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
+          <tbody class="divide-y divide-line">
             @for (r of reservas; track r.id) {
               <tr>
                 <td class="px-6 py-4 whitespace-nowrap">{{ r.fecha | date:'dd/MM/yyyy' }}</td>
@@ -230,7 +232,7 @@ interface FranjaConfig {
             }
             @if (reservas.length === 0) {
               <tr>
-                <td colspan="5" class="px-6 py-8 text-center text-gray-500">No hay reservas registradas</td>
+                <td colspan="5" class="px-6 py-8 text-center text-ink-muted">No hay reservas registradas</td>
               </tr>
             }
           </tbody>

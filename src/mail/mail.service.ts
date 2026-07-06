@@ -73,15 +73,22 @@ export class MailService {
     tallerNombre: string,
     cantidadAusencias: number,
     umbral: number,
+    apoderadoNombre?: string | null,
   ) {
     if (!email) return;
+    const saludo = apoderadoNombre?.trim()
+      ? `Estimado/a ${apoderadoNombre.trim()}`
+      : `Estimado/a apoderado/a de ${alumnoNombre}`;
     const texto =
-      `Estimado/a apoderado/a de ${alumnoNombre},\n\n` +
-      `Le informamos que su pupilo/a ha acumulado ${cantidadAusencias} ausencia(s) ` +
-      `en el taller "${tallerNombre}" (umbral de alerta: ${umbral}).\n\n` +
+      `${saludo},\n\n` +
+      `Le informamos sobre la asistencia de su hijo/a **${alumnoNombre}** ` +
+      `en el taller **"${tallerNombre}"**.\n\n` +
+      `Taller inscrito: ${tallerNombre}\n` +
+      `Ausencias acumuladas: ${cantidadAusencias}\n` +
+      `Umbral de alerta: ${umbral}\n\n` +
       `Por favor, contacte al coordinador del taller para regularizar la situación.\n\n` +
       `— Sistema Reservas de Cancha`;
-    await this.enviar(email, `[Alerta] Ausencias en taller ${tallerNombre}`, texto);
+    await this.enviar(email, `[Alerta] Asistencia — ${tallerNombre}`, texto);
   }
 
   async contactoApoderado(
@@ -90,14 +97,67 @@ export class MailService {
     tallerNombre: string,
     cantidadAusencias: number,
     notas?: string,
+    apoderadoNombre?: string | null,
   ) {
     if (!email) return;
+    const saludo = apoderadoNombre?.trim()
+      ? `Estimado/a ${apoderadoNombre.trim()}`
+      : `Estimado/a apoderado/a de ${alumnoNombre}`;
     const texto =
-      `Estimado/a apoderado/a de ${alumnoNombre},\n\n` +
-      `El coordinador del taller "${tallerNombre}" se ha puesto en contacto ` +
-      `respecto a las ${cantidadAusencias} ausencia(s) registradas.\n\n` +
+      `${saludo},\n\n` +
+      `El coordinador del taller **"${tallerNombre}"** se ha puesto en contacto ` +
+      `respecto a la asistencia de su hijo/a **${alumnoNombre}**.\n\n` +
+      `Taller inscrito: ${tallerNombre}\n` +
+      `Ausencias registradas: ${cantidadAusencias}\n\n` +
       (notas ? `Notas del coordinador:\n${notas}\n\n` : '') +
       `— Sistema Reservas de Cancha`;
-    await this.enviar(email, `[Contacto] Seguimiento de asistencia — ${tallerNombre}`, texto);
+    await this.enviar(email, `[Contacto] Asistencia — ${tallerNombre}`, texto);
+  }
+
+  async inscripcionTallerApoderado(
+    email: string | null | undefined,
+    alumnoNombre: string,
+    tallerNombre: string,
+    apoderadoNombre?: string | null,
+    horario?: string | null,
+  ): Promise<boolean> {
+    if (!email) return false;
+    const saludo = apoderadoNombre?.trim()
+      ? `Estimado/a ${apoderadoNombre.trim()}`
+      : `Estimado/a apoderado/a de ${alumnoNombre}`;
+    const texto =
+      `${saludo},\n\n` +
+      `Le informamos que su hijo/a **${alumnoNombre}** fue **aceptado/a** en el taller:\n\n` +
+      `Taller: ${tallerNombre}\n` +
+      (horario ? `Horario: ${horario}\n` : '') +
+      `\nRecibirá correos sobre la asistencia de su hijo/a en este taller.\n\n` +
+      `— Sistema Reservas de Cancha`;
+    return await this.enviar(email, `[Inscripción] Taller ${tallerNombre}`, texto);
+  }
+
+  async asistenciaSesionApoderado(
+    email: string | null | undefined,
+    alumnoNombre: string,
+    tallerNombre: string,
+    fecha: string,
+    estado: string,
+    apoderadoNombre?: string | null,
+    observacion?: string | null,
+  ): Promise<boolean> {
+    if (!email) return false;
+    const estadoLabel =
+      estado === 'PRESENTE' ? 'Presente' : estado === 'AUSENTE' ? 'Ausente' : 'Tarde';
+    const saludo = apoderadoNombre?.trim()
+      ? `Estimado/a ${apoderadoNombre.trim()}`
+      : `Estimado/a apoderado/a de ${alumnoNombre}`;
+    const texto =
+      `${saludo},\n\n` +
+      `Registro de asistencia del ${fecha}:\n\n` +
+      `Alumno/a: ${alumnoNombre}\n` +
+      `Taller inscrito: ${tallerNombre}\n` +
+      `Estado: ${estadoLabel}\n` +
+      (observacion?.trim() ? `Observación: ${observacion.trim()}\n` : '') +
+      `\n— Sistema Reservas de Cancha`;
+    return await this.enviar(email, `[Asistencia] ${tallerNombre} — ${fecha}`, texto);
   }
 }

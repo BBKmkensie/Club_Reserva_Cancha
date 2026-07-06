@@ -45,6 +45,9 @@ export class Notificacion {
   @Column({ type: 'varchar', length: 30, default: 'inscripcion_taller' })
   tipo: string;
 
+  @Column({ name: 'ref_id', type: 'int', nullable: true })
+  refId: number | null;
+
   @Column({ type: 'boolean', default: false })
   leida: boolean;
 

@@ -52,6 +52,15 @@ export class Alumno {
   @Column({ type: 'varchar', length: 100, nullable: true, name: 'apoderado_email' })
   apoderadoEmail: string | null;
 
+  @Column({ type: 'varchar', length: 12, nullable: true, unique: true, name: 'apoderado_rut' })
+  apoderadoRut: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'apoderado_password_hash' })
+  apoderadoPasswordHash: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'apoderado_password_salt' })
+  apoderadoPasswordSalt: string | null;
+
   @OneToMany(() => InscripcionSalida, (insc) => insc.alumno)
   inscripcionesSalida: InscripcionSalida[];
 

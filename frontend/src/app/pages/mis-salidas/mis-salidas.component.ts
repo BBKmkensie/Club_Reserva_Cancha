@@ -11,9 +11,9 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
   imports: [CommonModule, DatePipe, RouterLink],
   template: `
     <div class="space-y-6">
-      <div class="bg-white rounded-lg shadow p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Mis salidas</h1>
-        <p class="text-gray-600">Salidas de los talleres en los que estás inscrito.</p>
+      <div class="bg-surface rounded-lg shadow p-6">
+        <h1 class="text-3xl font-bold text-ink mb-2">Mis salidas</h1>
+        <p class="text-ink-muted">Salidas de los talleres en los que estás inscrito.</p>
       </div>
 
       @if (!alumnoId) {
@@ -28,13 +28,13 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
         </div>
       } @else {
         @if (misInscripciones.length) {
-          <div class="bg-white rounded-lg shadow p-6">
+          <div class="bg-surface rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">Mis inscripciones</h2>
             <ul class="space-y-3">
               @for (insc of misInscripciones; track insc.id) {
-                <li class="border rounded-lg p-4 bg-gray-50">
+                <li class="border rounded-lg p-4 bg-page">
                   <p class="font-semibold">{{ insc.salida?.destino }}</p>
-                  <p class="text-sm text-gray-600">{{ insc.salida?.fecha | date:'fullDate' }}</p>
+                  <p class="text-sm text-ink-muted">{{ insc.salida?.fecha | date:'fullDate' }}</p>
                   @if (insc.salida) {
                     <p class="text-xs text-primary-700 mt-1">{{ etiqueta(insc.salida) }}</p>
                     @if (insc.salida.estado === 'CERRADA') {
@@ -42,7 +42,7 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
                         Resultado: {{ insc.salida.resultado === 'EXITO' ? 'Éxito ✓' : 'Fracaso ✗' }}
                       </p>
                       @if (insc.salida.comentarioCierre) {
-                        <p class="text-sm text-gray-600 mt-1 italic">"{{ insc.salida.comentarioCierre }}"</p>
+                        <p class="text-sm text-ink-muted mt-1 italic">"{{ insc.salida.comentarioCierre }}"</p>
                       }
                     }
                   }
@@ -53,25 +53,25 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
           </div>
         }
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-surface rounded-lg shadow p-6">
           <h2 class="text-xl font-semibold mb-4">Salidas disponibles</h2>
           <div class="space-y-4">
             @for (salida of salidas; track salida.id) {
               <div class="border rounded-lg p-4 flex justify-between gap-4">
                 <div>
-                  <h3 class="font-semibold text-gray-800">{{ salida.destino }}</h3>
-                  <p class="text-sm text-gray-600">{{ salida.descripcion || 'Sin descripción' }}</p>
-                  <p class="text-sm text-gray-500 mt-1">{{ salida.fecha | date:'fullDate' }} @if (salida.hora) { · {{ salida.hora }} }</p>
-                  <p class="text-sm text-gray-600">Profesor: <strong>{{ salida.profesor?.nombre || '—' }}</strong></p>
+                  <h3 class="font-semibold text-ink">{{ salida.destino }}</h3>
+                  <p class="text-sm text-ink-muted">{{ salida.descripcion || 'Sin descripción' }}</p>
+                  <p class="text-sm text-ink-muted mt-1">{{ salida.fecha | date:'fullDate' }} @if (salida.hora) { · {{ salida.hora }} }</p>
+                  <p class="text-sm text-ink-muted">Profesor: <strong>{{ salida.profesor?.nombre || '—' }}</strong></p>
                   @if (salida.taller) {
-                    <p class="text-sm text-gray-600">Taller: {{ salida.taller.tipo }}</p>
+                    <p class="text-sm text-ink-muted">Taller: {{ salida.taller.tipo }}</p>
                   }
                   <p class="text-xs text-primary-700 mt-1">{{ etiqueta(salida) }}</p>
                   <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
                     {{ estadoLabel(salida) }}
                   </span>
                   @if (salida.estado === 'CERRADA' && salida.comentarioCierre) {
-                    <p class="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                    <p class="text-sm text-ink-muted mt-2 bg-page p-2 rounded">
                       Comentario: {{ salida.comentarioCierre }}
                       · {{ salida.resultado === 'EXITO' ? 'Éxito' : 'Fracaso' }}
                     </p>
@@ -90,7 +90,7 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
               </div>
             }
             @if (salidas.length === 0) {
-              <p class="text-gray-500">No hay salidas publicadas disponibles.</p>
+              <p class="text-ink-muted">No hay salidas publicadas disponibles.</p>
             }
           </div>
         </div>

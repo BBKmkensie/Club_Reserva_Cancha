@@ -11,7 +11,7 @@ import { Admin, CreateAdminDto } from '../../models/admin.model';
   template: `
     <div class="space-y-6">
       <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Administradores</h1>
+        <h1 class="text-3xl font-bold text-ink">Administradores</h1>
         <button (click)="openModal()" 
                 class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
           + Nuevo Admin
@@ -20,34 +20,34 @@ import { Admin, CreateAdminDto } from '../../models/admin.model';
 
       <!-- Modal -->
       <div *ngIf="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <div class="bg-surface rounded-lg p-6 w-full max-w-md">
           <h2 class="text-2xl font-bold mb-4">{{ editingAdmin ? 'Editar' : 'Nuevo' }} Administrador</h2>
           <form [formGroup]="adminForm" (ngSubmit)="saveAdmin()">
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Nombre</label>
                 <input formControlName="nombre" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">RUT</label>
                 <input formControlName="rut" type="text" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Email</label>
                 <input formControlName="email" type="email" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div *ngIf="!editingAdmin">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Contraseña</label>
                 <input formControlName="password" type="password" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                       class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
               <button type="button" (click)="closeModal()" 
-                      class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                      class="px-4 py-2 border border-line-strong rounded-md hover:bg-page">
                 Cancelar
               </button>
               <button type="submit" 
@@ -60,17 +60,17 @@ import { Admin, CreateAdminDto } from '../../models/admin.model';
       </div>
 
       <!-- Lista de Admins -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+      <div class="bg-surface rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-line">
+          <thead class="bg-page">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RUT</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Nombre</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">RUT</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Email</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Acciones</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="bg-surface divide-y divide-line">
             <tr *ngFor="let admin of admins">
               <td class="px-6 py-4 whitespace-nowrap">{{ admin.nombre }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ admin.rut }}</td>
@@ -80,7 +80,7 @@ import { Admin, CreateAdminDto } from '../../models/admin.model';
               </td>
             </tr>
             <tr *ngIf="admins.length === 0">
-              <td colspan="4" class="px-6 py-4 text-center text-gray-500">No hay administradores registrados</td>
+              <td colspan="4" class="px-6 py-4 text-center text-ink-muted">No hay administradores registrados</td>
             </tr>
           </tbody>
         </table>

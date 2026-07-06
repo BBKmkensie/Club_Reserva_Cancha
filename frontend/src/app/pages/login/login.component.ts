@@ -4,27 +4,34 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthRoleService, AppRole, UserTipo } from '../../shared/services/auth-role.service';
 import { ApiService } from '../../services/api.service';
+import { LogoNautaComponent } from '../../shared/components/logo-nauta/logo-nauta.component';
+import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LogoNautaComponent, ThemeToggleComponent],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Reservas de Cancha</h1>
+    <div class="min-h-screen flex flex-col items-center justify-center bg-page px-3 sm:px-4 py-6 sm:py-8">
+      <div class="absolute top-4 right-4">
+        <app-theme-toggle />
+      </div>
+      <div class="bg-surface rounded-xl shadow-lg p-5 sm:p-8 max-w-md w-full border border-line">
+        <div class="mb-5 sm:mb-6 md:mb-8">
+          <app-logo-nauta variant="login" [linkTo]="null" />
+        </div>
 
         <div class="space-y-4">
           <label class="block">
-            <span class="text-sm font-medium text-gray-700">Usuario</span>
+            <span class="text-sm font-medium text-ink-secondary">Usuario</span>
             <input [(ngModel)]="usuario" type="text"
                    placeholder="RUT o nombre"
-                   class="mt-1 w-full py-2 px-3 border border-gray-300 rounded-lg">
+                   class="mt-1 w-full py-2 px-3 app-input bg-surface">
           </label>
           <label class="block">
-            <span class="text-sm font-medium text-gray-700">Contraseña</span>
+            <span class="text-sm font-medium text-ink-secondary">Contraseña</span>
             <input [(ngModel)]="password" type="password" placeholder="Contraseña"
-                   class="mt-1 w-full py-2 px-3 border border-gray-300 rounded-lg"
+                   class="mt-1 w-full py-2 px-3 app-input bg-surface"
                    (keyup.enter)="entrar()">
           </label>
           @if (error) {
@@ -32,12 +39,12 @@ import { ApiService } from '../../services/api.service';
           }
           <button (click)="entrar()"
                   [disabled]="!usuario.trim() || !password || cargando"
-                  class="w-full py-2.5 px-4 rounded-lg bg-primary-600 text-white font-medium hover:bg-primary-700 disabled:opacity-50">
+                  class="w-full py-2.5 px-4 rounded-lg bg-primary-500 text-white font-medium hover:bg-primary-600 disabled:opacity-50">
             {{ cargando ? 'Entrando...' : 'Entrar' }}
           </button>
         </div>
 
-        <a routerLink="/dashboard" class="block text-center text-sm text-gray-500 mt-6 hover:text-primary-600">
+        <a routerLink="/dashboard" class="block text-center text-sm text-ink-muted mt-6 hover:text-primary-600">
           ← Volver al inicio
         </a>
       </div>
@@ -75,7 +82,11 @@ export class LoginComponent implements OnInit {
           res.user.nombre,
           res.user.tipo as UserTipo,
         );
-        this.router.navigate(['/dashboard']);
+        if (res.user.tipo === 'apoderado') {
+          this.router.navigate(['/portal-apoderado']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.cargando = false;

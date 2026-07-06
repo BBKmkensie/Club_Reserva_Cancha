@@ -17,6 +17,8 @@ import { LoginComponent } from './pages/login/login.component';
 import { MisSalidasComponent } from './pages/mis-salidas/mis-salidas.component';
 import { FichasAlumnosComponent } from './pages/fichas-alumnos/fichas-alumnos.component';
 import { ComparacionSemestreComponent } from './pages/comparacion-semestre/comparacion-semestre.component';
+import { PortalApoderadoComponent } from './pages/portal-apoderado/portal-apoderado.component';
+import { PropuestasActividadComponent } from './pages/propuestas-actividad/propuestas-actividad.component';
 import { authGuard } from './shared/guards/auth.guard';
 
 export const routes: Routes = [
@@ -39,5 +41,7 @@ export const routes: Routes = [
   { path: 'comparacion-semestre', component: ComparacionSemestreComponent, canActivate: [authGuard] },
   { path: 'inscripcion-salidas', component: InscripcionSalidasComponent, canActivate: [authGuard] },
   { path: 'mis-salidas', component: MisSalidasComponent, canActivate: [authGuard] },
+  { path: 'portal-apoderado', component: PortalApoderadoComponent, canActivate: [authGuard] },
+  { path: 'propuestas-actividad', component: PropuestasActividadComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: '/dashboard' }
 ];

@@ -40,6 +40,12 @@ export class AuthService {
         return this.loginProfesor(dto.usuario, dto.password);
       case 'alumno':
         return this.loginAlumno(dto.usuario, dto.password);
+      case 'apoderado': {
+        const rut = dto.usuario.trim();
+        const alumno = await this.alumnoRepo.findOne({ where: { apoderadoRut: rut } });
+        if (!alumno) throw new UnauthorizedException('RUT o contraseña incorrectos');
+        return this.loginApoderado(alumno, dto.password);
+      }
       default:
         throw new UnauthorizedException('Tipo de usuario no válido');
     }
@@ -57,7 +63,13 @@ export class AuthService {
     try {
       return await this.loginProfesor(usuario, password);
     } catch {
-      // continuar con alumno
+      // continuar
+    }
+
+    const rut = usuario.trim();
+    const apoderadoAlumno = await this.alumnoRepo.findOne({ where: { apoderadoRut: rut } });
+    if (apoderadoAlumno) {
+      return this.loginApoderado(apoderadoAlumno, password);
     }
 
     return this.loginAlumno(usuario, password);
@@ -148,6 +160,29 @@ export class AuthService {
       tipo: 'alumno',
       tallerId: alumno.tallerId ?? undefined,
       nombre: alumno.nombre,
+    });
+  }
+
+  private async loginApoderado(alumno: Alumno, password: string): Promise<LoginResponse> {
+    await this.ensurePassword(
+      {
+        passwordHash: alumno.apoderadoPasswordHash,
+        passwordSalt: alumno.apoderadoPasswordSalt,
+      },
+      password,
+      (_, hash, salt) => {
+        alumno.apoderadoPasswordHash = hash;
+        alumno.apoderadoPasswordSalt = salt;
+      },
+      () => this.alumnoRepo.save(alumno),
+    );
+
+    return this.buildResponse({
+      sub: alumno.id,
+      role: 'usuario',
+      tipo: 'apoderado',
+      tallerId: alumno.tallerId ?? undefined,
+      nombre: alumno.apoderadoNombre ?? `Apoderado de ${alumno.nombre}`,
     });
   }
 
