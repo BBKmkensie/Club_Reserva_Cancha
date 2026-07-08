@@ -6,11 +6,13 @@ import { SidebarService } from '../../services/sidebar.service';
 import { AuthRoleService } from '../../services/auth-role.service';
 import { NavLinksComponent } from '../nav-links/nav-links.component';
 import { ApiService } from '../../../services/api.service';
+import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, NavLinksComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, NavLinksComponent, ThemeToggleComponent],
   template: `
     @if (auth.isLoggedIn()) {
       @if (isOpen) {
@@ -26,7 +28,7 @@ import { ApiService } from '../../../services/api.service';
             <p class="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 px-2">Menú</p>
             <app-nav-links mode="sidebar" (navigated)="sidebarService.close()" />
             <ng-container *ngTemplateOutlet="accesosRapidos" />
-            <div class="mt-6 pt-4 border-t border-line px-2 space-y-1">
+            <div class="mt-6 pt-4 border-t border-line px-2 space-y-3">
               @if (auth.currentNombre()) {
                 <p class="text-xs text-ink-secondary font-semibold truncate" [title]="auth.currentNombre()!">
                   {{ auth.currentNombre() }}
@@ -35,6 +37,13 @@ import { ApiService } from '../../../services/api.service';
               <p class="text-xs text-ink-muted">
                 Rol: <span class="font-semibold text-ink-secondary">{{ auth.roleLabel() }}</span>
               </p>
+              <div class="md:hidden">
+                <app-theme-toggle />
+              </div>
+              <button type="button" (click)="cerrarSesion()"
+                      class="w-full text-sm text-red-600 hover:text-red-700 border border-line-strong rounded-lg px-3 py-2 font-medium hover:bg-muted transition-colors">
+                Cerrar sesión
+              </button>
             </div>
           </nav>
         </aside>
@@ -111,6 +120,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   auth = inject(AuthRoleService);
   sidebarService = inject(SidebarService);
   private api = inject(ApiService);
+  private router = inject(Router);
   isOpen = false;
   puedeVerMisSalidas = false;
   private subscription?: Subscription;
@@ -149,5 +159,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscription?.unsubscribe();
+  }
+
+  cerrarSesion(): void {
+    this.auth.clear();
+    this.sidebarService.close();
+    this.router.navigate(['/login']);
   }
 }

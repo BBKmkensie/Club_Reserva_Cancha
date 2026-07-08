@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Alumno } from '../entities/alumno.entity';
 import { CreateAlumnoDto } from '../dto/create-alumno.dto';
-import * as crypto from 'crypto';
+import { edadAlumnoValida, EDAD_ALUMNO_MIN, EDAD_ALUMNO_MAX } from '../common/alumno-edad.constants';
+import { defaultPassword, hashPassword } from '../common/password.util';
 
 @Injectable()
 export class AlumnoService {
@@ -13,6 +14,7 @@ export class AlumnoService {
   ) {}
 
   async create(createAlumnoDto: CreateAlumnoDto): Promise<Alumno> {
+    this.validarEdad(createAlumnoDto.edad);
     const alumnoData: any = {
       nombre: createAlumnoDto.nombre,
       rut: createAlumnoDto.rut,
@@ -23,10 +25,11 @@ export class AlumnoService {
     };
 
     if (createAlumnoDto.password) {
-      const salt = crypto.randomBytes(16).toString('hex');
-      const hash = crypto
-        .pbkdf2Sync(createAlumnoDto.password, salt, 1000, 64, 'sha512')
-        .toString('hex');
+      const { hash, salt } = hashPassword(createAlumnoDto.password);
+      alumnoData.passwordHash = hash;
+      alumnoData.passwordSalt = salt;
+    } else {
+      const { hash, salt } = hashPassword(defaultPassword());
       alumnoData.passwordHash = hash;
       alumnoData.passwordSalt = salt;
     }
@@ -62,6 +65,9 @@ export class AlumnoService {
   }
 
   async update(id: number, updateAlumnoDto: Partial<CreateAlumnoDto>): Promise<Alumno> {
+    if (updateAlumnoDto.edad !== undefined) {
+      this.validarEdad(updateAlumnoDto.edad);
+    }
     const alumno = await this.findOne(id);
     const { tallerId, ...rest } = updateAlumnoDto;
     Object.assign(alumno, rest);
@@ -72,6 +78,15 @@ export class AlumnoService {
   async remove(id: number): Promise<void> {
     const alumno = await this.findOne(id);
     await this.alumnoRepository.remove(alumno);
+  }
+
+  private validarEdad(edad?: number): void {
+    if (edad == null) return;
+    if (!edadAlumnoValida(edad)) {
+      throw new BadRequestException(
+        `La edad debe estar entre ${EDAD_ALUMNO_MIN} y ${EDAD_ALUMNO_MAX} años`,
+      );
+    }
   }
 }
 

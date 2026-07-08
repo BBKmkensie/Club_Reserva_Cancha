@@ -13,12 +13,12 @@ export class FranjaCanchaItemDto {
   @IsBoolean()
   activa: boolean;
 
-  /** Duración en horas (1 por defecto). Solo la directiva puede usar > 1. */
+  /** Duración en minutos (30 por defecto). Solo la directiva puede ampliar franjas. */
   @IsOptional()
   @IsInt()
-  @Min(1)
-  @Max(12)
-  duracionHoras?: number;
+  @Min(30)
+  @Max(180)
+  duracionMinutos?: number;
 }
 
 export class ActualizarFranjasCanchaDto {

@@ -1,5 +1,6 @@
 import { IsString, IsEmail, IsInt, IsNotEmpty, Min, Max, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
+import { EDAD_ALUMNO_MAX, EDAD_ALUMNO_MIN } from '../common/alumno-edad.constants';
 
 export class CreateAlumnoDto {
   @IsString()
@@ -21,8 +22,8 @@ export class CreateAlumnoDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  @Max(120)
+  @Min(EDAD_ALUMNO_MIN)
+  @Max(EDAD_ALUMNO_MAX)
   edad?: number;
 
   @IsOptional()

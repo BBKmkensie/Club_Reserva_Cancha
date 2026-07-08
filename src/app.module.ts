@@ -37,17 +37,23 @@ import { InscripcionTaller } from './entities/inscripcion-taller.entity';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.database'),
-        entities: [Admin, Taller, Alumno, Profesor, Reserva, Salida, InscripcionSalida, InscripcionTaller],
-        synchronize: false,
-        autoLoadEntities: true,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const ssl = configService.get<boolean>('database.ssl');
+        return {
+          type: 'postgres',
+          host: configService.get('database.host'),
+          port: configService.get('database.port'),
+          username: configService.get('database.username'),
+          password: configService.get('database.password'),
+          database: configService.get('database.database'),
+          ...(ssl
+            ? { ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } }
+            : {}),
+          entities: [Admin, Taller, Alumno, Profesor, Reserva, Salida, InscripcionSalida, InscripcionTaller],
+          synchronize: false,
+          autoLoadEntities: true,
+        };
+      },
       inject: [ConfigService],
     }),
     PeriodoModule,

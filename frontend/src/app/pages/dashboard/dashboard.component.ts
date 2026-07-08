@@ -6,12 +6,9 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { NotificacionPollService } from '../../shared/services/notificacion-poll.service';
 import { Subscription } from 'rxjs';
+import { estiloTarjetaTaller, EstiloTarjetaTaller } from '../../shared/utils/taller-tarjeta.util';
 
-interface CardTaller {
-  classes: string;
-  icon: string;
-  descripcion: string;
-}
+interface CardTaller extends EstiloTarjetaTaller {}
 
 @Component({
   selector: 'app-dashboard',
@@ -110,6 +107,8 @@ interface CardTaller {
           @if (auth.isLoggedIn()) {
             @if (auth.isProfesor()) {
               Gestiona tu taller
+            } @else if (auth.canInscribirseTalleres() && tieneInscripcionesActivas()) {
+              Tus talleres inscritos
             } @else {
               Selecciona una actividad para gestionar
             }
@@ -119,30 +118,55 @@ interface CardTaller {
         </p>
       </div>
 
+      @if (auth.canInscribirseTalleres() && alumnoId && tieneInscripcionesActivas()) {
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-primary-50 border border-primary-200 rounded-xl p-4">
+          <p class="text-sm text-ink-secondary">
+            Estás inscrito en <strong>{{ misInscripciones.length }}</strong>
+            {{ misInscripciones.length === 1 ? 'taller' : 'talleres' }}.
+            @if (!mostrarOtrosTalleres) {
+              <span class="block sm:inline sm:ml-1">Usa el botón para ver más actividades e inscribirte en otras.</span>
+            }
+          </p>
+          <button type="button" (click)="toggleOtrosTalleres()"
+                  class="shrink-0 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">
+            {{ mostrarOtrosTalleres ? 'Ocultar otros talleres' : 'Ver otros talleres' }}
+          </button>
+        </div>
+      }
+
+      @if (mostrarSeccionMisTalleres()) {
+        <h2 class="text-lg sm:text-xl font-bold text-ink">Mis talleres</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 min-w-0">
+          @for (act of talleresInscritosVisibles; track act.id) {
+            <ng-container *ngTemplateOutlet="tarjetaActividad; context: { $implicit: act }"></ng-container>
+          }
+        </div>
+      }
+
+      @if (mostrarSeccionOtrosTalleres()) {
+        <h2 class="text-lg sm:text-xl font-bold text-ink mt-2">Otros talleres disponibles</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 min-w-0">
+          @for (act of otrosTalleresVisibles; track act.id) {
+            <ng-container *ngTemplateOutlet="tarjetaActividad; context: { $implicit: act }"></ng-container>
+          }
+        </div>
+      }
+
+      @if (mostrarSeccionCatalogoCompleto()) {
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
         @for (act of actividadesPublicadas; track act.id) {
-          <button type="button" (click)="navegarATallerPorId(act.id)"
-                  class="group rounded-xl shadow-lg p-5 sm:p-8 text-white hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full"
-                  [class]="estiloTarjeta(act.tipo).classes">
-            <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">{{ estiloTarjeta(act.tipo).icon }}</div>
-            <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">{{ act.tipo }}</h2>
-            <p class="text-sm opacity-90 mb-4 line-clamp-2">
-              {{ estiloTarjeta(act.tipo).descripcion }}
-            </p>
-            <div class="opacity-90">
-              <div class="text-2xl font-bold">{{ conteoTarjeta(act) }}</div>
-              <div class="text-sm">{{ etiquetaConteo() }}</div>
-            </div>
-          </button>
+          <ng-container *ngTemplateOutlet="tarjetaActividad; context: { $implicit: act }"></ng-container>
         }
 
-        @if (actividadesPublicadas.length === 0) {
+        @if (actividadesPublicadas.length === 0 && !auth.isProfesor()) {
           <div class="col-span-full text-center text-ink-muted py-12 bg-page rounded-xl border border-dashed border-line">
-            @if (auth.isProfesor()) {
-              No tienes un taller asignado o publicado aún.
-            } @else {
-              No hay actividades publicadas en el catálogo.
-            }
+            No hay actividades publicadas en el catálogo.
+          </div>
+        }
+
+        @if (auth.isProfesor() && actividadesPublicadas.length === 0) {
+          <div class="col-span-full text-center text-ink-muted py-12 bg-page rounded-xl border border-dashed border-line">
+            No tienes un taller asignado o publicado aún.
           </div>
         }
 
@@ -161,6 +185,47 @@ interface CardTaller {
         </a>
         }
       </div>
+      }
+
+      @if (mostrarSeccionMisTalleres() || mostrarSeccionOtrosTalleres()) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
+          @if (!auth.isProfesor()) {
+          <a [routerLink]="auth.isLoggedIn() ? '/salidas' : '/login'"
+             class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
+            <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
+            <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Salidas</h2>
+            <p class="text-purple-100 text-sm mb-4">Gestiona las salidas programadas</p>
+            @if (auth.isLoggedIn()) {
+              <div class="text-purple-200">
+                <div class="text-2xl font-bold">{{ stats.salidas }}</div>
+                <div class="text-sm">Salidas programadas</div>
+              </div>
+            }
+          </a>
+          }
+        </div>
+      }
+
+      <ng-template #tarjetaActividad let-act>
+          <button type="button" (click)="navegarATallerPorId(act.id)"
+                  class="group rounded-xl shadow-lg p-5 sm:p-8 text-white hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full relative"
+                  [class]="estiloTarjeta(act.tipo).classes">
+            @if (estadoInscripcionTaller(act.id)) {
+              <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-white/25 backdrop-blur-sm">
+                {{ estadoInscripcionTaller(act.id) === 'ACEPTADO' ? 'Inscrito' : 'Pendiente' }}
+              </span>
+            }
+            <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">{{ estiloTarjeta(act.tipo).icon }}</div>
+            <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">{{ act.tipo }}</h2>
+            <p class="text-sm opacity-90 mb-4 line-clamp-2">
+              {{ estiloTarjeta(act.tipo).descripcion }}
+            </p>
+            <div class="opacity-90">
+              <div class="text-2xl font-bold">{{ conteoTarjeta(act) }}</div>
+              <div class="text-sm">{{ etiquetaConteo() }}</div>
+            </div>
+          </button>
+      </ng-template>
 
       @if (auth.canAccessTalleresCRUD()) {
         <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
@@ -226,21 +291,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   notificaciones: any[] = [];
   notificacionesNoLeidas = 0;
   actividadesPublicadas: any[] = [];
+  catalogoCompleto: any[] = [];
+  misInscripciones: any[] = [];
+  mostrarOtrosTalleres = false;
   asignacionesPendientes: any[] = [];
 
-  private descripciones: Record<string, string> = {
-    atletismo: 'Gestiona el taller de atletismo',
-    basquet: 'Gestiona el taller de básquet',
-    futbol: 'Gestiona el taller de fútbol',
-    voley: 'Gestiona el taller de voley',
-  };
+  estiloTarjeta(tipo: string): CardTaller {
+    return estiloTarjetaTaller(tipo);
+  }
 
   ngOnInit() {
-    this.loadData();
-    if (!this.auth.isLoggedIn()) return;
-
     this.alumnoId = this.auth.currentUserId();
     this.tallerIdProfesor = this.auth.currentTallerId();
+    this.loadData();
+
+    if (!this.auth.isLoggedIn()) return;
 
     if (this.auth.canGestionarInscripcionesTaller() && this.tallerIdProfesor) {
       this.apiService.getResumenInscripcionesTaller(this.tallerIdProfesor).subscribe({
@@ -291,22 +356,66 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.inscripcionesPorTaller.get(act.id) ?? this.contarAlumnosPorTaller(act.id);
   }
 
-  estiloTarjeta(tipo: string): CardTaller {
-    const t = this.normalizar(tipo);
-    const descripcion =
-      this.descripciones[t] ??
-      (tipo ? `Gestiona el taller de ${tipo.toLowerCase()}` : 'Actividad deportiva del club');
-    if (t.includes('atletismo')) return { classes: 'bg-gradient-to-br from-orange-500 to-orange-700', icon: '🏃', descripcion };
-    if (t.includes('basquet') || t.includes('basket')) return { classes: 'bg-gradient-to-br from-red-500 to-red-700', icon: '🏀', descripcion };
-    if (t.includes('futbol')) return { classes: 'bg-gradient-to-br from-green-500 to-green-700', icon: '⚽', descripcion };
-    if (t.includes('voley') || t.includes('volei')) return { classes: 'bg-gradient-to-br from-blue-500 to-blue-700', icon: '🏐', descripcion };
-    if (t.includes('zumba')) return { classes: 'bg-gradient-to-br from-pink-500 to-fuchsia-600', icon: '💃', descripcion };
-    if (t.includes('cocina')) return { classes: 'bg-gradient-to-br from-amber-500 to-orange-600', icon: '👨‍🍳', descripcion };
-    return { classes: 'bg-gradient-to-br from-indigo-500 to-indigo-700', icon: '🎯', descripcion };
+  tieneInscripcionesActivas(): boolean {
+    return this.misInscripciones.length > 0;
   }
 
-  private normalizar(s: string): string {
-    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  get talleresInscritosVisibles(): any[] {
+    const ids = this.tallerIdsInscritos();
+    return this.catalogoCompleto.filter((a) => ids.has(Number(a.id)));
+  }
+
+  get otrosTalleresVisibles(): any[] {
+    const ids = this.tallerIdsInscritos();
+    return this.catalogoCompleto.filter((a) => !ids.has(Number(a.id)));
+  }
+
+  mostrarSeccionMisTalleres(): boolean {
+    return (
+      this.auth.canInscribirseTalleres() &&
+      !!this.alumnoId &&
+      this.tieneInscripcionesActivas()
+    );
+  }
+
+  mostrarSeccionOtrosTalleres(): boolean {
+    return this.mostrarSeccionMisTalleres() && this.mostrarOtrosTalleres;
+  }
+
+  mostrarSeccionCatalogoCompleto(): boolean {
+    if (this.mostrarSeccionMisTalleres()) return false;
+    return true;
+  }
+
+  toggleOtrosTalleres(): void {
+    this.mostrarOtrosTalleres = !this.mostrarOtrosTalleres;
+    this.cargarInscripcionesPorTaller(this.actividadesParaConteo());
+  }
+
+  estadoInscripcionTaller(tallerId: number): 'PENDIENTE' | 'ACEPTADO' | null {
+    const ins = this.misInscripciones.find(
+      (i) => Number(i.tallerId ?? i.taller?.id) === Number(tallerId),
+    );
+    const estado = String(ins?.estado ?? '').toUpperCase();
+    if (estado === 'PENDIENTE' || estado === 'ACEPTADO') return estado;
+    return null;
+  }
+
+  private tallerIdsInscritos(): Set<number> {
+    return new Set(
+      this.misInscripciones
+        .map((i) => Number(i.tallerId ?? i.taller?.id))
+        .filter((id) => !Number.isNaN(id)),
+    );
+  }
+
+  private actividadesParaConteo(): any[] {
+    if (this.mostrarSeccionMisTalleres()) {
+      const acts = [...this.talleresInscritosVisibles];
+      if (this.mostrarOtrosTalleres) acts.push(...this.otrosTalleresVisibles);
+      return acts;
+    }
+    return this.actividadesPublicadas;
   }
 
   private contarAlumnosPorTaller(tallerId: number): number {
@@ -318,12 +427,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.apiService.getCatalogoTalleres().subscribe({
       next: (data) => {
-        this.actividadesPublicadas = this.filtrarActividadesParaUsuario(asList(data));
-        if (this.auth.isLoggedIn()) {
-          this.cargarInscripcionesPorTaller(this.actividadesPublicadas);
+        this.catalogoCompleto = asList(data);
+        if (this.auth.canInscribirseTalleres() && this.alumnoId) {
+          this.cargarInscripcionesAlumno();
+        } else {
+          this.actividadesPublicadas = this.filtrarActividadesParaUsuario(this.catalogoCompleto);
+          if (this.auth.isLoggedIn()) {
+            this.cargarInscripcionesPorTaller(this.actividadesPublicadas);
+          }
         }
       },
-      error: () => (this.actividadesPublicadas = []),
+      error: () => {
+        this.catalogoCompleto = [];
+        this.actividadesPublicadas = [];
+      },
     });
 
     if (!this.auth.isLoggedIn()) return;
@@ -360,6 +477,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return actividades.filter((a) => Number(a.id) === tallerId);
     }
     return actividades;
+  }
+
+  private cargarInscripcionesAlumno(): void {
+    if (!this.alumnoId) return;
+    this.apiService.getInscripcionesTallerPorAlumno(this.alumnoId).subscribe({
+      next: (data) => {
+        this.misInscripciones = (Array.isArray(data) ? data : []).filter((i) => {
+          const estado = String(i.estado ?? '').toUpperCase();
+          return estado === 'PENDIENTE' || estado === 'ACEPTADO';
+        });
+        this.actividadesPublicadas = this.filtrarActividadesParaUsuario(this.catalogoCompleto);
+        this.cargarInscripcionesPorTaller(this.actividadesParaConteo());
+      },
+      error: () => {
+        this.misInscripciones = [];
+        this.actividadesPublicadas = this.filtrarActividadesParaUsuario(this.catalogoCompleto);
+        this.cargarInscripcionesPorTaller(this.actividadesPublicadas);
+      },
+    });
   }
 
   private cargarInscripcionesPorTaller(actividades: any[]) {

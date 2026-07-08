@@ -11,12 +11,17 @@ import { Alumno } from '../../models/alumno.model';
 import { Reserva } from '../../models/reserva.model';
 import { HorariosTallerComponent } from '../../shared/components/horarios-taller/horarios-taller.component';
 import { FichaGraficoTallerComponent } from '../../shared/components/ficha-grafico-taller/ficha-grafico-taller.component';
+import {
+  AdvertenciasInscripcionComponent,
+  tallerSinProfesor,
+} from '../../shared/components/advertencias-inscripcion/advertencias-inscripcion.component';
+import { ValidacionInscripcionTaller } from '../../models/inscripcion-taller.model';
 import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/horario-taller.util';
 
 @Component({
   selector: 'app-taller-detail',
   standalone: true,
-  imports: [CommonModule, DatePipe, RouterLink, FormsModule, HorariosTallerComponent, FichaGraficoTallerComponent],
+  imports: [CommonModule, DatePipe, RouterLink, FormsModule, HorariosTallerComponent, FichaGraficoTallerComponent, AdvertenciasInscripcionComponent],
   template: `
     <div class="space-y-4 sm:space-y-6">
       <!-- Título del Taller -->
@@ -68,11 +73,21 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
 
             <!-- Botón Inscribirse (solo alumno logueado) -->
             @if (auth.canInscribirseTalleres() && alumnoId && taller) {
-              <div class="pt-3 mt-auto flex justify-end">
+              <div class="pt-3 mt-auto flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
               @if (estadoSolicitud === 'PENDIENTE') {
                 <p class="text-amber-600 font-medium text-right">Solicitud enviada (pendiente de respuesta)</p>
+                <button (click)="abrirConfirmacionRetiro()"
+                        [disabled]="retirando"
+                        class="text-red-700 border border-red-300 px-4 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 text-sm font-medium">
+                  {{ retirando ? 'Retirando...' : 'Cancelar solicitud' }}
+                </button>
               } @else if (estadoSolicitud === 'ACEPTADO') {
                 <p class="text-green-600 font-medium text-right">Estás inscrito en este taller</p>
+                <button (click)="abrirConfirmacionRetiro()"
+                        [disabled]="retirando"
+                        class="text-red-700 border border-red-300 px-4 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 text-sm font-medium">
+                  {{ retirando ? 'Retirando...' : 'Retirarme del taller' }}
+                </button>
               } @else if (estadoSolicitud === 'RECHAZADO') {
                 <button (click)="abrirConfirmacion()"
                         class="bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 shadow-sm font-medium">
@@ -237,6 +252,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
         <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
           <h3 class="text-xl font-bold text-ink mb-2">Confirmar inscripción</h3>
           <p class="text-ink-muted mb-4">¿Deseas inscribirte en <strong>{{ taller.tipo }}</strong>?</p>
+          <app-advertencias-inscripcion [advertencias]="validacion?.advertencias" />
           <div class="bg-page rounded-lg p-4 text-sm space-y-2 mb-4">
             <p><strong>Horario:</strong> {{ textoHorario(taller) }}</p>
             @if (validacion) {
@@ -284,6 +300,33 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
         </div>
       </div>
     }
+
+    @if (mostrarConfirmacionRetiro) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 class="text-xl font-bold text-ink mb-2">Confirmar retiro</h3>
+          <p class="text-ink-muted mb-4">
+            ¿Estás seguro de que deseas retirarte de <strong>{{ taller?.tipo }}</strong>?
+            @if (estadoSolicitud === 'ACEPTADO') {
+              <span class="block mt-2 text-amber-800">Perderás tu cupo en el taller y el profesor será notificado.</span>
+            } @else {
+              <span class="block mt-2 text-amber-800">Se cancelará tu solicitud pendiente y el profesor será notificado.</span>
+            }
+          </p>
+          @if (errorRetiro) {
+            <p class="text-red-600 text-sm mb-3">{{ errorRetiro }}</p>
+          }
+          <div class="flex gap-3 justify-end">
+            <button (click)="cerrarConfirmacionRetiro()" class="px-4 py-2 rounded-lg border border-line-strong text-ink-secondary">Cancelar</button>
+            <button (click)="confirmarRetiro()"
+                    [disabled]="retirando"
+                    class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+              {{ retirando ? 'Retirando...' : 'Sí, retirarme' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: []
 })
@@ -308,15 +351,20 @@ export class TallerDetailComponent implements OnInit {
   alumnoId: number | null = null;
   misSolicitudesTaller: any[] = [];
   mostrarConfirmacion = false;
-  validacion: any = null;
+  validacion: ValidacionInscripcionTaller | null = null;
   errorInscripcion = '';
   confirmando = false;
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
+  mostrarConfirmacionRetiro = false;
+  retirando = false;
+  errorRetiro = '';
   editandoPresentacion = false;
   guardandoPresentacion = false;
   errorPresentacion = '';
   presentacionForm = { descripcion: '', fotoPath: '' };
   presentacionInicial = { descripcion: '', fotoPath: '' };
+
+  readonly tallerSinProfesor = tallerSinProfesor;
 
   get descripcionTexto(): string {
     return this.taller?.descripcion || 'Descripción del taller de ' + (this.taller?.tipo || '') + ', lo que hacen, sus objetivos, una pequeña descripción.';
@@ -419,6 +467,43 @@ export class TallerDetailComponent implements OnInit {
     if (!this.taller || !this.misSolicitudesTaller.length) return null;
     const s = this.misSolicitudesTaller.find((x: any) => x.tallerId === this.taller!.id || x.taller?.id === this.taller!.id);
     return s ? s.estado : null;
+  }
+
+  get inscripcionActual(): any | null {
+    if (!this.taller || !this.misSolicitudesTaller.length) return null;
+    return this.misSolicitudesTaller.find((x: any) => x.tallerId === this.taller!.id || x.taller?.id === this.taller!.id) ?? null;
+  }
+
+  abrirConfirmacionRetiro() {
+    this.mostrarConfirmacionRetiro = true;
+    this.errorRetiro = '';
+  }
+
+  cerrarConfirmacionRetiro() {
+    this.mostrarConfirmacionRetiro = false;
+    this.errorRetiro = '';
+    this.retirando = false;
+  }
+
+  confirmarRetiro() {
+    const ins = this.inscripcionActual;
+    if (!ins || !this.alumnoId) return;
+    this.retirando = true;
+    this.errorRetiro = '';
+    this.apiService.retirarseDeTaller(ins.id, this.alumnoId).subscribe({
+      next: () => {
+        this.cerrarConfirmacionRetiro();
+        this.cargarMisSolicitudesTaller();
+        if (this.taller) {
+          this.cargarInscripcionesTaller(this.taller.id);
+          this.cargarAlumnos();
+        }
+      },
+      error: (err) => {
+        this.retirando = false;
+        this.errorRetiro = err?.error?.message || 'No se pudo completar el retiro';
+      },
+    });
   }
 
   ngOnInit() {
@@ -525,7 +610,7 @@ export class TallerDetailComponent implements OnInit {
 
   tituloHorariosSeccion(): string {
     if (!this.taller) return 'Horarios';
-    return tituloTablaHorarios(this.taller.modoHorario);
+    return tituloTablaHorarios(this.taller);
   }
 
   toggleHorarios() {
@@ -556,7 +641,7 @@ export class TallerDetailComponent implements OnInit {
     this.validacion = null;
     this.errorInscripcion = '';
     this.fichaForm = { altura: null, peso: null, porcentajeGrasa: null, sedentario: false };
-    this.apiService.validarInscripcionTaller(this.alumnoId, this.taller.id).subscribe({
+    this.apiService.validarInscripcionTaller(this.alumnoId, this.taller.id, true).subscribe({
       next: (v) => {
         this.validacion = v;
         if (!v.puedeInscribirse) {

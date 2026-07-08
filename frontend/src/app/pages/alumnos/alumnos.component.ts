@@ -46,9 +46,11 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
                        class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-ink-secondary mb-1">Edad</label>
-                <input formControlName="edad" type="number" 
+                <label class="block text-sm font-medium text-ink-secondary mb-1">Edad (18–60)</label>
+                <input formControlName="edad" type="number" min="18" max="60"
                        class="w-full px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <p *ngIf="alumnoForm.get('edad')?.invalid && alumnoForm.get('edad')?.touched"
+                   class="text-red-600 text-xs mt-1">La edad debe estar entre 18 y 60 años</p>
               </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
@@ -73,6 +75,7 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
               <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Nombre</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">RUT</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Email</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Edad</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Taller</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-ink-muted uppercase">Acciones</th>
             </tr>
@@ -82,6 +85,7 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
               <td class="px-6 py-4 whitespace-nowrap">{{ priv.nombre(alumno.nombre) }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ priv.rut(alumno.rut) }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ priv.email(alumno.email) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ alumno.edad ?? '—' }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ alumno.taller?.tipo || '-' }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <button (click)="editAlumno(alumno)" class="text-primary-600 hover:text-primary-700 mr-3">✏️</button>
@@ -89,7 +93,7 @@ import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
               </td>
             </tr>
             <tr *ngIf="alumnos.length === 0">
-              <td colspan="5" class="px-6 py-4 text-center text-ink-muted">No hay alumnos registrados</td>
+              <td colspan="6" class="px-6 py-4 text-center text-ink-muted">No hay alumnos registrados</td>
             </tr>
           </tbody>
         </table>
@@ -114,7 +118,7 @@ export class AlumnosComponent implements OnInit {
       rut: ['', Validators.required],
       email: [''],
       telefono: [''],
-      edad: ['']
+      edad: ['', [Validators.min(18), Validators.max(60)]]
     });
   }
 

@@ -216,7 +216,7 @@ export class ApiService {
   }
 
   actualizarFranjasCancha(
-    franjas: { diaSemana: number; horaInicio: string; activa: boolean; duracionHoras?: number }[],
+    franjas: { diaSemana: number; horaInicio: string; activa: boolean; duracionMinutos?: number }[],
     espacio = 'Cancha Principal',
   ): Observable<any[]> {
     return this.http.put<any[]>(`${this.apiUrl}/franja-cancha`, { espacio, franjas });
@@ -371,6 +371,12 @@ export class ApiService {
 
   responderInscripcionTaller(id: number, estado: 'ACEPTADO' | 'RECHAZADO'): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/${id}/responder`, { estado });
+  }
+
+  retirarseDeTaller(inscripcionId: number, alumnoId: number) {
+    return this.http.patch<{ ok: true }>(`${this.apiUrl}/inscripcion-taller/${inscripcionId}/retirar`, {
+      alumnoId,
+    });
   }
 
   // Fichas alumno por taller

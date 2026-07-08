@@ -74,7 +74,7 @@ export class TallerService {
     const hoy = new Date().toISOString().split('T')[0];
     const talleres = await this.tallerRepository.find({
       where: { estado: 'PUBLICADO' },
-      relations: ['horarios'],
+      relations: ['horarios', 'profesores'],
       order: { tipo: 'ASC' },
     });
     return talleres.filter((t) => this.inscripcionesAbiertas(t, hoy));

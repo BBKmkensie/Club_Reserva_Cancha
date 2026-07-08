@@ -33,8 +33,8 @@ async function main() {
   console.log(`Franjas habilitadas: ${slots.length}`);
   const s9 = slot(slots, '09:00');
   const s13 = slot(slots, '13:00');
-  console.log('09:00–10:00:', s9?.estado, s9?.paraTodos ? '(para todos)' : '');
-  console.log('13:00–14:00:', s13?.estado, s13?.paraTodos ? '(para todos)' : '');
+  console.log('09:00–09:30:', s9?.estado, s9?.paraTodos ? '(para todos)' : '');
+  console.log('13:00–13:30:', s13?.estado, s13?.paraTodos ? '(para todos)' : '');
 
   const talleres = (await json('GET', '/taller')).data;
   const t1 = talleres[0];
@@ -56,12 +56,12 @@ async function main() {
     }
   }
 
-  console.log('\n=== 2. Reserva taller 1 → 09:00–10:00 ===');
+  console.log('\n=== 2. Reserva taller 1 → 09:00–09:30 ===');
   r = await json('POST', '/reserva', {
     espacio: 'Cancha Principal',
     fecha: FECHA,
     horaInicio: '09:00',
-    horaFin: '10:00',
+    horaFin: '09:30',
     tallerId: t1.id,
     profesorId: t1.profesorId ?? undefined,
   });
@@ -72,7 +72,7 @@ async function main() {
     espacio: 'Cancha Principal',
     fecha: FECHA,
     horaInicio: '09:00',
-    horaFin: '10:00',
+    horaFin: '09:30',
     tallerId: t2.id,
   });
   console.log('Status:', r.status, '(esperado 409)');
@@ -81,16 +81,16 @@ async function main() {
   console.log('\n=== 4. Disponibilidad después de reservar ===');
   r = await json('GET', `/reserva/disponibilidad?fecha=${FECHA}`);
   const s9b = slot(r.data, '09:00');
-  console.log('09:00–10:00:', s9b?.estado, '→', s9b?.tallerNombre);
+  console.log('09:00–09:30:', s9b?.estado, '→', s9b?.tallerNombre);
   const s13b = slot(r.data, '13:00');
-  console.log('13:00–14:00:', s13b?.estado, s13b?.paraTodos ? '(para todos, aún disponible)' : '');
+  console.log('13:00–13:30:', s13b?.estado, s13b?.paraTodos ? '(para todos, aún disponible)' : '');
 
-  console.log('\n=== 5. Reserva 13:00–14:00 (para todos) ===');
+  console.log('\n=== 5. Reserva 13:00–13:30 (para todos) ===');
   r = await json('POST', '/reserva', {
     espacio: 'Cancha Principal',
     fecha: FECHA,
     horaInicio: '13:00',
-    horaFin: '14:00',
+    horaFin: '13:30',
     tallerId: t2.id,
   });
   console.log('Status:', r.status, r.status === 201 ? 'OK' : r.data?.message || r.data);

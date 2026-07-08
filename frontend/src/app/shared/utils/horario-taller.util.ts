@@ -54,6 +54,15 @@ export function textoFilaHorario(h: TallerHorarioItem): string {
 export function horariosOrdenados(taller: TallerConHorarios): TallerHorarioItem[] {
   const lista = taller.horarios ?? [];
   if (!lista.length) return [];
+
+  const sinGrupo = lista.every(esBloqueHorarioSemanal);
+  if (sinGrupo) {
+    return [...lista].sort((a, b) => {
+      if (a.diaSemana !== b.diaSemana) return a.diaSemana - b.diaSemana;
+      return fmtHora(a.horaInicio).localeCompare(fmtHora(b.horaInicio));
+    });
+  }
+
   const modo = taller.modoHorario ?? 'POR_CURSO';
   return [...lista].sort((a, b) => {
     if (modo === 'POR_SECCION') {
@@ -65,27 +74,46 @@ export function horariosOrdenados(taller: TallerConHorarios): TallerHorarioItem[
   });
 }
 
+function esBloqueHorarioSemanal(h: TallerHorarioItem): boolean {
+  if (h.curso) return false;
+  if (!h.seccion) return true;
+  return h.seccion === 'General' || /^\d+\|\d{1,2}:\d{2}$/.test(h.seccion);
+}
+
+export function horariosSinGrupo(taller: TallerConHorarios): boolean {
+  const lista = taller.horarios ?? [];
+  return lista.length > 0 && lista.every(esBloqueHorarioSemanal);
+}
+
 export function etiquetaGrupoHorario(h: TallerHorarioItem, modo: ModoHorarioTaller): string {
   if (modo === 'POR_SECCION') return `Sección ${h.seccion ?? '—'}`;
   return etiquetaCurso(h.curso);
 }
 
-export function textoHorarioTaller(taller: TallerConHorarios): string {
+export function textoHorarioTaller(
+  taller: TallerConHorarios,
+  mensajeSinHorario = 'El horario de este taller aún no se ha agregado.',
+): string {
   const ordenados = horariosOrdenados(taller);
   if (ordenados.length) {
+    if (horariosSinGrupo(taller)) {
+      return ordenados.map((h) => textoFilaHorario(h)).join(' · ');
+    }
     const modo = taller.modoHorario ?? 'POR_CURSO';
     return ordenados
       .map((h) => `${etiquetaGrupoHorario(h, modo)}: ${textoFilaHorario(h)}`)
       .join(' · ');
   }
   if (!taller.diaSemana || !taller.horaInicio || !taller.horaFin) {
-    return 'Horario por confirmar';
+    return mensajeSinHorario;
   }
   const dia = DIAS_SEMANA[taller.diaSemana] ?? `Día ${taller.diaSemana}`;
   return `${dia} ${fmtHora(taller.horaInicio)} - ${fmtHora(taller.horaFin)}`;
 }
 
-export function tituloTablaHorarios(modo: ModoHorarioTaller | undefined): string {
+export function tituloTablaHorarios(taller: TallerConHorarios): string {
+  if (horariosSinGrupo(taller)) return 'Horario semanal';
+  const modo = taller.modoHorario ?? 'POR_CURSO';
   return modo === 'POR_SECCION' ? 'Horarios por sección' : 'Horarios por curso';
 }
 

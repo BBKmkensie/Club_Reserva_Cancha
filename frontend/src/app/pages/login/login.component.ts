@@ -16,8 +16,8 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme
       <div class="absolute top-4 right-4">
         <app-theme-toggle />
       </div>
-      <div class="bg-surface rounded-xl shadow-lg p-5 sm:p-8 max-w-md w-full border border-line">
-        <div class="mb-5 sm:mb-6 md:mb-8">
+      <div class="bg-surface rounded-xl shadow-lg p-5 sm:p-8 w-full max-w-md border border-line">
+        <div class="mb-5 sm:mb-6">
           <app-logo-nauta variant="login" [linkTo]="null" />
         </div>
 
@@ -25,13 +25,15 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme
           <label class="block">
             <span class="text-sm font-medium text-ink-secondary">Usuario</span>
             <input [(ngModel)]="usuario" type="text"
-                   placeholder="RUT o nombre"
-                   class="mt-1 w-full py-2 px-3 app-input bg-surface">
+                   placeholder="RUT, correo o nombre"
+                   autocomplete="username"
+                   class="mt-1 w-full py-2.5 px-3 app-input bg-surface">
           </label>
           <label class="block">
             <span class="text-sm font-medium text-ink-secondary">Contraseña</span>
             <input [(ngModel)]="password" type="password" placeholder="Contraseña"
-                   class="mt-1 w-full py-2 px-3 app-input bg-surface"
+                   autocomplete="current-password"
+                   class="mt-1 w-full py-2.5 px-3 app-input bg-surface"
                    (keyup.enter)="entrar()">
           </label>
           @if (error) {
@@ -50,7 +52,7 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme
       </div>
     </div>
   `,
-  styles: []
+  styles: [],
 })
 export class LoginComponent implements OnInit {
   private auth = inject(AuthRoleService);
@@ -58,13 +60,13 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
 
   usuario = '';
-  password = '12345';
+  password = '';
   error = '';
   cargando = false;
 
   ngOnInit(): void {
     if (this.auth.isLoggedIn()) {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate([this.auth.isApoderado() ? '/portal-apoderado' : '/dashboard']);
     }
   }
 

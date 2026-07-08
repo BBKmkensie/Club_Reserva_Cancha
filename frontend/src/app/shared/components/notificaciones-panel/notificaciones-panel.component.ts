@@ -15,10 +15,10 @@ import { Subscription } from 'rxjs';
       <div class="relative shrink-0">
         <button type="button"
                 (click)="toggle()"
-                class="relative p-2 rounded-lg border border-line-strong hover:bg-muted transition-colors"
+                class="relative p-1.5 sm:p-2 rounded-lg border border-line-strong hover:bg-muted transition-colors"
                 [attr.aria-expanded]="abierto"
                 aria-label="Notificaciones">
-          <svg class="w-5 h-5 text-ink-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-ink-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
           </svg>

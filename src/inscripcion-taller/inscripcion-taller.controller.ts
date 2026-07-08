@@ -14,6 +14,7 @@ import { ResponderInscripcionTallerDto } from '../dto/responder-inscripcion-tall
 import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
 import { ProponerInscripcionDirectivaDto } from '../dto/proponer-inscripcion-directiva.dto';
 import { ResponderPropuestaInscripcionDto } from '../dto/responder-propuesta-inscripcion.dto';
+import { RetirarInscripcionTallerDto } from '../dto/retirar-inscripcion-taller.dto';
 
 @Controller('inscripcion-taller')
 export class InscripcionTallerController {
@@ -58,6 +59,14 @@ export class InscripcionTallerController {
     @Body() dto: ResponderInscripcionTallerDto,
   ) {
     return this.inscripcionTallerService.responder(id, dto);
+  }
+
+  @Patch(':id/retirar')
+  retirar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RetirarInscripcionTallerDto,
+  ) {
+    return this.inscripcionTallerService.retirarse(id, dto.alumnoId);
   }
 
   @Patch(':id/ficha')

@@ -6,7 +6,11 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Taller } from '../../models/taller.model';
 import { HorariosTallerComponent } from '../../shared/components/horarios-taller/horarios-taller.component';
-import { textoHorarioTaller } from '../../shared/utils/horario-taller.util';
+import {
+  AdvertenciasInscripcionComponent,
+  tallerSinProfesor,
+} from '../../shared/components/advertencias-inscripcion/advertencias-inscripcion.component';
+import { ValidacionInscripcionTaller } from '../../models/inscripcion-taller.model';
 
 interface InscripcionTaller {
   id: number;
@@ -16,20 +20,10 @@ interface InscripcionTaller {
   taller?: { id: number; tipo: string; descripcion: string };
 }
 
-interface ValidacionInscripcion {
-  puedeInscribirse: boolean;
-  cuposOcupados: number;
-  cuposDisponibles: number;
-  capacidad: number;
-  conflictoHorario: boolean;
-  tallerConflicto?: string;
-  motivo?: string;
-}
-
 @Component({
   selector: 'app-inscripcion-talleres',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, HorariosTallerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, HorariosTallerComponent, AdvertenciasInscripcionComponent],
   template: `
     <div class="space-y-6">
       <div class="bg-surface rounded-lg shadow p-6">
@@ -53,7 +47,7 @@ interface ValidacionInscripcion {
           } @else {
             <ul class="space-y-3">
               @for (s of misSolicitudes; track s.id) {
-                <li class="flex items-center justify-between py-3 px-4 rounded-lg border-2"
+                <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 px-4 rounded-lg border-2"
                     [class.bg-amber-50]="s.estado === 'PENDIENTE'"
                     [class.border-amber-300]="s.estado === 'PENDIENTE'"
                     [class.bg-green-50]="s.estado === 'ACEPTADO'"
@@ -61,7 +55,7 @@ interface ValidacionInscripcion {
                     [class.bg-red-50]="s.estado === 'RECHAZADO'"
                     [class.border-red-300]="s.estado === 'RECHAZADO'">
                   <span class="font-semibold text-ink">{{ nombreTaller(s) }}</span>
-                  <span class="text-base font-bold px-3 py-1 rounded-full"
+                  <span class="text-base font-bold px-3 py-1 rounded-full shrink-0"
                         [class.text-amber-800]="s.estado === 'PENDIENTE'"
                         [class.bg-amber-200]="s.estado === 'PENDIENTE'"
                         [class.text-green-800]="s.estado === 'ACEPTADO'"
@@ -70,6 +64,13 @@ interface ValidacionInscripcion {
                         [class.bg-red-200]="s.estado === 'RECHAZADO'">
                     {{ s.estado === 'PENDIENTE' ? 'Pendiente' : s.estado === 'ACEPTADO' ? 'Aceptado' : 'Rechazado' }}
                   </span>
+                  @if (s.estado === 'PENDIENTE' || s.estado === 'ACEPTADO') {
+                    <button (click)="abrirConfirmacionRetiro(s)"
+                            [disabled]="retirando === s.id"
+                            class="text-sm text-red-700 border border-red-300 bg-white px-3 py-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50 shrink-0">
+                      {{ retirando === s.id ? 'Retirando...' : 'Retirarme' }}
+                    </button>
+                  }
                 </li>
               }
             </ul>
@@ -81,8 +82,22 @@ interface ValidacionInscripcion {
         <h2 class="text-2xl font-semibold mb-4 text-ink">Catálogo de actividades publicadas</h2>
         <div class="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
           @for (taller of talleres; track taller.id) {
-            <div class="border rounded-lg p-4 flex flex-col hover:shadow-md transition">
+            <div class="border rounded-lg overflow-hidden flex flex-col hover:shadow-md transition">
+              @if (taller.imagenUrl) {
+                <img [src]="taller.imagenUrl" [alt]="taller.tipo"
+                     class="w-full h-40 object-cover border-b border-line" loading="lazy" />
+              } @else {
+                <div class="w-full h-40 bg-muted flex items-center justify-center text-ink-muted text-sm border-b border-line">
+                  Sin imagen
+                </div>
+              }
+              <div class="p-4 flex flex-col flex-1">
               <h3 class="font-semibold text-ink text-lg">{{ taller.tipo }}</h3>
+              @if (tallerSinProfesor(taller)) {
+                <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mt-1 inline-block">
+                  Sin profesor asignado aún
+                </p>
+              }
               <p class="text-sm text-ink-muted mt-1 flex-1">{{ taller.descripcion }}</p>
               <app-horarios-taller [taller]="taller" [mostrarTitulo]="true" />
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
@@ -90,11 +105,21 @@ interface ValidacionInscripcion {
                   Cupos: {{ cuposPorTaller[taller.id]?.cuposDisponibles ?? '—' }} / {{ taller.capacidad }}
                 </span>
                 @if (auth.canInscribirseTalleres() && alumnoId) {
-                  <div class="flex items-center gap-2">
+                  <div class="flex flex-wrap items-center justify-end gap-2">
                     @if (estadoSolicitud(taller.id) === 'PENDIENTE') {
                       <span class="text-sm text-amber-600 font-medium">Solicitud enviada</span>
+                      <button (click)="abrirConfirmacionRetiroPorTaller(taller.id)"
+                              [disabled]="retirando === solicitudId(taller.id)"
+                              class="text-sm text-red-700 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50">
+                        Cancelar solicitud
+                      </button>
                     } @else if (estadoSolicitud(taller.id) === 'ACEPTADO') {
                       <span class="text-sm text-green-600 font-medium">Inscrito</span>
+                      <button (click)="abrirConfirmacionRetiroPorTaller(taller.id)"
+                              [disabled]="retirando === solicitudId(taller.id)"
+                              class="text-sm text-red-700 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50">
+                        Retirarme
+                      </button>
                     } @else if (estadoSolicitud(taller.id) === 'RECHAZADO') {
                       <button (click)="abrirConfirmacion(taller)"
                               class="text-sm bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700">
@@ -113,6 +138,7 @@ interface ValidacionInscripcion {
                   <a [routerLink]="['/taller', taller.id]" class="text-primary-600 text-sm hover:underline">Ver detalle</a>
                 }
               </div>
+              </div>
             </div>
           }
         </div>
@@ -127,6 +153,8 @@ interface ValidacionInscripcion {
         <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
           <h3 class="text-xl font-bold text-ink mb-2">Confirmar inscripción</h3>
           <p class="text-ink-muted mb-4">¿Deseas inscribirte en <strong>{{ tallerConfirmando.tipo }}</strong>?</p>
+
+          <app-advertencias-inscripcion [advertencias]="validacionActual?.advertencias" />
 
           <div class="bg-page rounded-lg p-4 text-sm space-y-2 mb-4">
             <app-horarios-taller *ngIf="tallerConfirmando" [taller]="tallerConfirmando" [mostrarTitulo]="false" />
@@ -181,6 +209,35 @@ interface ValidacionInscripcion {
         </div>
       </div>
     }
+
+    @if (solicitudRetirando) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 class="text-xl font-bold text-ink mb-2">Confirmar retiro</h3>
+          <p class="text-ink-muted mb-4">
+            ¿Estás seguro de que deseas retirarte de <strong>{{ nombreTaller(solicitudRetirando) }}</strong>?
+            @if (solicitudRetirando.estado === 'ACEPTADO') {
+              <span class="block mt-2 text-amber-800">Perderás tu cupo en el taller y el profesor será notificado.</span>
+            } @else {
+              <span class="block mt-2 text-amber-800">Se cancelará tu solicitud pendiente y el profesor será notificado.</span>
+            }
+          </p>
+          @if (errorRetiro) {
+            <p class="text-red-600 text-sm mb-3">{{ errorRetiro }}</p>
+          }
+          <div class="flex gap-3 justify-end">
+            <button (click)="cerrarConfirmacionRetiro()" class="px-4 py-2 rounded-lg border border-line-strong text-ink-secondary hover:bg-page">
+              Cancelar
+            </button>
+            <button (click)="confirmarRetiro()"
+                    [disabled]="retirando !== null"
+                    class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+              {{ retirando !== null ? 'Retirando...' : 'Sí, retirarme' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: []
 })
@@ -190,15 +247,21 @@ export class InscripcionTalleresComponent implements OnInit {
 
   talleres: Taller[] = [];
   misSolicitudes: InscripcionTaller[] = [];
-  cuposPorTaller: Record<number, ValidacionInscripcion> = {};
+  cuposPorTaller: Record<number, ValidacionInscripcionTaller> = {};
   alumnoId: number | null = null;
   enviando: number | null = null;
 
   tallerConfirmando: Taller | null = null;
-  validacionActual: ValidacionInscripcion | null = null;
+  validacionActual: ValidacionInscripcionTaller | null = null;
   errorConfirmacion = '';
   confirmando = false;
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
+
+  solicitudRetirando: InscripcionTaller | null = null;
+  retirando: number | null = null;
+  errorRetiro = '';
+
+  readonly tallerSinProfesor = tallerSinProfesor;
 
   ngOnInit() {
     this.cargarTalleres();
@@ -246,6 +309,44 @@ export class InscripcionTalleresComponent implements OnInit {
   estadoSolicitud(tallerId: number): 'PENDIENTE' | 'ACEPTADO' | 'RECHAZADO' | null {
     const s = this.misSolicitudes.find(x => x.tallerId === tallerId || x.taller?.id === tallerId);
     return s ? s.estado : null;
+  }
+
+  solicitudId(tallerId: number): number | null {
+    const s = this.misSolicitudes.find(x => x.tallerId === tallerId || x.taller?.id === tallerId);
+    return s?.id ?? null;
+  }
+
+  abrirConfirmacionRetiro(solicitud: InscripcionTaller) {
+    this.solicitudRetirando = solicitud;
+    this.errorRetiro = '';
+  }
+
+  abrirConfirmacionRetiroPorTaller(tallerId: number) {
+    const s = this.misSolicitudes.find(x => x.tallerId === tallerId || x.taller?.id === tallerId);
+    if (s) this.abrirConfirmacionRetiro(s);
+  }
+
+  cerrarConfirmacionRetiro() {
+    this.solicitudRetirando = null;
+    this.errorRetiro = '';
+    this.retirando = null;
+  }
+
+  confirmarRetiro() {
+    if (!this.solicitudRetirando || !this.alumnoId) return;
+    this.retirando = this.solicitudRetirando.id;
+    this.errorRetiro = '';
+    this.apiService.retirarseDeTaller(this.solicitudRetirando.id, this.alumnoId).subscribe({
+      next: () => {
+        this.cerrarConfirmacionRetiro();
+        this.cargarMisSolicitudes();
+        this.cargarCupos();
+      },
+      error: (err) => {
+        this.retirando = null;
+        this.errorRetiro = err?.error?.message || 'No se pudo completar el retiro';
+      },
+    });
   }
 
   nombreTaller(s: InscripcionTaller): string {

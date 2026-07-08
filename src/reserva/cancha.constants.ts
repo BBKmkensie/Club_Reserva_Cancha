@@ -1,11 +1,41 @@
 export const CANCHA_ESPACIO_DEFAULT = 'Cancha Principal';
 export const CANCHA_HORA_INICIO = 9;
 export const CANCHA_HORA_FIN = 20;
+/** Duración base de cada reserva (minutos) */
+export const CANCHA_DURACION_SLOT_MIN = 30;
 /** Franja 13:00–14:00 habilitada para todos los talleres, todos los días */
 export const CANCHA_HORA_PARA_TODOS = 13;
 
-export function formatHoraSlot(hora: number): string {
-  return `${hora.toString().padStart(2, '0')}:00`;
+export function formatMinutosDesdeMedianoche(totalMin: number): string {
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function formatHoraSlot(hora: number, minutos = 0): string {
+  return formatMinutosDesdeMedianoche(hora * 60 + minutos);
+}
+
+export function sumarMinutosAHora(hora: string, minutos: number): string {
+  return formatMinutosDesdeMedianoche(horaAMinutos(hora) + minutos);
+}
+
+export function iterarIniciosSlotCancha(): string[] {
+  const slots: string[] = [];
+  for (
+    let m = CANCHA_HORA_INICIO * 60;
+    m < CANCHA_HORA_FIN * 60;
+    m += CANCHA_DURACION_SLOT_MIN
+  ) {
+    slots.push(formatMinutosDesdeMedianoche(m));
+  }
+  return slots;
+}
+
+export function esHorarioParaTodos(horaInicio: string): boolean {
+  const ini = horaAMinutos(horaInicio);
+  const bloqueIni = CANCHA_HORA_PARA_TODOS * 60;
+  return ini >= bloqueIni && ini < bloqueIni + 60;
 }
 
 export function normalizarHora(hora: string | null | undefined): string {

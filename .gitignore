@@ -44,3 +44,9 @@ Thumbs.db
 
 # Optional
 *.local
+
+# Cursor / trabajo local temporal
+.transcript-extract/
+.evaluacion2_extract.txt
+Reservas_de_cancha/
+scripts/git-strip-cursor-coauthor.ps1

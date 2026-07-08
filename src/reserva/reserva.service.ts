@@ -11,6 +11,7 @@ import { FranjaCancha } from '../entities/franja-cancha.entity';
 import { CreateReservaDto } from '../dto/create-reserva.dto';
 import { FranjaCanchaService } from './franja-cancha.service';
 import {
+  CANCHA_DURACION_SLOT_MIN,
   CANCHA_ESPACIO_DEFAULT,
   CANCHA_HORA_FIN,
   CANCHA_HORA_INICIO,
@@ -32,7 +33,7 @@ export interface SlotDisponibilidadCancha {
   horaFin: string;
   espacio: string;
   estado: EstadoSlotCancha;
-  duracionHoras: number;
+  duracionMinutos: number;
   paraTodos: boolean;
   reservaId?: number;
   tallerId?: number;
@@ -73,9 +74,9 @@ export class ReservaService {
     for (const franja of franjasActivas) {
       const horaInicio = normalizarHora(franja.horaInicio);
       const horaFin = normalizarHora(franja.horaFin);
-      const duracionHoras = Math.max(
-        1,
-        Math.round((horaAMinutos(horaFin) - horaAMinutos(horaInicio)) / 60),
+      const duracionMinutos = Math.max(
+        CANCHA_DURACION_SLOT_MIN,
+        horaAMinutos(horaFin) - horaAMinutos(horaInicio),
       );
 
       const reserva = reservas.find((r) =>
@@ -93,7 +94,7 @@ export class ReservaService {
           horaFin,
           espacio,
           estado: 'ocupada',
-          duracionHoras,
+          duracionMinutos,
           paraTodos: franja.paraTodos,
           reservaId: reserva.id,
           tallerId: reserva.tallerId,
@@ -106,7 +107,7 @@ export class ReservaService {
           horaFin,
           espacio,
           estado: 'disponible',
-          duracionHoras,
+          duracionMinutos,
           paraTodos: franja.paraTodos,
         });
       }
@@ -144,15 +145,21 @@ export class ReservaService {
       throw new BadRequestException('Debe indicar hora de inicio y fin');
     }
 
-    const inicioNum = parseInt(horaInicio.split(':')[0], 10);
-    const finNum = parseInt(horaFin.split(':')[0], 10);
-    const duracionReserva = finNum - inicioNum;
+    const inicioMin = horaAMinutos(horaInicio);
+    const finMin = horaAMinutos(horaFin);
+    const duracionReserva = finMin - inicioMin;
 
-    if (duracionReserva < 1) {
+    if (duracionReserva < CANCHA_DURACION_SLOT_MIN) {
       throw new BadRequestException('La hora de fin debe ser posterior a la de inicio');
     }
 
-    if (inicioNum < CANCHA_HORA_INICIO || finNum > CANCHA_HORA_FIN) {
+    if (duracionReserva % CANCHA_DURACION_SLOT_MIN !== 0) {
+      throw new BadRequestException(
+        `Las reservas deben ser en bloques de ${CANCHA_DURACION_SLOT_MIN} minutos`,
+      );
+    }
+
+    if (inicioMin < CANCHA_HORA_INICIO * 60 || finMin > CANCHA_HORA_FIN * 60) {
       throw new BadRequestException(
         `Horario fuera del rango permitido (${formatHoraSlot(CANCHA_HORA_INICIO)}–${formatHoraSlot(CANCHA_HORA_FIN)})`,
       );
@@ -175,14 +182,17 @@ export class ReservaService {
     }
 
     const franjaFin = normalizarHora(franja.horaFin);
-    const franjaDuracion =
-      (horaAMinutos(franjaFin) - horaAMinutos(normalizarHora(franja.horaInicio))) / 60;
+    const franjaDuracion = horaAMinutos(franjaFin) - horaAMinutos(normalizarHora(franja.horaInicio));
 
     if (duracionReserva !== franjaDuracion) {
+      const etiquetaDuracion =
+        franjaDuracion % 60 === 0
+          ? `${franjaDuracion / 60} h`
+          : `${franjaDuracion} min`;
       throw new BadRequestException(
-        `Esta franja es de ${franjaDuracion} h (${normalizarHora(franja.horaInicio)}–${franjaFin}). ` +
-          (franjaDuracion === 1
-            ? 'Las reservas son de 1 hora; la directiva puede ampliar franjas específicas.'
+        `Esta franja es de ${etiquetaDuracion} (${normalizarHora(franja.horaInicio)}–${franjaFin}). ` +
+          (franjaDuracion === CANCHA_DURACION_SLOT_MIN
+            ? `Las reservas son de ${CANCHA_DURACION_SLOT_MIN} minutos; la directiva puede ampliar franjas específicas.`
             : 'Debe reservar el bloque completo.'),
       );
     }

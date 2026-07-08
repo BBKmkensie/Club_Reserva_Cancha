@@ -10,6 +10,8 @@ import { SesionAsistencia } from '../entities/sesion-asistencia.entity';
 import { TallerHorario } from '../entities/taller-horario.entity';
 import { Reserva } from '../entities/reserva.entity';
 import { NotificacionModule } from '../notificacion/notificacion.module';
+import { PeriodoModule } from '../periodo/periodo.module';
+import { TallerSeedService } from './taller-seed.service';
 
 @Module({
   imports: [
@@ -23,9 +25,10 @@ import { NotificacionModule } from '../notificacion/notificacion.module';
       Reserva,
     ]),
     NotificacionModule,
+    PeriodoModule,
   ],
   controllers: [TallerController],
-  providers: [TallerService],
-  exports: [TallerService],
+  providers: [TallerService, TallerSeedService],
+  exports: [TallerService, TallerSeedService],
 })
 export class TallerModule {}

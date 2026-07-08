@@ -23,6 +23,11 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:apoderados": "nest build && node dist/scripts/seed-apoderados.js",
+    "seed:alumno-edades": "nest build && node dist/scripts/seed-alumno-edades.js",
+    "seed:alumno-passwords": "nest build && node dist/scripts/seed-alumno-passwords.js",
+    "seed:catalogo-talleres": "nest build && node dist/scripts/seed-catalogo-talleres.js",
+    "seed:horarios-talleres": "nest build && node dist/scripts/seed-horarios-talleres.js",
+    "seed:reservas-deportes": "nest build && node dist/scripts/seed-reservas-deportes.js",
     "fix:apoderado-nombres": "nest build && node dist/scripts/fix-apoderado-nombres.js",
     "fix:apoderado-emails": "nest build && node dist/scripts/fix-apoderado-emails.js",
     "notify:apoderados": "nest build && node dist/scripts/notify-apoderados.js"

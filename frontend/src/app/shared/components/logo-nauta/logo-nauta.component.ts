@@ -34,8 +34,14 @@ import { RouterLink } from '@angular/router';
   `,
   styles: [`
     .logo-navbar {
-      height: 1.5rem;
-      max-width: min(6.5rem, 40vw);
+      height: 1.25rem;
+      max-width: min(4.75rem, 26vw);
+    }
+    @media (min-width: 400px) {
+      .logo-navbar {
+        height: 1.4rem;
+        max-width: min(5.5rem, 30vw);
+      }
     }
     @media (min-width: 640px) {
       .logo-navbar {
@@ -87,7 +93,7 @@ export class LogoNautaComponent {
     if (this.variant === 'login') {
       return 'flex justify-center w-full px-1 sm:px-2';
     }
-    return 'flex items-center min-w-0 shrink';
+    return 'flex items-center min-w-0 flex-1 overflow-hidden';
   }
 
   get imgClass(): string {

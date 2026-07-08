@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { FranjaCancha } from '../entities/franja-cancha.entity';
 import { ActualizarFranjasCanchaDto } from '../dto/actualizar-franjas-cancha.dto';
 import {
+  CANCHA_DURACION_SLOT_MIN,
   CANCHA_ESPACIO_DEFAULT,
   CANCHA_HORA_FIN,
   CANCHA_HORA_INICIO,
-  CANCHA_HORA_PARA_TODOS,
-  formatHoraSlot,
+  esHorarioParaTodos,
+  iterarIniciosSlotCancha,
   normalizarHora,
+  sumarMinutosAHora,
 } from './cancha.constants';
 
 @Injectable()
@@ -53,9 +55,8 @@ export class FranjaCanchaService {
 
     for (const item of dto.franjas) {
       const horaInicio = normalizarHora(item.horaInicio);
-      const horaNum = parseInt(horaInicio.split(':')[0], 10);
-      const duracion = item.duracionHoras ?? 1;
-      const horaFin = formatHoraSlot(horaNum + duracion);
+      const duracion = item.duracionMinutos ?? CANCHA_DURACION_SLOT_MIN;
+      const horaFin = sumarMinutosAHora(horaInicio, duracion);
 
       let franja = await this.buscarFranja(espacio, item.diaSemana, horaInicio);
 
@@ -68,12 +69,11 @@ export class FranjaCanchaService {
         franja.horaFin = `${horaFin}:00`;
         await this.repo.save(franja);
 
-        if (duracion > 1 && franja.activa) {
-          await this.ocultarFranjasCubiertas(espacio, item.diaSemana, horaNum, duracion);
+        if (duracion > CANCHA_DURACION_SLOT_MIN && franja.activa) {
+          await this.ocultarFranjasCubiertas(espacio, item.diaSemana, horaInicio, duracion);
         }
       } else {
-        const esParaTodos =
-          horaNum === CANCHA_HORA_PARA_TODOS && duracion === 1;
+        const esParaTodos = esHorarioParaTodos(horaInicio) && duracion === CANCHA_DURACION_SLOT_MIN;
         await this.repo.save(
           this.repo.create({
             espacio,
@@ -84,8 +84,8 @@ export class FranjaCanchaService {
             paraTodos: esParaTodos,
           }),
         );
-        if (duracion > 1 && item.activa) {
-          await this.ocultarFranjasCubiertas(espacio, item.diaSemana, horaNum, duracion);
+        if (duracion > CANCHA_DURACION_SLOT_MIN && item.activa) {
+          await this.ocultarFranjasCubiertas(espacio, item.diaSemana, horaInicio, duracion);
         }
       }
     }
@@ -96,56 +96,100 @@ export class FranjaCanchaService {
   private async ocultarFranjasCubiertas(
     espacio: string,
     diaSemana: number,
-    horaInicio: number,
+    horaInicio: string,
     duracion: number,
   ): Promise<void> {
-    for (let i = 1; i < duracion; i++) {
-      const h = horaInicio + i;
-      const cubierta = await this.buscarFranja(espacio, diaSemana, formatHoraSlot(h));
+    const pasos = duracion / CANCHA_DURACION_SLOT_MIN;
+    for (let i = 1; i < pasos; i++) {
+      const cubiertaInicio = sumarMinutosAHora(horaInicio, i * CANCHA_DURACION_SLOT_MIN);
+      const cubierta = await this.buscarFranja(espacio, diaSemana, cubiertaInicio);
       if (cubierta && !cubierta.paraTodos) {
         cubierta.activa = false;
-        cubierta.horaFin = `${formatHoraSlot(h + 1)}:00`;
+        cubierta.horaFin = `${sumarMinutosAHora(cubiertaInicio, CANCHA_DURACION_SLOT_MIN)}:00`;
         await this.repo.save(cubierta);
       }
     }
   }
 
-  async asegurarFranjasBase(espacio = CANCHA_ESPACIO_DEFAULT): Promise<void> {
-    const existentes = await this.findAll(espacio);
-    if (existentes.length > 0) {
-      await this.repo
-        .createQueryBuilder()
-        .update(FranjaCancha)
-        .set({ activa: false })
-        .where('espacio = :espacio', { espacio })
-        .andWhere(
-          '(EXTRACT(HOUR FROM hora_inicio) < :inicio OR EXTRACT(HOUR FROM hora_inicio) >= :fin)',
-          { inicio: CANCHA_HORA_INICIO, fin: CANCHA_HORA_FIN },
-        )
-        .execute();
-      await this.repo
-        .createQueryBuilder()
-        .update(FranjaCancha)
-        .set({ paraTodos: true, activa: true })
-        .where('espacio = :espacio', { espacio })
-        .andWhere('EXTRACT(HOUR FROM hora_inicio) = :h', { h: CANCHA_HORA_PARA_TODOS })
-        .execute();
-      return;
+  private necesitaMigracionMediaHora(franjas: FranjaCancha[]): boolean {
+    if (franjas.length === 0) return false;
+    return !franjas.some((f) => normalizarHora(f.horaInicio).endsWith(':30'));
+  }
+
+  private async migrarFranjasMediaHora(
+    espacio: string,
+    existentes: FranjaCancha[],
+  ): Promise<void> {
+    const mapa = new Map<string, FranjaCancha>();
+    for (const f of existentes) {
+      mapa.set(`${f.diaSemana}|${normalizarHora(f.horaInicio)}`, f);
     }
 
+    await this.repo.delete({ espacio });
+    await this.crearFranjasBase30Min(espacio, mapa);
+  }
+
+  private async crearFranjasBase30Min(
+    espacio: string,
+    mapaAnterior = new Map<string, FranjaCancha>(),
+  ): Promise<void> {
     const filas: Partial<FranjaCancha>[] = [];
+
     for (let dia = 1; dia <= 7; dia++) {
-      for (let h = CANCHA_HORA_INICIO; h < CANCHA_HORA_FIN; h++) {
+      for (const horaInicio of iterarIniciosSlotCancha()) {
+        const anterior = mapaAnterior.get(`${dia}|${horaInicio}`);
+        const horaPadre = `${horaInicio.split(':')[0]}:00`;
+        const padre = mapaAnterior.get(`${dia}|${horaPadre}`);
+        const paraTodos = esHorarioParaTodos(horaInicio);
+        const activa = paraTodos ? true : (anterior?.activa ?? padre?.activa ?? true);
+
         filas.push({
           espacio,
           diaSemana: dia,
-          horaInicio: `${formatHoraSlot(h)}:00`,
-          horaFin: `${formatHoraSlot(h + 1)}:00`,
-          activa: true,
-          paraTodos: h === CANCHA_HORA_PARA_TODOS,
+          horaInicio: `${horaInicio}:00`,
+          horaFin: `${sumarMinutosAHora(horaInicio, CANCHA_DURACION_SLOT_MIN)}:00`,
+          activa,
+          paraTodos,
         });
       }
     }
+
     await this.repo.save(filas.map((f) => this.repo.create(f)));
+  }
+
+  async asegurarFranjasBase(espacio = CANCHA_ESPACIO_DEFAULT): Promise<void> {
+    const existentes = await this.findAll(espacio);
+
+    if (this.necesitaMigracionMediaHora(existentes)) {
+      await this.migrarFranjasMediaHora(espacio, existentes);
+      return;
+    }
+
+    if (existentes.length === 0) {
+      await this.crearFranjasBase30Min(espacio);
+      return;
+    }
+
+    await this.repo
+      .createQueryBuilder()
+      .update(FranjaCancha)
+      .set({ activa: false })
+      .where('espacio = :espacio', { espacio })
+      .andWhere(
+        '(EXTRACT(HOUR FROM hora_inicio) * 60 + EXTRACT(MINUTE FROM hora_inicio) < :inicio OR EXTRACT(HOUR FROM hora_inicio) * 60 + EXTRACT(MINUTE FROM hora_inicio) >= :fin)',
+        { inicio: CANCHA_HORA_INICIO * 60, fin: CANCHA_HORA_FIN * 60 },
+      )
+      .execute();
+
+    await this.repo
+      .createQueryBuilder()
+      .update(FranjaCancha)
+      .set({ paraTodos: true, activa: true })
+      .where('espacio = :espacio', { espacio })
+      .andWhere(
+        'EXTRACT(HOUR FROM hora_inicio) * 60 + EXTRACT(MINUTE FROM hora_inicio) >= :ini AND EXTRACT(HOUR FROM hora_inicio) * 60 + EXTRACT(MINUTE FROM hora_inicio) < :fin',
+        { ini: 13 * 60, fin: 14 * 60 },
+      )
+      .execute();
   }
 }

@@ -6,11 +6,15 @@ import { FranjaCanchaController } from './franja-cancha.controller';
 import { FranjaCanchaService } from './franja-cancha.service';
 import { Reserva } from '../entities/reserva.entity';
 import { FranjaCancha } from '../entities/franja-cancha.entity';
+import { Taller } from '../entities/taller.entity';
+import { Profesor } from '../entities/profesor.entity';
+import { PeriodoAcademico } from '../entities/periodo-academico.entity';
+import { ReservaCanchaSeedService } from './reserva-cancha-seed.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Reserva, FranjaCancha])],
+  imports: [TypeOrmModule.forFeature([Reserva, FranjaCancha, Taller, Profesor, PeriodoAcademico])],
   controllers: [ReservaController, FranjaCanchaController],
-  providers: [ReservaService, FranjaCanchaService],
-  exports: [ReservaService, FranjaCanchaService],
+  providers: [ReservaService, FranjaCanchaService, ReservaCanchaSeedService],
+  exports: [ReservaService, FranjaCanchaService, ReservaCanchaSeedService],
 })
 export class ReservaModule {}

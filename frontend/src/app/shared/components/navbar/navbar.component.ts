@@ -13,47 +13,56 @@ import { NotificacionesPanelComponent } from '../notificaciones-panel/notificaci
   imports: [CommonModule, RouterLink, LogoNautaComponent, ThemeToggleComponent, NotificacionesPanelComponent],
   template: `
     <nav class="fixed top-0 left-0 right-0 z-50 bg-elevated shadow-lg border-b border-line">
-      <div class="px-3 sm:px-4 lg:px-6">
-        <div class="flex items-center gap-2 sm:gap-3 h-14 sm:h-16 min-w-0">
-          @if (auth.isLoggedIn()) {
-            <button type="button"
-                    (click)="sidebar.toggle()"
-                    class="p-2 border border-line-strong rounded-md hover:bg-muted shrink-0 lg:hidden"
-                    [attr.aria-expanded]="sidebar.isOpen"
-                    aria-label="Abrir menú de navegación">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-6 h-6 text-ink-secondary">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              </svg>
-            </button>
-          }
+      <div class="px-2 sm:px-4 lg:px-6 max-w-full">
+        <div class="flex items-center gap-1 sm:gap-2 h-14 sm:h-16 min-w-0 w-full">
+          <div class="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-hidden">
+            @if (auth.isLoggedIn()) {
+              <button type="button"
+                      (click)="sidebar.toggle()"
+                      class="p-1.5 sm:p-2 border border-line-strong rounded-md hover:bg-muted shrink-0 lg:hidden"
+                      [attr.aria-expanded]="sidebar.isOpen"
+                      aria-label="Abrir menú de navegación">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-5 h-5 sm:w-6 sm:h-6 text-ink-secondary">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+              </button>
+            }
 
-          <app-logo-nauta variant="navbar" />
+            <app-logo-nauta variant="navbar" />
+          </div>
 
-          <div class="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
+          <div class="flex items-center gap-1 sm:gap-2 shrink-0">
             @if (auth.isLoggedIn()) {
               <app-notificaciones-panel />
-            }
-            <app-theme-toggle />
+              <div class="hidden md:block">
+                <app-theme-toggle />
+              </div>
 
-            @if (auth.isLoggedIn()) {
-              <div class="flex items-center gap-2 min-w-0">
+              <div class="flex items-center gap-1 sm:gap-2 min-w-0">
                 @if (auth.currentNombre()) {
-                  <span class="hidden sm:inline text-sm text-ink-secondary font-medium truncate max-w-[8rem] md:max-w-[12rem] lg:max-w-[16rem]"
+                  <span class="hidden lg:inline text-sm text-ink-secondary font-medium truncate max-w-[8rem] xl:max-w-[16rem]"
                         [title]="auth.currentNombre()!">
                     {{ auth.currentNombre() }}
                   </span>
                 }
-                <span class="bg-primary-500 text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full whitespace-nowrap shrink-0">
-                  {{ auth.roleLabel() }}
+                <span class="bg-primary-500 text-white text-[10px] sm:text-xs md:text-sm font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 md:py-2 rounded-full whitespace-nowrap shrink-0 max-w-[5.5rem] sm:max-w-none truncate"
+                      [title]="auth.roleLabel()">
+                  <span class="sm:hidden">{{ roleCorto() }}</span>
+                  <span class="hidden sm:inline">{{ auth.roleLabel() }}</span>
                 </span>
               </div>
+
               <button type="button" (click)="cerrar()"
-                      class="text-xs sm:text-sm text-ink-muted hover:text-primary-500 px-2 py-1 rounded whitespace-nowrap">
+                      class="shrink-0 text-[11px] sm:text-sm text-ink-muted hover:text-primary-500 px-1.5 sm:px-2 py-1 rounded whitespace-nowrap border border-transparent hover:border-line-strong"
+                      aria-label="Cerrar sesión">
                 Salir
               </button>
             } @else {
+              <div class="hidden sm:block">
+                <app-theme-toggle />
+              </div>
               <a routerLink="/login"
-                 class="text-sm bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 font-medium whitespace-nowrap">
+                 class="text-xs sm:text-sm bg-primary-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-primary-600 font-medium whitespace-nowrap shrink-0">
                 Iniciar sesión
               </a>
             }
@@ -68,6 +77,17 @@ export class NavbarComponent {
   auth = inject(AuthRoleService);
   sidebar = inject(SidebarService);
   private router = inject(Router);
+
+  roleCorto(): string {
+    const map: Record<string, string> = {
+      Estudiante: 'Est.',
+      Profesor: 'Prof.',
+      Apoderado: 'Apod.',
+      Directiva: 'Dir.',
+      'Super Admin': 'Admin',
+    };
+    return map[this.auth.roleLabel()] ?? this.auth.roleLabel();
+  }
 
   cerrar(): void {
     this.auth.clear();

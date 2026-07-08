@@ -5,14 +5,22 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Reserva } from '../../models/reserva.model';
 import { Taller } from '../../models/taller.model';
-import { HORAS_FRANJA_CANCHA, CANCHA_HORA_INICIO, CANCHA_HORA_FIN } from '../../shared/utils/cancha.constants';
+import {
+  SLOTS_FRANJA_CANCHA,
+  CANCHA_HORA_INICIO,
+  CANCHA_HORA_FIN,
+  CANCHA_DURACION_SLOT_MIN,
+  DURACIONES_FRANJA_MIN,
+  fmtSlotInicio,
+  fmtSlotFin,
+  esSlotParaTodos,
+} from '../../shared/utils/cancha.constants';
 import { CanchaSemanaVistaComponent } from '../../shared/components/cancha-semana-vista/cancha-semana-vista.component';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
 const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const ESPACIO = 'Cancha Principal';
-const HORAS = HORAS_FRANJA_CANCHA;
-const HORA_PARA_TODOS = 13;
+const SLOTS = SLOTS_FRANJA_CANCHA;
 
 type EstadoSlot = 'disponible' | 'ocupada' | 'no_habilitada';
 
@@ -21,7 +29,7 @@ interface SlotCancha {
   horaFin: string;
   espacio: string;
   estado: EstadoSlot;
-  duracionHoras?: number;
+  duracionMinutos?: number;
   paraTodos?: boolean;
   reservaId?: number;
   tallerId?: number;
@@ -34,7 +42,7 @@ interface FranjaConfig {
   horaInicio: string;
   activa: boolean;
   paraTodos: boolean;
-  duracionHoras: number;
+  duracionMinutos: number;
 }
 
 @Component({
@@ -46,8 +54,8 @@ interface FranjaConfig {
       <div>
         <h1 class="text-3xl font-bold text-ink">Reserva de cancha</h1>
         <p class="text-ink-muted mt-1">
-          Horarios de <strong>{{ fmtHora(CANCHA_HORA_INICIO) }} a {{ fmtHora(CANCHA_HORA_FIN) }}</strong> (1 hora por reserva). El bloque <strong>13:00–14:00</strong> está habilitado para todos los talleres.
-          La directiva puede ampliar franjas a más de 1 hora.
+          Horarios de <strong>{{ fmtHora(CANCHA_HORA_INICIO) }} a {{ fmtHora(CANCHA_HORA_FIN) }}</strong> (cada {{ CANCHA_DURACION_SLOT_MIN }} minutos). El bloque <strong>13:00–14:00</strong> está habilitado para todos los talleres.
+          La directiva puede ampliar franjas a más tiempo.
         </p>
       </div>
 
@@ -109,8 +117,8 @@ interface FranjaConfig {
                 @if (slot.paraTodos) {
                   <p class="text-xs text-amber-700 mt-0.5">Para todos</p>
                 }
-                @if (slot.duracionHoras && slot.duracionHoras > 1) {
-                  <p class="text-xs text-blue-700">{{ slot.duracionHoras }} horas</p>
+                @if (slot.duracionMinutos && slot.duracionMinutos > CANCHA_DURACION_SLOT_MIN) {
+                  <p class="text-xs text-blue-700">{{ etiquetaDuracion(slot.duracionMinutos) }}</p>
                 }
                 @if (slot.estado === 'disponible') {
                   <p class="text-xs text-green-700 mt-1">Disponible</p>
@@ -135,7 +143,7 @@ interface FranjaConfig {
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 class="text-xl font-semibold text-ink">Franjas habilitadas (semanal)</h2>
-              <p class="text-sm text-ink-muted">Clic para habilitar/deshabilitar. En celdas activas, elige duración (1–3 h). 13:00–14:00 es fijo para todos.</p>
+              <p class="text-sm text-ink-muted">Clic para habilitar/deshabilitar. En celdas activas, elige duración. 13:00–14:00 es fijo para todos.</p>
             </div>
             <button (click)="guardarFranjas()" [disabled]="guardandoFranjas || !franjasModificadas"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
@@ -153,38 +161,38 @@ interface FranjaConfig {
                 </tr>
               </thead>
               <tbody>
-                @for (h of HORAS; track h) {
-                  <tr [class.bg-amber-50]="h === HORA_PARA_TODOS">
-                    <td class="p-2 text-ink-secondary whitespace-nowrap font-medium">
-                      {{ fmtHora(h) }}–{{ fmtHora(h + 1) }}
-                      @if (h === HORA_PARA_TODOS) {
+                @for (slot of SLOTS; track slot.key) {
+                  <tr [class.bg-amber-50]="esSlotParaTodos(slot.hora, slot.minuto)">
+                    <td class="p-2 text-ink-secondary whitespace-nowrap font-medium text-xs">
+                      {{ fmtSlotInicio(slot.hora, slot.minuto) }}–{{ fmtSlotFin(slot.hora, slot.minuto) }}
+                      @if (esSlotParaTodos(slot.hora, slot.minuto)) {
                         <span class="block text-xs text-amber-700 font-normal">Para todos</span>
                       }
                     </td>
                     @for (d of [1,2,3,4,5,6,7]; track d) {
                       <td class="p-1">
-                        @if (esParaTodos(h)) {
+                        @if (esSlotParaTodos(slot.hora, slot.minuto)) {
                           <div class="w-full h-9 rounded-md border border-amber-400 bg-amber-100 text-amber-800 text-xs font-medium flex items-center justify-center">
                             Todos
                           </div>
                         } @else {
                           <button type="button"
-                                  (click)="toggleFranja(d, h)"
+                                  (click)="toggleFranja(d, slot.hora, slot.minuto)"
                                   class="w-full h-9 rounded-md border text-xs font-medium transition"
-                                  [class.bg-green-100]="franjaActiva(d, h)"
-                                  [class.border-green-400]="franjaActiva(d, h)"
-                                  [class.text-green-800]="franjaActiva(d, h)"
-                                  [class.bg-muted]="!franjaActiva(d, h)"
-                                  [class.border-line-strong]="!franjaActiva(d, h)"
-                                  [class.text-ink-muted]="!franjaActiva(d, h)">
-                            {{ franjaActiva(d, h) ? 'Sí' : 'No' }}
+                                  [class.bg-green-100]="franjaActiva(d, slot.hora, slot.minuto)"
+                                  [class.border-green-400]="franjaActiva(d, slot.hora, slot.minuto)"
+                                  [class.text-green-800]="franjaActiva(d, slot.hora, slot.minuto)"
+                                  [class.bg-muted]="!franjaActiva(d, slot.hora, slot.minuto)"
+                                  [class.border-line-strong]="!franjaActiva(d, slot.hora, slot.minuto)"
+                                  [class.text-ink-muted]="!franjaActiva(d, slot.hora, slot.minuto)">
+                            {{ franjaActiva(d, slot.hora, slot.minuto) ? 'Sí' : 'No' }}
                           </button>
-                          @if (franjaActiva(d, h)) {
-                            <select [ngModel]="getDuracion(d, h)" (ngModelChange)="setDuracion(d, h, $event)"
+                          @if (franjaActiva(d, slot.hora, slot.minuto)) {
+                            <select [ngModel]="getDuracion(d, slot.hora, slot.minuto)" (ngModelChange)="setDuracion(d, slot.hora, slot.minuto, $event)"
                                     class="mt-1 w-full text-xs border rounded px-1 py-0.5">
-                              <option [ngValue]="1">1 h</option>
-                              <option [ngValue]="2">2 h</option>
-                              <option [ngValue]="3">3 h</option>
+                              @for (dur of DURACIONES_FRANJA_MIN; track dur) {
+                                <option [ngValue]="dur">{{ etiquetaDuracion(dur) }}</option>
+                              }
                             </select>
                           }
                         }
@@ -247,8 +255,12 @@ export class ReservasComponent implements OnInit {
   private api = inject(ApiService);
 
   readonly DIAS_SEMANA = DIAS_SEMANA;
-  readonly HORAS = HORAS;
-  readonly HORA_PARA_TODOS = HORA_PARA_TODOS;
+  readonly SLOTS = SLOTS;
+  readonly DURACIONES_FRANJA_MIN = DURACIONES_FRANJA_MIN;
+  readonly CANCHA_DURACION_SLOT_MIN = CANCHA_DURACION_SLOT_MIN;
+  readonly fmtSlotInicio = fmtSlotInicio;
+  readonly fmtSlotFin = fmtSlotFin;
+  readonly esSlotParaTodos = esSlotParaTodos;
   readonly CANCHA_HORA_INICIO = CANCHA_HORA_INICIO;
   readonly CANCHA_HORA_FIN = CANCHA_HORA_FIN;
   readonly ESPACIO = ESPACIO;
@@ -304,45 +316,45 @@ export class ReservasComponent implements OnInit {
     return (r as any).profesor?.nombre || '-';
   }
 
-  esParaTodos(hora: number): boolean {
-    return hora === HORA_PARA_TODOS;
+  esParaTodos(hora: number, minuto: number): boolean {
+    return esSlotParaTodos(hora, minuto);
   }
 
-  franjaActiva(diaSemana: number, hora: number): boolean {
-    if (this.esParaTodos(hora)) return true;
-    const horaInicio = this.fmtHora(hora);
+  franjaActiva(diaSemana: number, hora: number, minuto: number): boolean {
+    if (this.esParaTodos(hora, minuto)) return true;
+    const horaInicio = fmtSlotInicio(hora, minuto);
     const f = this.franjasConfig.find(
       (x) => x.diaSemana === diaSemana && this.fmtHoraStr(x.horaInicio) === horaInicio,
     );
     return f?.activa ?? false;
   }
 
-  getDuracion(diaSemana: number, hora: number): number {
-    const horaInicio = this.fmtHora(hora);
+  getDuracion(diaSemana: number, hora: number, minuto: number): number {
+    const horaInicio = fmtSlotInicio(hora, minuto);
     const f = this.franjasConfig.find(
       (x) => x.diaSemana === diaSemana && this.fmtHoraStr(x.horaInicio) === horaInicio,
     );
-    return f?.duracionHoras ?? 1;
+    return f?.duracionMinutos ?? CANCHA_DURACION_SLOT_MIN;
   }
 
-  setDuracion(diaSemana: number, hora: number, duracion: number) {
-    const horaInicio = this.fmtHora(hora);
+  setDuracion(diaSemana: number, hora: number, minuto: number, duracion: number) {
+    const horaInicio = fmtSlotInicio(hora, minuto);
     let f = this.franjasConfig.find(
       (x) => x.diaSemana === diaSemana && this.fmtHoraStr(x.horaInicio) === horaInicio,
     );
     if (!f) {
-      f = { diaSemana, horaInicio, activa: true, paraTodos: false, duracionHoras: duracion };
+      f = { diaSemana, horaInicio, activa: true, paraTodos: false, duracionMinutos: duracion };
       this.franjasConfig.push(f);
     } else {
-      f.duracionHoras = duracion;
+      f.duracionMinutos = duracion;
       f.activa = true;
     }
     this.franjasModificadas = true;
   }
 
-  toggleFranja(diaSemana: number, hora: number) {
-    if (this.esParaTodos(hora)) return;
-    const horaInicio = this.fmtHora(hora);
+  toggleFranja(diaSemana: number, hora: number, minuto: number) {
+    if (this.esParaTodos(hora, minuto)) return;
+    const horaInicio = fmtSlotInicio(hora, minuto);
     const idx = this.franjasConfig.findIndex(
       (x) => x.diaSemana === diaSemana && this.fmtHoraStr(x.horaInicio) === horaInicio,
     );
@@ -350,10 +362,16 @@ export class ReservasComponent implements OnInit {
       this.franjasConfig[idx].activa = !this.franjasConfig[idx].activa;
     } else {
       this.franjasConfig.push({
-        diaSemana, horaInicio, activa: true, paraTodos: false, duracionHoras: 1,
+        diaSemana, horaInicio, activa: true, paraTodos: false, duracionMinutos: CANCHA_DURACION_SLOT_MIN,
       });
     }
     this.franjasModificadas = true;
+  }
+
+  etiquetaDuracion(minutos: number): string {
+    if (minutos % 60 === 0) return `${minutos / 60} h`;
+    if (minutos > 60) return `${Math.floor(minutos / 60)} h ${minutos % 60} min`;
+    return `${minutos} min`;
   }
 
   cargarFranjas() {
@@ -362,14 +380,14 @@ export class ReservasComponent implements OnInit {
         this.franjasConfig = data.map((f: any) => {
           const ini = this.fmtHoraStr(f.horaInicio);
           const fin = this.fmtHoraStr(f.horaFin);
-          const iniH = parseInt(ini.split(':')[0], 10);
-          const finH = parseInt(fin.split(':')[0], 10);
+          const iniMin = parseInt(ini.split(':')[0], 10) * 60 + parseInt(ini.split(':')[1] || '0', 10);
+          const finMin = parseInt(fin.split(':')[0], 10) * 60 + parseInt(fin.split(':')[1] || '0', 10);
           return {
             diaSemana: f.diaSemana,
             horaInicio: f.horaInicio,
             activa: f.activa,
             paraTodos: !!f.paraTodos,
-            duracionHoras: Math.max(1, finH - iniH),
+            duracionMinutos: Math.max(CANCHA_DURACION_SLOT_MIN, finMin - iniMin),
           };
         });
         this.franjasModificadas = false;
@@ -383,7 +401,7 @@ export class ReservasComponent implements OnInit {
       diaSemana: f.diaSemana,
       horaInicio: this.fmtHoraStr(f.horaInicio),
       activa: f.paraTodos ? true : f.activa,
-      duracionHoras: f.duracionHoras || 1,
+      duracionMinutos: f.duracionMinutos || CANCHA_DURACION_SLOT_MIN,
     }));
     this.api.actualizarFranjasCancha(payload, ESPACIO).subscribe({
       next: () => {

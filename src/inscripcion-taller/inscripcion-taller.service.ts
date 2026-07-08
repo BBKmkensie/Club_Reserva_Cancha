@@ -9,6 +9,7 @@ import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { Taller } from '../entities/taller.entity';
 import { Alumno } from '../entities/alumno.entity';
+import { Profesor } from '../entities/profesor.entity';
 import { CreateInscripcionTallerDto } from '../dto/create-inscripcion-taller.dto';
 import { ResponderInscripcionTallerDto } from '../dto/responder-inscripcion-taller.dto';
 import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
@@ -28,6 +29,9 @@ export interface ValidacionInscripcion {
   sinCupo?: boolean;
   tallerConflicto?: string;
   motivo?: string;
+  advertencias?: string[];
+  tieneProfesor?: boolean;
+  cantidadOtrasInscripciones?: number;
 }
 
 @Injectable()
@@ -39,6 +43,8 @@ export class InscripcionTallerService {
     private tallerRepo: Repository<Taller>,
     @InjectRepository(Alumno)
     private alumnoRepo: Repository<Alumno>,
+    @InjectRepository(Profesor)
+    private profesorRepo: Repository<Profesor>,
     @InjectRepository(PropuestaInscripcionTaller)
     private propuestaRepo: Repository<PropuestaInscripcionTaller>,
     private notificacionService: NotificacionService,
@@ -52,34 +58,47 @@ export class InscripcionTallerService {
     tallerId: number,
     notificar = false,
   ): Promise<ValidacionInscripcion> {
-    const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
+    const taller = await this.tallerRepo.findOne({
+      where: { id: tallerId },
+      relations: ['profesores'],
+    });
     if (!taller) {
       throw new NotFoundException('Taller no encontrado');
     }
 
     if (taller.estado !== 'PUBLICADO') {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados: 0,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: 'Esta actividad aún no está publicada en el catálogo',
-      };
+      return this.conAdvertencias(
+        {
+          puedeInscribirse: false,
+          cuposOcupados: 0,
+          cuposDisponibles: 0,
+          capacidad: taller.capacidad,
+          conflictoHorario: false,
+          motivo: 'Esta actividad aún no está publicada en el catálogo',
+        },
+        alumnoId,
+        tallerId,
+        taller,
+      );
     }
 
     const hoy = new Date().toISOString().split('T')[0];
     const periodo = await this.periodoService.getActivo();
     const msgPeriodo = this.periodoService.mensajePeriodoCerrado(periodo, hoy);
     if (msgPeriodo) {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados: 0,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: msgPeriodo,
-      };
+      return this.conAdvertencias(
+        {
+          puedeInscribirse: false,
+          cuposOcupados: 0,
+          cuposDisponibles: 0,
+          capacidad: taller.capacidad,
+          conflictoHorario: false,
+          motivo: msgPeriodo,
+        },
+        alumnoId,
+        tallerId,
+        taller,
+      );
     }
     const apertura = taller.fechaAperturaInscripcion
       ? new Date(taller.fechaAperturaInscripcion).toISOString().split('T')[0]
@@ -88,48 +107,68 @@ export class InscripcionTallerService {
       ? new Date(taller.fechaCierreInscripcion).toISOString().split('T')[0]
       : null;
     if (apertura && hoy < apertura) {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados: 0,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: 'El período de inscripción aún no ha abierto',
-      };
+      return this.conAdvertencias(
+        {
+          puedeInscribirse: false,
+          cuposOcupados: 0,
+          cuposDisponibles: 0,
+          capacidad: taller.capacidad,
+          conflictoHorario: false,
+          motivo: 'El período de inscripción aún no ha abierto',
+        },
+        alumnoId,
+        tallerId,
+        taller,
+      );
     }
     if (cierre && hoy > cierre) {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados: 0,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: 'El período de inscripción ya cerró',
-      };
+      return this.conAdvertencias(
+        {
+          puedeInscribirse: false,
+          cuposOcupados: 0,
+          cuposDisponibles: 0,
+          capacidad: taller.capacidad,
+          conflictoHorario: false,
+          motivo: 'El período de inscripción ya cerró',
+        },
+        alumnoId,
+        tallerId,
+        taller,
+      );
     }
 
     const existente = await this.repo.findOne({
       where: { alumnoId, tallerId },
     });
     if (existente?.estado === 'PENDIENTE') {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados: 0,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: 'Ya tienes una solicitud pendiente para este taller',
-      };
+      return this.conAdvertencias(
+        {
+          puedeInscribirse: false,
+          cuposOcupados: 0,
+          cuposDisponibles: 0,
+          capacidad: taller.capacidad,
+          conflictoHorario: false,
+          motivo: 'Ya tienes una solicitud pendiente para este taller',
+        },
+        alumnoId,
+        tallerId,
+        taller,
+      );
     }
     if (existente?.estado === 'ACEPTADO') {
-      return {
-        puedeInscribirse: false,
-        cuposOcupados: 0,
-        cuposDisponibles: 0,
-        capacidad: taller.capacidad,
-        conflictoHorario: false,
-        motivo: 'Ya estás inscrito en este taller',
-      };
+      return this.conAdvertencias(
+        {
+          puedeInscribirse: false,
+          cuposOcupados: 0,
+          cuposDisponibles: 0,
+          capacidad: taller.capacidad,
+          conflictoHorario: false,
+          motivo: 'Ya estás inscrito en este taller',
+        },
+        alumnoId,
+        tallerId,
+        taller,
+      );
     }
 
     const cuposOcupados = await this.contarCuposOcupados(tallerId);
@@ -148,7 +187,7 @@ export class InscripcionTallerService {
         motivo: `Conflicto de horario con el taller "${conflicto.tipo}"`,
       };
       if (notificar) await this.notificarBloqueoInscripcion(alumnoId, resultado, taller.tipo);
-      return resultado;
+      return this.conAdvertencias(resultado, alumnoId, tallerId, taller);
     }
 
     if (cuposDisponibles <= 0) {
@@ -162,15 +201,74 @@ export class InscripcionTallerService {
         motivo: 'No hay cupos disponibles en este taller',
       };
       if (notificar) await this.notificarBloqueoInscripcion(alumnoId, resultado, taller.tipo);
-      return resultado;
+      return this.conAdvertencias(resultado, alumnoId, tallerId, taller);
+    }
+
+    return this.conAdvertencias(
+      {
+        puedeInscribirse: true,
+        cuposOcupados,
+        cuposDisponibles,
+        capacidad: taller.capacidad,
+        conflictoHorario: false,
+      },
+      alumnoId,
+      tallerId,
+      taller,
+    );
+  }
+
+  private async conAdvertencias(
+    base: ValidacionInscripcion,
+    alumnoId: number,
+    tallerId: number,
+    taller: Taller,
+  ): Promise<ValidacionInscripcion> {
+    const meta = await this.obtenerMetaAdvertencias(alumnoId, tallerId, taller);
+    return {
+      ...base,
+      advertencias: meta.advertencias,
+      tieneProfesor: meta.tieneProfesor,
+      cantidadOtrasInscripciones: meta.cantidadOtrasInscripciones,
+    };
+  }
+
+  private async obtenerMetaAdvertencias(
+    alumnoId: number,
+    tallerId: number,
+    taller: Taller,
+  ): Promise<{
+    advertencias: string[];
+    tieneProfesor: boolean;
+    cantidadOtrasInscripciones: number;
+  }> {
+    const advertencias: string[] = [];
+
+    const otrasInscripciones = await this.repo.find({
+      where: { alumnoId, estado: In(['PENDIENTE', 'ACEPTADO']) },
+      relations: ['taller'],
+    });
+    const otras = otrasInscripciones.filter((i) => i.tallerId !== tallerId);
+    if (otras.length > 0) {
+      const nombres = otras
+        .map((i) => `"${i.taller?.tipo ?? 'otro taller'}"`)
+        .join(', ');
+      advertencias.push(
+        `Ya tienes solicitud o inscripción activa en ${nombres}. Si te inscribes en más de un taller, debes cumplir con tus deberes de estudiante: asistencia, evaluaciones y responsabilidades en el aula.`,
+      );
+    }
+
+    const tieneProfesor = (taller.profesores?.length ?? 0) > 0;
+    if (!tieneProfesor) {
+      advertencias.push(
+        'Este taller aún no tiene profesor asignado. Tu solicitud podrá quedar en espera hasta que la directiva confirme un docente.',
+      );
     }
 
     return {
-      puedeInscribirse: true,
-      cuposOcupados,
-      cuposDisponibles,
-      capacidad: taller.capacidad,
-      conflictoHorario: false,
+      advertencias,
+      tieneProfesor,
+      cantidadOtrasInscripciones: otras.length,
     };
   }
 
@@ -400,6 +498,76 @@ export class InscripcionTallerService {
       guardada.taller ? this.formatHorarioTaller(guardada.taller) : null,
     );
     return guardada;
+  }
+
+  async retirarse(inscripcionId: number, alumnoId: number): Promise<{ ok: true }> {
+    const inscripcion = await this.repo.findOne({
+      where: { id: inscripcionId },
+      relations: ['alumno', 'taller', 'taller.profesores'],
+    });
+    if (!inscripcion) throw new NotFoundException('Inscripción no encontrada');
+    if (inscripcion.alumnoId !== alumnoId) {
+      throw new BadRequestException('No puedes retirar una inscripción de otro alumno');
+    }
+    if (inscripcion.estado === 'RECHAZADO') {
+      throw new BadRequestException('No tienes una inscripción activa en este taller');
+    }
+
+    const nombreAlumno = inscripcion.alumno?.nombre ?? 'Un alumno';
+    const nombreTaller = inscripcion.taller?.tipo ?? 'taller';
+    const tallerId = inscripcion.tallerId;
+    const eraAceptado = inscripcion.estado === 'ACEPTADO';
+
+    await this.dataSource.transaction(async (manager) => {
+      const ins = await manager.findOne(InscripcionTaller, {
+        where: { id: inscripcionId },
+        relations: ['alumno'],
+      });
+      if (!ins) throw new NotFoundException('Inscripción no encontrada');
+      if (ins.alumnoId !== alumnoId) {
+        throw new BadRequestException('No puedes retirar una inscripción de otro alumno');
+      }
+      if (ins.estado === 'RECHAZADO') {
+        throw new BadRequestException('No tienes una inscripción activa en este taller');
+      }
+
+      if (ins.estado === 'ACEPTADO') {
+        const alumno = await manager.findOne(Alumno, { where: { id: alumnoId } });
+        if (alumno?.tallerId === ins.tallerId) {
+          alumno.tallerId = null;
+          await manager.save(alumno);
+        }
+      }
+      await manager.remove(ins);
+    });
+
+    const profesores =
+      inscripcion.taller?.profesores?.length
+        ? inscripcion.taller.profesores
+        : await this.profesorRepo.find({ where: { tallerId } });
+
+    const mensajeProfesor = `${nombreAlumno} se ha retirado del taller "${nombreTaller}".`;
+    for (const profesor of profesores) {
+      await this.notificacionService.crearParaProfesor(
+        profesor.id,
+        'Alumno se retiró del taller',
+        mensajeProfesor,
+        'retiro_taller',
+      );
+    }
+
+    const mensajeAlumno =
+      eraAceptado
+        ? `Te has retirado del taller "${nombreTaller}". Ya no estás inscrito.`
+        : `Has cancelado tu solicitud al taller "${nombreTaller}".`;
+    await this.notificacionService.crear(
+      alumnoId,
+      'Retiro confirmado',
+      mensajeAlumno,
+      'retiro_taller',
+    );
+
+    return { ok: true };
   }
 
   private async contarCuposOcupados(tallerId: number): Promise<number> {
