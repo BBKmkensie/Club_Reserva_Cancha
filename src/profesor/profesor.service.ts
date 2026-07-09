@@ -1,8 +1,13 @@
+/**
+ * Servicio de dominio para profesores.
+ * CRUD, búsqueda por usuario y login legacy con hash PBKDF2 local.
+ */
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profesor } from '../entities/profesor.entity';
 import { CreateProfesorDto } from '../dto/create-profesor.dto';
+import { buscarProfesorPorUsuario } from '../common/profesor-lookup.util';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -73,18 +78,11 @@ export class ProfesorService {
   }
 
   async findByUsuario(usuario: string): Promise<Profesor | null> {
-    const u = usuario.trim().toLowerCase();
-    if (!u) return null;
-    const list = await this.profesorRepository
-      .createQueryBuilder('p')
-      .leftJoinAndSelect('p.taller', 't')
-      .where('LOWER(TRIM(p.nombre)) = :u', { u })
-      .orWhere('LOWER(TRIM(t.tipo)) = :u', { u })
-      .getMany();
-    return list.length > 0 ? list[0] : null;
+    return buscarProfesorPorUsuario(this.profesorRepository, usuario);
   }
 
   private verifyPassword(profesor: Profesor, password: string): boolean {
+    // Sin hash persistido: solo acepta contraseña por defecto (primer acceso)
     if (!profesor.passwordHash || !profesor.passwordSalt) {
       return password === '12345';
     }
@@ -104,6 +102,10 @@ export class ProfesorService {
     await this.profesorRepository.save(profesor);
   }
 
+  /**
+   * Login directo del módulo profesor (compatibilidad).
+   * Persiste hash en primer acceso con contraseña por defecto.
+   */
   async login(usuario: string, password: string): Promise<Omit<Profesor, 'passwordHash' | 'passwordSalt'>> {
     const profesor = await this.findByUsuario(usuario);
     if (!profesor) {
@@ -118,4 +120,3 @@ export class ProfesorService {
     return rest as Omit<Profesor, 'passwordHash' | 'passwordSalt'>;
   }
 }
-

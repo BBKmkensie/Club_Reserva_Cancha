@@ -1,3 +1,7 @@
+/**
+ * Control de asistencia diaria del taller.
+ * Permite abrir sesión, marcar presente/tarde/ausente y generar reporte del docente.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +19,9 @@ interface RegistroUI {
   expandido: boolean;
 }
 
+/**
+ * Componente de asistencia: sesión del día, lista de alumnos y cierre con observaciones.
+ */
 @Component({
   selector: 'app-control-asistencia',
   standalone: true,
@@ -247,6 +254,7 @@ export class ControlAsistenciaComponent implements OnInit {
   cargando = false;
   fechaHoy = new Date();
 
+  /** Inicializa taller del profesor y carga sesión activa e historial. */
   ngOnInit() {
     this.tallerId = this.auth.currentTallerId();
     this.profesorId = this.auth.currentUserId();
@@ -291,6 +299,7 @@ export class ControlAsistenciaComponent implements OnInit {
     this.observacionesSesion = sesion.observaciones ?? '';
   }
 
+  /** Abre la sesión de asistencia del día para el taller del profesor logueado. */
   abrirSesion() {
     if (!this.tallerId || !this.profesorId) return;
     this.cargando = true;
@@ -309,6 +318,7 @@ export class ControlAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Guarda los estados de asistencia y observaciones por alumno en la sesión abierta. */
   guardarAsistencia() {
     if (!this.sesion) return;
     this.cargando = true;
@@ -330,6 +340,7 @@ export class ControlAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Cierra la sesión; requiere haber guardado la lista previamente. */
   cerrarSesion() {
     if (!this.sesion) return;
     if (!this.sesion.listaGuardada) {
@@ -368,6 +379,7 @@ export class ControlAsistenciaComponent implements OnInit {
     return this.registros.filter((r) => r.estado === 'TARDE').length;
   }
 
+  /** Alterna el estado del alumno: presente → tarde → ausente. */
   ciclarEstado(r: RegistroUI) {
     const orden: RegistroUI['estado'][] = ['PRESENTE', 'TARDE', 'AUSENTE'];
     const idx = orden.indexOf(r.estado);
@@ -393,6 +405,7 @@ export class ControlAsistenciaComponent implements OnInit {
     this.registros.forEach((r) => { r.estado = 'PRESENTE'; });
   }
 
+  /** Genera y descarga el reporte de actividad del taller en formato texto. */
   generarReporteFinal() {
     if (!this.tallerId) return;
     this.api.getReporteActividad(this.tallerId).subscribe({

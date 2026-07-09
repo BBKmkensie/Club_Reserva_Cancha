@@ -1,3 +1,8 @@
+/**
+ * Servicio de asistencia a talleres.
+ * Gestiona sesiones (abrir/cerrar), registros por alumno, alertas por ausencias
+ * recurrentes, notificaciones a apoderados y reportes de asistencia.
+ */
 import {
   Injectable,
   NotFoundException,
@@ -20,6 +25,7 @@ import { GestionarAlertaDto } from '../dto/gestionar-alerta.dto';
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { MailService } from '../mail/mail.service';
 
+/** Lógica de negocio para el control de asistencia en talleres. */
 @Injectable()
 export class AsistenciaService {
   constructor(
@@ -41,6 +47,10 @@ export class AsistenciaService {
     private mailService: MailService,
   ) {}
 
+  /**
+   * Abre una sesión de asistencia para un taller en la fecha indicada (o hoy).
+   * Crea registros iniciales en estado PRESENTE para todos los alumnos inscritos aceptados.
+   */
   async abrirSesion(dto: AbrirSesionDto): Promise<SesionAsistencia> {
     const taller = await this.tallerRepo.findOne({ where: { id: dto.tallerId } });
     if (!taller) throw new NotFoundException('Taller no encontrado');
@@ -83,6 +93,7 @@ export class AsistenciaService {
     return await this.obtenerSesion(guardada.id);
   }
 
+  /** Obtiene una sesión con taller, profesor y registros de alumnos. */
   async obtenerSesion(id: number): Promise<SesionAsistencia> {
     const sesion = await this.sesionRepo.findOne({
       where: { id },
@@ -92,6 +103,7 @@ export class AsistenciaService {
     return sesion;
   }
 
+  /** Devuelve la sesión ABIERTA del taller para el día actual, si existe. */
   async sesionActiva(tallerId: number): Promise<SesionAsistencia | null> {
     const fecha = new Date().toISOString().split('T')[0];
     return await this.sesionRepo.findOne({
@@ -100,6 +112,7 @@ export class AsistenciaService {
     });
   }
 
+  /** Lista el historial de sesiones de un taller, más recientes primero. */
   async historialSesiones(tallerId: number): Promise<SesionAsistencia[]> {
     return await this.sesionRepo.find({
       where: { tallerId },
@@ -108,6 +121,10 @@ export class AsistenciaService {
     });
   }
 
+  /**
+   * Actualiza los estados de asistencia de uno o más alumnos en una sesión abierta.
+   * Marca la sesión como lista guardada al finalizar.
+   */
   async actualizarAsistencia(
     sesionId: number,
     dto: ActualizarAsistenciaDto,
@@ -140,6 +157,10 @@ export class AsistenciaService {
     return await this.obtenerSesion(sesionId);
   }
 
+  /**
+   * Cierra una sesión abierta tras validar que la lista fue guardada.
+   * Evalúa ausencias recurrentes y notifica a los apoderados por correo.
+   */
   async cerrarSesion(sesionId: number, dto: CerrarSesionDto): Promise<SesionAsistencia> {
     const sesion = await this.sesionRepo.findOne({
       where: { id: sesionId },
@@ -172,6 +193,7 @@ export class AsistenciaService {
     return await this.obtenerSesion(sesionId);
   }
 
+  /** Envía correo a cada apoderado con el estado de asistencia de su hijo/a. */
   private async notificarApoderadosSesionCerrada(sesion: SesionAsistencia) {
     const tallerNombre = sesion.taller?.tipo ?? 'Taller';
     for (const reg of sesion.registros ?? []) {
@@ -189,6 +211,10 @@ export class AsistenciaService {
     }
   }
 
+  /**
+   * Revisa sesiones cerradas y genera alertas cuando un alumno supera el umbral de ausencias.
+   * Notifica al alumno, profesores y coordinación; envía correo al apoderado.
+   */
   private async evaluarAusenciasRecurrentes(tallerId: number) {
     const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
     if (!taller) return;
@@ -269,6 +295,7 @@ export class AsistenciaService {
     }
   }
 
+  /** Lista alertas pendientes o con apoderado contactado, opcionalmente filtradas por taller. */
   async getAlertasGestion(tallerId?: number) {
     const where = tallerId
       ? { tallerId, estado: In(['PENDIENTE', 'APODERADO_CONTACTADO'] as any) }
@@ -299,6 +326,7 @@ export class AsistenciaService {
     }));
   }
 
+  /** Marca una alerta como APODERADO_CONTACTADO y envía correo al apoderado. */
   async contactarApoderado(id: number, dto: GestionarAlertaDto) {
     const alerta = await this.alertaRepo.findOne({
       where: { id },
@@ -326,6 +354,7 @@ export class AsistenciaService {
     return guardada;
   }
 
+  /** Marca una alerta de ausencias como RESUELTA. */
   async resolverAlerta(id: number, dto: GestionarAlertaDto) {
     const alerta = await this.alertaRepo.findOne({ where: { id } });
     if (!alerta) throw new NotFoundException('Alerta no encontrada');
@@ -336,6 +365,7 @@ export class AsistenciaService {
     return await this.alertaRepo.save(alerta);
   }
 
+  /** Actualiza el umbral de ausencias que dispara alertas para un taller. */
   async actualizarUmbral(tallerId: number, umbralAusencias: number) {
     if (umbralAusencias == null || umbralAusencias < 1) {
       throw new BadRequestException('Debe indicar un umbral de ausencias válido');
@@ -346,6 +376,7 @@ export class AsistenciaService {
     return await this.tallerRepo.save(taller);
   }
 
+  /** Genera reporte consolidado de asistencia, estadísticas por alumno y alertas activas. */
   async getReporte(tallerId: number) {
     const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
     if (!taller) throw new NotFoundException('Taller no encontrado');
@@ -426,6 +457,7 @@ export class AsistenciaService {
     };
   }
 
+  /** Obtiene todas las alertas de gestión sin filtrar por taller. */
   async getAlertasGlobales() {
     return await this.getAlertasGestion();
   }

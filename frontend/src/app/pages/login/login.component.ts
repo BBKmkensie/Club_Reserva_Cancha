@@ -1,3 +1,7 @@
+/**
+ * Pantalla de inicio de sesión unificada.
+ * Permite autenticarse con RUT, correo o nombre de profesor; redirige según el tipo de cuenta.
+ */
 import { Component, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -7,6 +11,9 @@ import { ApiService } from '../../services/api.service';
 import { LogoNautaComponent } from '../../shared/components/logo-nauta/logo-nauta.component';
 import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme-toggle.component';
 
+/**
+ * Componente de login: formulario de credenciales y redirección post-autenticación.
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -25,7 +32,7 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme
           <label class="block">
             <span class="text-sm font-medium text-ink-secondary">Usuario</span>
             <input [(ngModel)]="usuario" type="text"
-                   placeholder="RUT, correo o nombre"
+                   placeholder="RUT, correo o nombre del profesor"
                    autocomplete="username"
                    class="mt-1 w-full py-2.5 px-3 app-input bg-surface">
           </label>
@@ -64,12 +71,14 @@ export class LoginComponent implements OnInit {
   error = '';
   cargando = false;
 
+  /** Redirige al dashboard o portal si ya hay sesión activa. */
   ngOnInit(): void {
     if (this.auth.isLoggedIn()) {
       this.router.navigate([this.auth.isApoderado() ? '/portal-apoderado' : '/dashboard']);
     }
   }
 
+  /** Valida credenciales contra la API y guarda la sesión en AuthRoleService. */
   entrar(): void {
     this.error = '';
     this.cargando = true;

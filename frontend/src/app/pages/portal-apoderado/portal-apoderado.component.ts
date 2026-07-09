@@ -1,9 +1,16 @@
+/**
+ * Portal exclusivo para apoderados.
+ * Muestra datos del hijo/a, asistencia, taller inscrito y propuestas de inscripción a la directiva.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 
+/**
+ * Vista del apoderado: resumen familiar, historial de asistencia y catálogo para proponer inscripciones.
+ */
 @Component({
   selector: 'app-portal-apoderado',
   standalone: true,
@@ -133,6 +140,7 @@ export class PortalApoderadoComponent implements OnInit {
   catalogo: any[] = [];
   proponiendo: number | null = null;
 
+  /** Valida acceso de apoderado y carga resumen + catálogo de talleres publicados. */
   ngOnInit(): void {
     if (!this.auth.isApoderado()) {
       this.error = 'Acceso solo para apoderados.';
@@ -169,6 +177,7 @@ export class PortalApoderadoComponent implements OnInit {
     return 'text-ink-muted';
   }
 
+  /** Envía una propuesta de inscripción del hijo/a a un taller para revisión de la directiva. */
   proponer(tallerId: number): void {
     this.proponiendo = tallerId;
     this.api.proponerInscripcionApoderado(tallerId).subscribe({

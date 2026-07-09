@@ -1,3 +1,7 @@
+/**
+ * Guard global de autenticación JWT.
+ * Respeta rutas marcadas como públicas y acepta token por query string.
+ */
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
@@ -19,6 +23,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     const request = context.switchToHttp().getRequest();
+    // Permite autenticación vía ?access_token= para descargas o enlaces directos
     const queryToken = request.query?.access_token;
     if (!request.headers.authorization && queryToken) {
       request.headers.authorization = `Bearer ${queryToken}`;

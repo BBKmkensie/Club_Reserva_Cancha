@@ -1,3 +1,7 @@
+/**
+ * Módulo de talleres.
+ * Registra entidades, servicios y controlador del dominio de actividades extracurriculares.
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TallerService } from './taller.service';

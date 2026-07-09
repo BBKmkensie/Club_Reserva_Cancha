@@ -1,3 +1,7 @@
+/**
+ * Panel de gestión de inscripciones para profesores y coordinación.
+ * Revisa solicitudes pendientes, acepta/rechaza alumnos y edita fichas físicas.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,6 +12,9 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
 
 const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+/**
+ * Gestión de inscripciones: resumen de capacidad, respuesta a solicitudes y exportación.
+ */
 @Component({
   selector: 'app-gestion-inscripciones',
   standalone: true,
@@ -221,6 +228,7 @@ export class GestionInscripcionesComponent implements OnInit {
     return this.resumen?.inscripciones?.filter((s: any) => s.estado === 'PENDIENTE') ?? [];
   }
 
+  /** Preselecciona el taller del profesor o carga listado para coordinación. */
   ngOnInit() {
     if (this.auth.isProfesor() && this.auth.currentTallerId()) {
       this.tallerIdSeleccionado = this.auth.currentTallerId();
@@ -234,6 +242,7 @@ export class GestionInscripcionesComponent implements OnInit {
     }
   }
 
+  /** Carga el resumen de inscripciones (capacidad, pendientes, fichas) del taller seleccionado. */
   cargarResumen() {
     if (!this.tallerIdSeleccionado) return;
     this.api.getResumenInscripcionesTaller(this.tallerIdSeleccionado).subscribe({
@@ -248,6 +257,7 @@ export class GestionInscripcionesComponent implements OnInit {
     });
   }
 
+  /** Acepta o rechaza una solicitud de inscripción pendiente. */
   responder(id: number, estado: 'ACEPTADO' | 'RECHAZADO') {
     this.api.responderInscripcionTaller(id, estado).subscribe({
       next: () => this.cargarResumen(),
@@ -275,6 +285,7 @@ export class GestionInscripcionesComponent implements OnInit {
     this.fichaEditando = null;
   }
 
+  /** Persiste la ficha física editada de un alumno inscrito. */
   guardarFicha() {
     if (!this.fichaEditando) return;
     this.api.actualizarFichaInscripcion(this.fichaEditando.id, {
@@ -299,6 +310,7 @@ export class GestionInscripcionesComponent implements OnInit {
     return `${dia} ${String(taller.horaInicio).slice(0, 5)} - ${String(taller.horaFin).slice(0, 5)}`;
   }
 
+  /** Genera y descarga un reporte en texto plano con todas las inscripciones del taller. */
   exportarReporte() {
     if (!this.resumen) return;
     const lineas = [

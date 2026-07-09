@@ -1,3 +1,7 @@
+/**
+ * Servicio de autenticación unificada.
+ * Gestiona login de admin, directiva, profesor, alumno y apoderado, y emisión de JWT.
+ */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +17,7 @@ import {
   defaultPassword,
 } from '../common/password.util';
 import { AuthUserResponse, JwtPayload, LoginResponse, UserTipo } from './auth.types';
+import { buscarProfesorPorUsuario } from '../common/profesor-lookup.util';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +31,10 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  /**
+   * Punto de entrada del login.
+   * Con `tipo` en el DTO delega al flujo específico; sin él, infiere el perfil automáticamente.
+   */
   async login(dto: LoginDto): Promise<LoginResponse> {
     if (!dto.tipo) {
       return this.loginUnified(dto.usuario, dto.password);
@@ -51,6 +60,9 @@ export class AuthService {
     }
   }
 
+  /**
+   * Login sin tipo explícito: prueba admin por email, luego profesor, apoderado y alumno.
+   */
   private async loginUnified(usuario: string, password: string): Promise<LoginResponse> {
     const email = usuario.trim().toLowerCase();
     if (email.includes('@')) {
@@ -63,7 +75,7 @@ export class AuthService {
     try {
       return await this.loginProfesor(usuario, password);
     } catch {
-      // continuar
+      // No es profesor; seguir con otros perfiles
     }
 
     const rut = usuario.trim();
@@ -86,6 +98,7 @@ export class AuthService {
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
 
+    // Cuando el cliente envía tipo, el rol en BD debe coincidir
     if (expectedRol === 'super_admin' && admin.rol !== 'super_admin') {
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
@@ -128,6 +141,7 @@ export class AuthService {
       () => this.profesorRepo.save(profesor),
     );
 
+    // Profesores operan con permisos de admin acotados al taller
     return this.buildResponse({
       sub: profesor.id,
       role: 'admin',
@@ -163,6 +177,7 @@ export class AuthService {
     });
   }
 
+  /** El apoderado se autentica con credenciales almacenadas en el registro del alumno. */
   private async loginApoderado(alumno: Alumno, password: string): Promise<LoginResponse> {
     await this.ensurePassword(
       {
@@ -186,6 +201,9 @@ export class AuthService {
     });
   }
 
+  /**
+   * Valida contraseña o inicializa hash con la contraseña por defecto en primer acceso.
+   */
   private async ensurePassword<T extends { passwordHash?: string | null; passwordSalt?: string | null }>(
     entity: T,
     password: string,
@@ -204,15 +222,7 @@ export class AuthService {
   }
 
   private async findProfesorByUsuario(usuario: string): Promise<Profesor | null> {
-    const u = usuario.trim().toLowerCase();
-    if (!u) return null;
-    const list = await this.profesorRepo
-      .createQueryBuilder('p')
-      .leftJoinAndSelect('p.taller', 't')
-      .where('LOWER(TRIM(p.nombre)) = :u', { u })
-      .orWhere('LOWER(TRIM(t.tipo)) = :u', { u })
-      .getMany();
-    return list.length > 0 ? list[0] : null;
+    return buscarProfesorPorUsuario(this.profesorRepo, usuario);
   }
 
   private buildResponse(payload: JwtPayload): LoginResponse {
@@ -227,6 +237,7 @@ export class AuthService {
     return { accessToken, user };
   }
 
+  /** Hook usado por JwtStrategy; permite extender validación del payload en un solo lugar. */
   validatePayload(payload: JwtPayload): JwtPayload {
     return payload;
   }

@@ -1,3 +1,7 @@
+/**
+ * Reserva y gestión de la cancha principal.
+ * Muestra disponibilidad por fecha, franjas semanales (directiva) y listado de reservas.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -45,6 +49,9 @@ interface FranjaConfig {
   duracionMinutos: number;
 }
 
+/**
+ * Componente de reservas: slots del día, configuración de franjas y CRUD de reservas.
+ */
 @Component({
   selector: 'app-reservas',
   standalone: true,
@@ -285,6 +292,7 @@ export class ReservasComponent implements OnInit {
     this.versionSemana++;
   }
 
+  /** Carga reservas, talleres y disponibilidad inicial según permisos del usuario. */
   ngOnInit() {
     this.loadReservas();
     this.api.getTalleres().subscribe({
@@ -395,6 +403,7 @@ export class ReservasComponent implements OnInit {
     });
   }
 
+  /** Persiste la configuración semanal de franjas habilitadas (solo coordinación). */
   guardarFranjas() {
     this.guardandoFranjas = true;
     const payload = this.franjasConfig.map((f) => ({
@@ -419,6 +428,7 @@ export class ReservasComponent implements OnInit {
     });
   }
 
+  /** Consulta al backend los slots disponibles/ocupados para la fecha seleccionada. */
   cargarDisponibilidad() {
     if (!this.fechaSeleccionada) return;
     this.cargandoSlots = true;
@@ -435,6 +445,7 @@ export class ReservasComponent implements OnInit {
     });
   }
 
+  /** Crea una reserva de cancha para el slot y taller seleccionados. */
   reservarSlot(slot: SlotCancha) {
     const tallerId = this.tallerReservaId;
     if (!tallerId) {
@@ -488,6 +499,7 @@ export class ReservasComponent implements OnInit {
     return false;
   }
 
+  /** Cancela una reserva existente tras confirmación del usuario. */
   eliminarReserva(id: number) {
     if (!confirm('¿Cancelar esta reserva de cancha?')) return;
     this.api.deleteReserva(id).subscribe({

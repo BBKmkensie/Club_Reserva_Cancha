@@ -1,3 +1,7 @@
+/**
+ * Módulo raíz de la aplicación.
+ * Carga configuración, conexión a PostgreSQL y registra todos los módulos de dominio.
+ */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -46,11 +50,12 @@ import { InscripcionTaller } from './entities/inscripcion-taller.entity';
           username: configService.get('database.username'),
           password: configService.get('database.password'),
           database: configService.get('database.database'),
+          // SSL opcional para entornos cloud (p. ej. Supabase, RDS)
           ...(ssl
             ? { ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } }
             : {}),
           entities: [Admin, Taller, Alumno, Profesor, Reserva, Salida, InscripcionSalida, InscripcionTaller],
-          synchronize: false,
+          synchronize: false, // migraciones manuales; no alterar esquema en runtime
           autoLoadEntities: true,
         };
       },

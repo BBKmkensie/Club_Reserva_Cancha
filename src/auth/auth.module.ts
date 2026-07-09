@@ -1,3 +1,7 @@
+/**
+ * Módulo de autenticación.
+ * Registra JWT, Passport y expone servicios de login para el resto de la app.
+ */
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';

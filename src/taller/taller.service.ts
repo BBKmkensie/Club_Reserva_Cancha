@@ -1,3 +1,8 @@
+/**
+ * Servicio de talleres (actividades extracurriculares).
+ * Gestiona el ciclo de vida: creación, asignación de docente, horarios,
+ * publicación en catálogo, cierre de período, reportes y estadísticas semestrales.
+ */
 import {
   Injectable,
   NotFoundException,
@@ -27,6 +32,7 @@ import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { PeriodoAcademico } from '../entities/periodo-academico.entity';
 
+/** Lógica de negocio para actividades, docentes y horarios de talleres. */
 @Injectable()
 export class TallerService {
   constructor(
@@ -48,6 +54,7 @@ export class TallerService {
     private periodoService: PeriodoService,
   ) {}
 
+  /** Crea una actividad en estado BORRADOR. */
   async create(createTallerDto: CreateTallerDto): Promise<Taller> {
     const taller = this.tallerRepository.create({
       tipo: createTallerDto.tipo,
@@ -70,6 +77,7 @@ export class TallerService {
     });
   }
 
+  /** Catálogo público: talleres PUBLICADOS con inscripciones abiertas hoy. */
   async findCatalogo(): Promise<Taller[]> {
     const hoy = new Date().toISOString().split('T')[0];
     const talleres = await this.tallerRepository.find({
@@ -103,6 +111,7 @@ export class TallerService {
     return await this.tallerRepository.save(taller);
   }
 
+  /** Actualiza descripción del taller y/o foto del profesor (directiva o docente asignado). */
   async actualizarPresentacion(
     tallerId: number,
     dto: ActualizarPresentacionTallerDto,
@@ -167,6 +176,7 @@ export class TallerService {
     await this.tallerRepository.remove(taller);
   }
 
+  /** Asigna un docente y pasa la actividad a ESPERA_DOCENTE. */
   async asignarDocente(tallerId: number, dto: AsignarDocenteDto): Promise<AsignacionDocente> {
     const taller = await this.findOne(tallerId);
     if (!['BORRADOR', 'ESPERA_DOCENTE'].includes(taller.estado)) {
@@ -212,6 +222,7 @@ export class TallerService {
     }) as AsignacionDocente;
   }
 
+  /** El docente acepta o rechaza la asignación; actualiza el estado del taller. */
   async responderAsignacion(
     asignacionId: number,
     profesorId: number,
@@ -259,6 +270,7 @@ export class TallerService {
     return await this.asignacionRepository.save(asignacion);
   }
 
+  /** Acepta horario simple o múltiple según el DTO recibido. */
   async definirHorario(
     tallerId: number,
     dto: DefinirHorarioDto | DefinirHorariosTallerDto,
@@ -278,6 +290,7 @@ export class TallerService {
     });
   }
 
+  /** Reemplaza los horarios del taller validando conflictos del docente aceptado. */
   async definirHorarios(tallerId: number, dto: DefinirHorariosTallerDto): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'ESPERA_HORARIO') {
@@ -347,11 +360,13 @@ export class TallerService {
     });
   }
 
+  /** Indica si el taller tiene horarios en tabla o campos legacy en la entidad. */
   private tieneHorarioDefinido(taller: Taller): boolean {
     if (taller.horarios?.length) return true;
     return taller.diaSemana != null && !!taller.horaInicio && !!taller.horaFin;
   }
 
+  /** Publica la actividad en el catálogo con fechas opcionales de inscripción. */
   async publicar(tallerId: number, dto: PublicarActividadDto): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'ESPERA_HORARIO') {
@@ -380,6 +395,7 @@ export class TallerService {
     return await this.tallerRepository.save(taller);
   }
 
+  /** Cierra una actividad publicada; ya no acepta nuevas inscripciones. */
   async cerrarPeriodo(tallerId: number): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'PUBLICADO') {
@@ -390,6 +406,7 @@ export class TallerService {
     return await this.tallerRepository.save(taller);
   }
 
+  /** Asignaciones pendientes de respuesta para un docente. */
   async getAsignacionesPendientes(profesorId: number): Promise<AsignacionDocente[]> {
     return await this.asignacionRepository.find({
       where: { profesorId, estado: 'PENDIENTE' },
@@ -398,6 +415,7 @@ export class TallerService {
     });
   }
 
+  /** Reporte consolidado: inscripciones, asistencia, reservas de cancha y alumnos. */
   async getReporteActividad(tallerId: number) {
     const taller = await this.findOne(tallerId);
     const inscripciones = await this.inscripcionRepository.find({
@@ -535,6 +553,7 @@ export class TallerService {
     return (h ?? 0) * 60 + (m ?? 0);
   }
 
+  /** Verifica ventana de inscripción según fechas de apertura/cierre del taller. */
   private inscripcionesAbiertas(taller: Taller, hoy: string): boolean {
     const apertura = taller.fechaAperturaInscripcion
       ? new Date(taller.fechaAperturaInscripcion).toISOString().split('T')[0]
@@ -547,6 +566,7 @@ export class TallerService {
     return true;
   }
 
+  /** Impide asignar un docente con otra asignación pendiente o solapamiento horario. */
   private async validarDisponibilidadDocente(profesorId: number, taller: Taller): Promise<void> {
     const asignacionesActivas = await this.asignacionRepository.find({
       where: {
@@ -581,6 +601,7 @@ export class TallerService {
     }
   }
 
+  /** Valida que el nuevo bloque no choque con otros talleres del mismo docente. */
   private async validarConflictoHorarioDocente(
     profesorId: number,
     diaSemana: number,
@@ -615,6 +636,7 @@ export class TallerService {
     }
   }
 
+  /** Dos bloques se solapan si comparten día y rangos horarios intersectan. */
   private horariosSeSolapan(a: Taller, b: Taller): boolean {
     if (a.diaSemana !== b.diaSemana) return false;
     const inicioA = this.normalizarHora(a.horaInicio!);
@@ -628,6 +650,7 @@ export class TallerService {
     return hora.length >= 5 ? hora.slice(0, 5) : hora;
   }
 
+  /** Ranking de talleres, comparación entre períodos y sugerencias para coordinación. */
   async getComparacionSemestre(periodoId?: number, profesorId?: number) {
     const periodos = await this.periodoService.findAll();
     let periodo: PeriodoAcademico | null = null;
@@ -822,6 +845,7 @@ export class TallerService {
     return map;
   }
 
+  /** Genera sugerencias de alta demanda, baja ocupación y repetición de talleres exitosos. */
   private generarSugerenciasTalleres(
     ranking: Array<{
       tallerId: number;

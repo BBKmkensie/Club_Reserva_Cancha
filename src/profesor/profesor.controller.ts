@@ -1,3 +1,7 @@
+/**
+ * Controlador REST de profesores.
+ * CRUD, filtrado por taller y endpoint legacy de login propio.
+ */
 import {
   Controller,
   Get,
@@ -17,6 +21,7 @@ import { LoginProfesorDto } from '../dto/login-profesor.dto';
 export class ProfesorController {
   constructor(private readonly profesorService: ProfesorService) {}
 
+  /** Login histórico; el flujo principal usa POST /auth/login. */
   @Post('login')
   login(@Body() dto: LoginProfesorDto) {
     return this.profesorService.login(dto.usuario, dto.password);
@@ -27,6 +32,7 @@ export class ProfesorController {
     return this.profesorService.create(createProfesorDto);
   }
 
+  /** Lista todos los profesores o solo los de un taller si se pasa `tallerId`. */
   @Get()
   findAll(@Query('tallerId') tallerId?: string) {
     if (tallerId) {
@@ -53,4 +59,3 @@ export class ProfesorController {
     return this.profesorService.remove(id);
   }
 }
-

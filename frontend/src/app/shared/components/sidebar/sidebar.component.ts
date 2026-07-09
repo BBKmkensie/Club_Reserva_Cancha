@@ -1,3 +1,7 @@
+/**
+ * Barra lateral de navegación (móvil y escritorio).
+ * Enlaces del menú, accesos rápidos por rol y cierre de sesión.
+ */
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
@@ -9,6 +13,9 @@ import { ApiService } from '../../../services/api.service';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { Router } from '@angular/router';
 
+/**
+ * Sidebar adaptativo: menú principal, accesos rápidos contextuales y datos de sesión.
+ */
 @Component({
   selector: 'app-sidebar',
   standalone: true,
@@ -116,6 +123,9 @@ import { Router } from '@angular/router';
   `,
   styles: [],
 })
+/**
+ * Controla la visibilidad del menú lateral y los accesos rápidos según inscripciones del alumno.
+ */
 export class SidebarComponent implements OnInit, OnDestroy {
   auth = inject(AuthRoleService);
   sidebarService = inject(SidebarService);
@@ -125,6 +135,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   puedeVerMisSalidas = false;
   private subscription?: Subscription;
 
+  /** Suscribe al estado del sidebar y evalúa visibilidad de «Mis salidas». */
   ngOnInit() {
     this.subscription = this.sidebarService.isOpen$.subscribe(isOpen => {
       this.isOpen = isOpen;
@@ -132,10 +143,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.actualizarMisSalidas();
   }
 
+  /** Indica si debe mostrarse la sección de accesos rápidos (alumno o gestión de salidas). */
   tieneAccesosRapidos(): boolean {
     return this.auth.canInscribirseTalleres() || this.auth.canGestionarSalidas();
   }
 
+  /** Determina si el alumno puede ver el enlace «Mis salidas» según inscripciones aceptadas. */
   private actualizarMisSalidas(): void {
     if (!this.auth.canInscribirseTalleres()) {
       this.puedeVerMisSalidas = false;
@@ -161,6 +174,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.subscription?.unsubscribe();
   }
 
+  /** Limpia la sesión, cierra el menú móvil y redirige al login. */
   cerrarSesion(): void {
     this.auth.clear();
     this.sidebarService.close();

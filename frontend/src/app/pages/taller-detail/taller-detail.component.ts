@@ -1,3 +1,7 @@
+/**
+ * Vista detallada de un taller: presentación, inscripción, gestión de solicitudes y alumnos.
+ * Accesible según rol (alumno, profesor del taller o coordinación).
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -18,6 +22,9 @@ import {
 import { ValidacionInscripcionTaller } from '../../models/inscripcion-taller.model';
 import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/horario-taller.util';
 
+/**
+ * Detalle de taller: descripción, horarios, inscripciones, fichas y edición de presentación.
+ */
 @Component({
   selector: 'app-taller-detail',
   standalone: true,
@@ -416,6 +423,7 @@ export class TallerDetailComponent implements OnInit {
     return descCambio || (fotoCambio && !!this.profesor);
   }
 
+  /** Persiste cambios de descripción y foto del profesor en el backend. */
   guardarPresentacion() {
     if (!this.taller || !this.presentacionValida()) return;
 
@@ -506,6 +514,7 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
+  /** Lee el ID del taller desde la ruta y dispara la carga de datos. */
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -513,6 +522,7 @@ export class TallerDetailComponent implements OnInit {
     }
   }
 
+  /** Carga el taller por ID desde la ruta y sus datos relacionados (profesor, alumnos, inscripciones). */
   cargarTaller(id: number) {
     this.apiService.getTaller(id).subscribe({
       next: (data) => {
@@ -661,6 +671,7 @@ export class TallerDetailComponent implements OnInit {
     this.confirmando = false;
   }
 
+  /** Envía la solicitud de inscripción con ficha física desde el detalle del taller. */
   confirmarInscripcion() {
     if (!this.taller || !this.alumnoId || !this.validacion?.puedeInscribirse || !this.fichaValida()) return;
     this.confirmando = true;
@@ -684,6 +695,7 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
+  /** Aprueba o rechaza una solicitud de inscripción pendiente. */
   responderSolicitud(inscripcionId: number, estado: 'ACEPTADO' | 'RECHAZADO') {
     this.apiService.responderInscripcionTaller(inscripcionId, estado).subscribe({
       next: () => {

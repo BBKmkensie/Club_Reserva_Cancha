@@ -1,3 +1,7 @@
+/**
+ * Página principal del sistema tras el login.
+ * Muestra catálogo de talleres, notificaciones, asignaciones pendientes y estadísticas según el rol.
+ */
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -10,6 +14,10 @@ import { estiloTarjetaTaller, EstiloTarjetaTaller } from '../../shared/utils/tal
 
 interface CardTaller extends EstiloTarjetaTaller {}
 
+/**
+ * Dashboard adaptativo: vista de alumno (mis talleres), profesor (asignaciones/inscripciones)
+ * o coordinación (estadísticas y gestión de actividades).
+ */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -300,6 +308,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return estiloTarjetaTaller(tipo);
   }
 
+  /** Carga catálogo, inscripciones, notificaciones y datos según el rol del usuario. */
   ngOnInit() {
     this.alumnoId = this.auth.currentUserId();
     this.tallerIdProfesor = this.auth.currentTallerId();
@@ -327,6 +336,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Marca una notificación individual como leída vía el servicio de polling. */
   marcarLeida(n: any): void {
     if (!this.alumnoId || n.leida) return;
     this.notificacionPoll.marcarLeida(n.id);
@@ -422,6 +432,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.alumnos.filter((a) => Number(a?.tallerId) === tallerId).length;
   }
 
+  /** Obtiene talleres publicados, estadísticas globales e inscripciones del alumno. */
   loadData() {
     const asList = (data: unknown): any[] => (Array.isArray(data) ? data : []);
 
@@ -518,10 +529,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Navega al detalle de un taller por su identificador. */
   navegarATallerPorId(id: number) {
     this.router.navigate(['/taller', id]);
   }
 
+  /** Acepta o rechaza una asignación de actividad pendiente del profesor. */
   responderAsignacion(asignacionId: number, acepta: boolean) {
     const profesorId = this.auth.currentUserId();
     if (!profesorId) return;

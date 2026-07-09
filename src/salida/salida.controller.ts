@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de salidas deportivas.
+ * Expone asignación, propuestas, aprobaciones y ciclo abrir/cerrar del evento.
+ */
 import {
   Controller,
   Get,
@@ -31,6 +35,7 @@ export class SalidaController {
     return this.salidaService.proponerProfesor(dto);
   }
 
+  /** Salidas visibles para estudiantes; filtra por taller o por talleres del alumno. */
   @Get('publicadas')
   findPublicadas(
     @Query('tallerId') tallerId?: string,
@@ -77,6 +82,7 @@ export class SalidaController {
     return this.salidaService.findOne(id);
   }
 
+  /** Profesor o directiva aprueba/rechaza según el estado pendiente de la salida. */
   @Patch(':id/responder')
   responder(
     @Param('id', ParseIntPipe) id: number,

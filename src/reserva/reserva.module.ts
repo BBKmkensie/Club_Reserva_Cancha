@@ -1,3 +1,7 @@
+/**
+ * Módulo de reservas de cancha.
+ * Agrupa reservas, franjas horarias y servicios de seed de datos iniciales.
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReservaService } from './reserva.service';

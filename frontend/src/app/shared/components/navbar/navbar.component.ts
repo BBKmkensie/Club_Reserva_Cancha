@@ -1,3 +1,7 @@
+/**
+ * Barra de navegación superior fija.
+ * Muestra logo, menú móvil, notificaciones, rol del usuario y cierre de sesión.
+ */
 import { Component, inject } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -7,6 +11,9 @@ import { LogoNautaComponent } from '../logo-nauta/logo-nauta.component';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { NotificacionesPanelComponent } from '../notificaciones-panel/notificaciones-panel.component';
 
+/**
+ * Navbar principal: identidad visual, panel de notificaciones y acciones de sesión.
+ */
 @Component({
   selector: 'app-navbar',
   standalone: true,
@@ -73,11 +80,15 @@ import { NotificacionesPanelComponent } from '../notificaciones-panel/notificaci
   `,
   styles: []
 })
+/**
+ * Clase del navbar: etiqueta de rol abreviada y cierre de sesión.
+ */
 export class NavbarComponent {
   auth = inject(AuthRoleService);
   sidebar = inject(SidebarService);
   private router = inject(Router);
 
+  /** Devuelve una etiqueta corta del rol para pantallas pequeñas. */
   roleCorto(): string {
     const map: Record<string, string> = {
       Estudiante: 'Est.',
@@ -89,6 +100,7 @@ export class NavbarComponent {
     return map[this.auth.roleLabel()] ?? this.auth.roleLabel();
   }
 
+  /** Cierra sesión y redirige a la pantalla de login. */
   cerrar(): void {
     this.auth.clear();
     this.router.navigate(['/login']);

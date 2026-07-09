@@ -1,3 +1,7 @@
+/**
+ * Controlador REST de administradores.
+ * CRUD básico de cuentas admin (super_admin / directiva en entidad).
+ */
 import {
   Controller,
   Get,
@@ -34,4 +38,3 @@ export class AdminController {
     return this.adminService.remove(id);
   }
 }
-

@@ -1,3 +1,7 @@
+/**
+ * Módulo NestJS de asistencia.
+ * Registra entidades, servicio y controlador; importa notificaciones para alertas.
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SesionAsistencia } from '../entities/sesion-asistencia.entity';
@@ -11,6 +15,7 @@ import { AsistenciaService } from './asistencia.service';
 import { AsistenciaController } from './asistencia.controller';
 import { NotificacionModule } from '../notificacion/notificacion.module';
 
+/** Agrupa la funcionalidad de control de asistencia en talleres. */
 @Module({
   imports: [
     TypeOrmModule.forFeature([

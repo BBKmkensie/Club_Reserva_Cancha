@@ -1,3 +1,8 @@
+/**
+ * Servicio de inscripciones a talleres.
+ * Valida cupos y conflictos de horario, gestiona solicitudes, propuestas de directiva
+ * y notificaciones a alumnos, profesores y apoderados.
+ */
 import {
   Injectable,
   ConflictException,
@@ -20,6 +25,7 @@ import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { MailService } from '../mail/mail.service';
 
+/** Resultado de la validación previa a inscribirse en un taller. */
 export interface ValidacionInscripcion {
   puedeInscribirse: boolean;
   cuposOcupados: number;
@@ -34,6 +40,7 @@ export interface ValidacionInscripcion {
   cantidadOtrasInscripciones?: number;
 }
 
+/** Lógica de negocio para solicitudes e inscripciones de alumnos en talleres. */
 @Injectable()
 export class InscripcionTallerService {
   constructor(
@@ -53,6 +60,10 @@ export class InscripcionTallerService {
     private dataSource: DataSource,
   ) {}
 
+  /**
+   * Evalúa si un alumno puede inscribirse: período, cupos, conflicto horario y advertencias.
+   * Opcionalmente notifica bloqueos (conflicto o sin cupo).
+   */
   async validar(
     alumnoId: number,
     tallerId: number,
@@ -296,6 +307,7 @@ export class InscripcionTallerService {
     }
   }
 
+  /** Registra solicitud PENDIENTE con ficha antropométrica del alumno. */
   async solicitar(dto: CreateInscripcionTallerDto): Promise<InscripcionTaller> {
     const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
     if (!alumno) {
@@ -411,6 +423,7 @@ export class InscripcionTallerService {
     return await this.repo.save(inscripcion);
   }
 
+  /** El profesor acepta o rechaza una solicitud pendiente. */
   async responder(
     id: number,
     dto: ResponderInscripcionTallerDto,
@@ -442,6 +455,7 @@ export class InscripcionTallerService {
     return guardada;
   }
 
+  /** Aceptación con bloqueo pesimista del taller para evitar sobre-cupo concurrente. */
   private async responderAceptacionTransaccional(id: number): Promise<InscripcionTaller> {
     const guardada = await this.dataSource.transaction(async (manager) => {
       const inscripcion = await manager.findOne(InscripcionTaller, {
@@ -500,6 +514,7 @@ export class InscripcionTallerService {
     return guardada;
   }
 
+  /** El alumno cancela solicitud pendiente o se retira si ya estaba aceptado. */
   async retirarse(inscripcionId: number, alumnoId: number): Promise<{ ok: true }> {
     const inscripcion = await this.repo.findOne({
       where: { id: inscripcionId },
@@ -639,6 +654,7 @@ export class InscripcionTallerService {
     return `${dias[taller.diaSemana]} ${this.normalizarHora(taller.horaInicio)} - ${this.normalizarHora(taller.horaFin)}`;
   }
 
+  /** Apoderado/directiva propone inscripción; notifica a coordinadores para revisión. */
   async proponerDirectiva(dto: ProponerInscripcionDirectivaDto) {
     const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
     if (!alumno) throw new NotFoundException('Alumno no encontrado');
@@ -700,6 +716,7 @@ export class InscripcionTallerService {
     }));
   }
 
+  /** La directiva acepta o rechaza una propuesta; si acepta, crea solicitud PENDIENTE. */
   async responderPropuesta(id: number, dto: ResponderPropuestaInscripcionDto) {
     const propuesta = await this.propuestaRepo.findOne({
       where: { id },

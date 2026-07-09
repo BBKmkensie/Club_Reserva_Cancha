@@ -1,14 +1,20 @@
+/**
+ * Servicio de streaming SSE para notificaciones en tiempo real.
+ * Mantiene canales por alumno, profesor y administrador con heartbeat periódico.
+ */
 import { Injectable } from '@nestjs/common';
 import { MessageEvent } from '@nestjs/common';
 import { Observable, Subject, merge, interval, map, finalize } from 'rxjs';
 import { Notificacion } from '../entities/notificacion.entity';
 
+/** Gestiona suscriptores RxJS y emisión de eventos SSE por usuario. */
 @Injectable()
 export class NotificacionStreamService {
   private alumnoStreams = new Map<number, Subject<Notificacion>>();
   private profesorStreams = new Map<number, Subject<Notificacion>>();
   private adminStreams = new Map<number, Subject<Notificacion>>();
 
+  /** Abre un stream SSE para recibir notificaciones de un alumno. */
   streamAlumno(alumnoId: number): Observable<MessageEvent> {
     const subject = this.getOrCreate(this.alumnoStreams, alumnoId);
     return this.buildStream(subject, () => this.cleanup(this.alumnoStreams, alumnoId, subject));
@@ -24,6 +30,7 @@ export class NotificacionStreamService {
     return this.buildStream(subject, () => this.cleanup(this.adminStreams, adminId, subject));
   }
 
+  /** Emite una notificación nueva a los clientes SSE suscritos del alumno. */
   emitAlumno(alumnoId: number, notificacion: Notificacion): void {
     this.alumnoStreams.get(alumnoId)?.next(notificacion);
   }
@@ -45,6 +52,7 @@ export class NotificacionStreamService {
     return subject;
   }
 
+  /** Construye el observable SSE combinando eventos de datos y ping de keep-alive. */
   private buildStream<T>(
     subject: Subject<T>,
     onCleanup: () => void,

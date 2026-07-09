@@ -1,3 +1,7 @@
+/**
+ * Actualización en tiempo real de notificaciones del usuario.
+ * Usa Server-Sent Events (SSE) con respaldo por polling periódico.
+ */
 import { Injectable, inject, OnDestroy } from '@angular/core';
 import { Subject, interval, Subscription, filter, startWith } from 'rxjs';
 import { ApiService } from '../../services/api.service';
@@ -11,6 +15,10 @@ export interface NotificacionActualizada {
 
 type Destinatario = 'alumno' | 'profesor' | 'admin';
 
+/**
+ * Servicio que mantiene sincronizadas las notificaciones del usuario logueado.
+ * Emite cambios vía `cambios$` para que la UI (navbar, dashboard) se actualice.
+ */
 @Injectable({ providedIn: 'root' })
 export class NotificacionPollService implements OnDestroy {
   private api = inject(ApiService);
@@ -23,6 +31,7 @@ export class NotificacionPollService implements OnDestroy {
 
   readonly cambios$ = this.actualizaciones$.asObservable();
 
+  /** Inicia la conexión SSE y la primera carga de notificaciones según el rol del usuario. */
   iniciar(): void {
     this.detener();
     const userId = this.auth.currentUserId();
@@ -75,6 +84,7 @@ export class NotificacionPollService implements OnDestroy {
       .subscribe(() => this.refrescar());
   }
 
+  /** Detiene SSE, polling y limpia el contexto del destinatario. */
   detener(): void {
     this.eventSource?.close();
     this.eventSource = undefined;
@@ -84,6 +94,7 @@ export class NotificacionPollService implements OnDestroy {
     this.userId = null;
   }
 
+  /** Consulta la API y emite el listado actualizado con el conteo de no leídas. */
   refrescar(): void {
     if (!this.destinatario || !this.userId) {
       this.destinatario = this.resolverDestinatario();
@@ -109,6 +120,7 @@ export class NotificacionPollService implements OnDestroy {
     });
   }
 
+  /** Marca la notificación como leída según el destinatario (alumno, profesor o admin). */
   marcarLeida(id: number): void {
     if (!this.destinatario || !this.userId) return;
     const obs =

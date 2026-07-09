@@ -1,3 +1,7 @@
+/**
+ * Módulo de gestión de profesores.
+ * Registra CRUD y repositorio TypeORM del dominio profesor.
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProfesorService } from './profesor.service';
@@ -11,4 +15,3 @@ import { Profesor } from '../entities/profesor.entity';
   exports: [ProfesorService],
 })
 export class ProfesorModule {}
-

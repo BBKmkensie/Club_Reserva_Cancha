@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de inscripciones a talleres.
+ * Expone validación, solicitudes, respuestas del profesor y propuestas de directiva.
+ */
 import {
   Controller,
   Get,
@@ -25,6 +29,7 @@ export class InscripcionTallerController {
     return this.inscripcionTallerService.solicitar(dto);
   }
 
+  /** Pre-valida inscripción sin crear solicitud (opcional: notificar bloqueos). */
   @Get('validar/:alumnoId/:tallerId')
   validar(
     @Param('alumnoId', ParseIntPipe) alumnoId: number,
@@ -77,6 +82,7 @@ export class InscripcionTallerController {
     return this.inscripcionTallerService.actualizarFicha(id, dto);
   }
 
+  /** Apoderado propone actividad; queda pendiente de revisión de coordinación. */
   @Post('proponer-directiva')
   proponerDirectiva(@Body() dto: ProponerInscripcionDirectivaDto) {
     return this.inscripcionTallerService.proponerDirectiva(dto);

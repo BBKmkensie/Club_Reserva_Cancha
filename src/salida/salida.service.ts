@@ -1,3 +1,8 @@
+/**
+ * Servicio de salidas deportivas (partidos, excursiones).
+ * Gestiona el flujo de asignación directiva, propuesta del profesor, aprobación,
+ * apertura/cierre el día del evento y visibilidad para estudiantes.
+ */
 import {
   Injectable,
   NotFoundException,
@@ -20,6 +25,7 @@ import { CerrarSalidaDto } from '../dto/cerrar-salida.dto';
 import { ESTADOS_SALIDA_VISIBLES_ESTUDIANTE } from './salida.types';
 import { fechaLocal } from '../reserva/cancha.constants';
 
+/** Lógica de negocio para salidas vinculadas a talleres y profesores. */
 @Injectable()
 export class SalidaService {
   constructor(

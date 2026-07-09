@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de autenticación.
+ * Expone login público y consulta del usuario autenticado.
+ */
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from '../dto/login.dto';
@@ -8,12 +12,14 @@ import { JwtPayload } from './auth.types';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /** Autentica por tipo explícito o por detección automática del usuario. */
   @Public()
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
+  /** Devuelve el perfil del usuario a partir del JWT ya validado. */
   @Get('me')
   me(@Req() req: { user: JwtPayload }) {
     const user = req.user;

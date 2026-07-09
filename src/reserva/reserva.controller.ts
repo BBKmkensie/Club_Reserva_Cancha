@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de reservas de cancha.
+ * Consulta disponibilidad y administra reservas por taller o fecha.
+ */
 import {
   Controller,
   Get,
@@ -17,6 +21,7 @@ import { CANCHA_ESPACIO_DEFAULT } from './cancha.constants';
 export class ReservaController {
   constructor(private readonly reservaService: ReservaService) {}
 
+  /** Grilla de disponibilidad de siete días desde el lunes de la semana. */
   @Get('disponibilidad-semana')
   obtenerDisponibilidadSemana(
     @Query('fechaInicio') fechaInicio?: string,

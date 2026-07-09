@@ -1,3 +1,7 @@
+/**
+ * Servicio de notificaciones del sistema.
+ * Persiste avisos para alumnos, profesores y administradores; envía correo y emite eventos SSE.
+ */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -8,6 +12,7 @@ import { Admin } from '../entities/admin.entity';
 import { MailService } from '../mail/mail.service';
 import { NotificacionStreamService } from './notificacion-stream.service';
 
+/** Creación, consulta y gestión de notificaciones por rol de usuario. */
 @Injectable()
 export class NotificacionService {
   constructor(
@@ -23,6 +28,10 @@ export class NotificacionService {
     private streamService: NotificacionStreamService,
   ) {}
 
+  /**
+   * Crea una notificación para un alumno, envía correo si tiene email
+   * y emite el evento en tiempo real vía SSE.
+   */
   async crear(
     alumnoId: number,
     titulo: string,
@@ -41,6 +50,7 @@ export class NotificacionService {
     return guardada;
   }
 
+  /** Crea notificación para un profesor con correo y emisión SSE. */
   async crearParaProfesor(
     profesorId: number,
     titulo: string,
@@ -59,6 +69,7 @@ export class NotificacionService {
     return guardada;
   }
 
+  /** Crea notificación para un administrador con correo y emisión SSE. */
   async crearParaAdmin(
     adminId: number,
     titulo: string,
@@ -86,6 +97,7 @@ export class NotificacionService {
     return guardada;
   }
 
+  /** Notifica a super_admin y directiva sobre alertas de ausencias recurrentes. */
   async notificarCoordinadoresAusencia(
     titulo: string,
     mensaje: string,
@@ -94,6 +106,7 @@ export class NotificacionService {
     await this.notificarCoordinadores(titulo, mensaje, tipo);
   }
 
+  /** Envía la misma notificación a todos los coordinadores (super_admin y directiva). */
   async notificarCoordinadores(
     titulo: string,
     mensaje: string,
@@ -141,6 +154,7 @@ export class NotificacionService {
     return await this.repo.count({ where: { adminId, leida: false } });
   }
 
+  /** Marca una notificación como leída verificando que pertenezca al alumno. */
   async marcarLeida(id: number, alumnoId: number): Promise<Notificacion> {
     const notificacion = await this.repo.findOne({ where: { id, alumnoId } });
     if (!notificacion) {

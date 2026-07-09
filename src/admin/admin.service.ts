@@ -1,3 +1,7 @@
+/**
+ * Servicio de dominio para administradores.
+ * Alta con hash de contraseña y consultas por id o email.
+ */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +16,7 @@ export class AdminService {
     private adminRepository: Repository<Admin>,
   ) {}
 
+  /** Registra admin con contraseña hasheada (PBKDF2-SHA512). */
   async create(createAdminDto: CreateAdminDto): Promise<Admin> {
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto
@@ -50,4 +55,3 @@ export class AdminService {
     await this.adminRepository.remove(admin);
   }
 }
-

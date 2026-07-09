@@ -1,3 +1,7 @@
+/**
+ * Catálogo e inscripción de talleres para estudiantes.
+ * Permite solicitar inscripción, completar ficha física y retirarse de talleres.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,6 +24,9 @@ interface InscripcionTaller {
   taller?: { id: number; tipo: string; descripcion: string };
 }
 
+/**
+ * Componente de inscripción: catálogo publicado, estado de solicitudes y flujo de confirmación.
+ */
 @Component({
   selector: 'app-inscripcion-talleres',
   standalone: true,
@@ -263,6 +270,7 @@ export class InscripcionTalleresComponent implements OnInit {
 
   readonly tallerSinProfesor = tallerSinProfesor;
 
+  /** Carga catálogo y solicitudes previas del alumno logueado. */
   ngOnInit() {
     this.cargarTalleres();
     this.alumnoId = this.auth.currentUserId();
@@ -332,6 +340,7 @@ export class InscripcionTalleresComponent implements OnInit {
     this.retirando = null;
   }
 
+  /** Ejecuta el retiro o cancelación de una solicitud/inscripción activa. */
   confirmarRetiro() {
     if (!this.solicitudRetirando || !this.alumnoId) return;
     this.retirando = this.solicitudRetirando.id;
@@ -353,6 +362,7 @@ export class InscripcionTalleresComponent implements OnInit {
     return s.taller?.tipo ?? `Taller #${s.tallerId}`;
   }
 
+  /** Abre el modal de confirmación y valida cupos/horarios antes de inscribirse. */
   abrirConfirmacion(taller: Taller) {
     if (!this.alumnoId) {
       alert('Inicia sesión como estudiante para inscribirte.');
@@ -389,6 +399,7 @@ export class InscripcionTalleresComponent implements OnInit {
       && porcentajeGrasa != null && porcentajeGrasa >= 1 && porcentajeGrasa <= 60;
   }
 
+  /** Envía la solicitud de inscripción con la ficha física al backend. */
   confirmarInscripcion() {
     if (!this.tallerConfirmando || !this.alumnoId || !this.validacionActual?.puedeInscribirse || !this.fichaValida()) return;
     this.confirmando = true;

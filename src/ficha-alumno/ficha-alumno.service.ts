@@ -1,3 +1,7 @@
+/**
+ * Servicio de fichas médicas/deportivas por alumno y taller.
+ * Permite listar, consultar y actualizar medidas antropométricas según rol (directiva/profesor).
+ */
 import {
   Injectable,
   NotFoundException,
@@ -11,6 +15,7 @@ import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { Profesor } from '../entities/profesor.entity';
 import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
 
+/** Elemento de listado con datos del alumno, inscripción y ficha en un taller. */
 export interface FichaAlumnoListItem {
   alumnoId: number;
   nombre: string;
@@ -24,6 +29,7 @@ export interface FichaAlumnoListItem {
   sedentario: boolean | null;
 }
 
+/** Lógica de negocio para fichas de alumnos vinculadas a talleres. */
 @Injectable()
 export class FichaAlumnoService {
   constructor(
@@ -118,6 +124,7 @@ export class FichaAlumnoService {
     };
   }
 
+  /** Obtiene la ficha de un alumno en un taller, combinando datos de inscripción si existen. */
   async obtener(alumnoId: number, tallerId: number): Promise<FichaAlumnoListItem> {
     const alumno = await this.alumnoRepo.findOne({ where: { id: alumnoId } });
     if (!alumno) throw new NotFoundException('Alumno no encontrado');
@@ -126,6 +133,7 @@ export class FichaAlumnoService {
     return this.toItem(alumno, tallerId, ficha ?? undefined, inscripcion ?? undefined);
   }
 
+  /** Crea o actualiza la ficha antropométrica de un alumno en el taller indicado. */
   async guardar(alumnoId: number, tallerId: number, dto: ActualizarFichaAlumnoDto): Promise<FichaAlumnoTaller> {
     let ficha = await this.fichaRepo.findOne({ where: { alumnoId, tallerId } });
     if (!ficha) {

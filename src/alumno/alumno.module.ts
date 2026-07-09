@@ -1,3 +1,7 @@
+/**
+ * Módulo de gestión de alumnos.
+ * Registra CRUD, seeds de edad/contraseña y repositorio TypeORM.
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlumnoService } from './alumno.service';
@@ -13,4 +17,3 @@ import { Alumno } from '../entities/alumno.entity';
   exports: [AlumnoService, AlumnoEdadSeedService, AlumnoPasswordSeedService],
 })
 export class AlumnoModule {}
-

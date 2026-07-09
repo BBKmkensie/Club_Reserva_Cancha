@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de franjas de cancha.
+ * Permite consultar y actualizar los horarios habilitados por la directiva.
+ */
 import { Controller, Get, Put, Body, Query } from '@nestjs/common';
 import { FranjaCanchaService } from './franja-cancha.service';
 import { ActualizarFranjasCanchaDto } from '../dto/actualizar-franjas-cancha.dto';

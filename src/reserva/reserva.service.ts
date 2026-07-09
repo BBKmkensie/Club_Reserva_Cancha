@@ -1,3 +1,7 @@
+/**
+ * Servicio de reservas de cancha.
+ * Calcula disponibilidad por franjas, valida solapamientos y persiste reservas.
+ */
 import {
   Injectable,
   NotFoundException,
@@ -28,6 +32,7 @@ import {
 
 export type EstadoSlotCancha = 'disponible' | 'ocupada' | 'no_habilitada';
 
+/** Representación de un bloque horario con su estado de ocupación. */
 export interface SlotDisponibilidadCancha {
   horaInicio: string;
   horaFin: string;
@@ -41,6 +46,7 @@ export interface SlotDisponibilidadCancha {
   profesorNombre?: string;
 }
 
+/** Lógica de negocio para reservar espacios deportivos por fecha y hora. */
 @Injectable()
 export class ReservaService {
   constructor(
@@ -51,6 +57,7 @@ export class ReservaService {
     private franjaCanchaService: FranjaCanchaService,
   ) {}
 
+  /** Slots de un día: cruza franjas activas con reservas existentes. */
   async obtenerDisponibilidad(
     fecha: string,
     espacio = CANCHA_ESPACIO_DEFAULT,
@@ -116,6 +123,7 @@ export class ReservaService {
     return slots;
   }
 
+  /** Disponibilidad de los siete días a partir del lunes de la semana indicada. */
   async obtenerDisponibilidadSemana(
     fechaInicio?: string,
     espacio = CANCHA_ESPACIO_DEFAULT,
@@ -133,6 +141,7 @@ export class ReservaService {
     return dias;
   }
 
+  /** Valida duración, rango horario, franja habilitada y ausencia de solapamientos. */
   private async validarReserva(
     dto: CreateReservaDto,
     excluirReservaId?: number,

@@ -1,3 +1,7 @@
+/**
+ * Gestión de sesión y permisos del usuario autenticado.
+ * Persiste rol, token y datos de contexto en localStorage y expone señales reactivas.
+ */
 import { Injectable, signal, computed } from '@angular/core';
 
 export type AppRole = 'super_admin' | 'admin' | 'usuario';
@@ -10,6 +14,10 @@ const STORAGE_TOKEN = 'reservas_cancha_token';
 const STORAGE_NOMBRE = 'reservas_cancha_nombre';
 const STORAGE_USER_TIPO = 'reservas_cancha_user_tipo';
 
+/**
+ * Servicio de autenticación y autorización del frontend.
+ * Centraliza el estado de sesión y las reglas de acceso por rol/tipo de usuario.
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -30,7 +38,7 @@ export class AuthRoleService {
 
   isSuperAdmin = computed(() => this.roleSignal() === 'super_admin');
   isDirectiva = computed(() => this.userTipoSignal() === 'directiva');
-  /** Super admin o directiva: coordinación con acceso amplio */
+  /** Indica si el usuario actual pertenece a coordinación (super admin o directiva). */
   isCoordinacion = computed(
     () => this.roleSignal() === 'super_admin' || this.userTipoSignal() === 'directiva',
   );
@@ -41,6 +49,10 @@ export class AuthRoleService {
   isProfesor = computed(() => this.userTipoSignal() === 'profesor');
   isLoggedIn = computed(() => !!this.tokenSignal() && !!this.roleSignal());
 
+  /**
+   * Establece la sesión completa tras un login exitoso.
+   * Persiste token, rol, IDs y nombre en memoria y localStorage.
+   */
   setSession(
     token: string,
     role: AppRole,
@@ -86,6 +98,7 @@ export class AuthRoleService {
     return this.tokenSignal();
   }
 
+  /** Cierra sesión eliminando todos los datos almacenados. */
   clear(): void {
     this.roleSignal.set(null);
     this.userIdSignal.set(null);
@@ -191,6 +204,7 @@ export class AuthRoleService {
     return this.isCoordinacion() || this.isProfesor();
   }
 
+  /** Verifica si el usuario puede inscribirse en talleres (rol usuario, no apoderado). */
   canInscribirseTalleres(): boolean {
     if (this.isApoderado()) return false;
     return this.roleSignal() === 'usuario';
@@ -250,7 +264,7 @@ export class AuthRoleService {
     return this.isCoordinacion();
   }
 
-  /** Solo el rol (Profesor, Estudiante, etc.) */
+  /** Devuelve la etiqueta legible del rol para mostrar en la interfaz. */
   roleLabel(): string {
     const tipo = this.userTipoSignal();
     if (tipo === 'directiva') return 'Directiva';

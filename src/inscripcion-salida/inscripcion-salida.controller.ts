@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de inscripciones a salidas.
+ * Permite inscribir, listar y cancelar participación de alumnos en salidas.
+ */
 import {
   Controller,
   Get,

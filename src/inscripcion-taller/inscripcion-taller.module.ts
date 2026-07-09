@@ -1,3 +1,7 @@
+/**
+ * Módulo de inscripciones a talleres.
+ * Registra entidades y servicios para el flujo alumno → profesor → directiva.
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';

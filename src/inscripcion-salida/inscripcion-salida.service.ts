@@ -1,3 +1,7 @@
+/**
+ * Servicio de inscripciones a salidas deportivas.
+ * Verifica que el alumno esté inscrito en el taller asociado antes de permitir la inscripción.
+ */
 import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,6 +12,7 @@ import { Salida } from '../entities/salida.entity';
 import { CreateInscripcionSalidaDto } from '../dto/create-inscripcion-salida.dto';
 import { ESTADOS_SALIDA_VISIBLES_ESTUDIANTE } from '../salida/salida.types';
 
+/** Lógica de negocio para inscribir alumnos en salidas de sus talleres. */
 @Injectable()
 export class InscripcionSalidaService {
   constructor(
@@ -21,6 +26,7 @@ export class InscripcionSalidaService {
     private salidaRepository: Repository<Salida>,
   ) {}
 
+  /** Talleres donde el alumno tiene inscripción ACEPTADA o taller principal asignado. */
   private async talleresInscritosAlumno(alumnoId: number): Promise<Set<number>> {
     const inscripciones = await this.inscripcionTallerRepository.find({
       where: { alumnoId, estado: 'ACEPTADO' },
@@ -31,6 +37,7 @@ export class InscripcionSalidaService {
     return ids;
   }
 
+  /** Inscribe al alumno si la salida está publicada y pertenece a su taller. */
   async inscribir(dto: CreateInscripcionSalidaDto): Promise<InscripcionSalida> {
     const salida = await this.salidaRepository.findOne({ where: { id: dto.salidaId } });
     if (!salida) throw new NotFoundException('Salida no encontrada');

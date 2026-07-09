@@ -1,9 +1,14 @@
+/**
+ * Controlador REST de notificaciones.
+ * Expone consulta, marcado de lectura, eliminación y streams SSE por rol.
+ */
 import { Controller, Get, Patch, Delete, Param, ParseIntPipe, Sse } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { MessageEvent } from '@nestjs/common';
 import { NotificacionService } from './notificacion.service';
 import { NotificacionStreamService } from './notificacion-stream.service';
 
+/** Endpoints HTTP y SSE para notificaciones de alumnos, profesores y admins. */
 @Controller('notificacion')
 export class NotificacionController {
   constructor(
@@ -11,6 +16,7 @@ export class NotificacionController {
     private readonly streamService: NotificacionStreamService,
   ) {}
 
+  /** SSE /notificacion/sse/alumno/:alumnoId — Stream en tiempo real para un alumno. */
   @Sse('sse/alumno/:alumnoId')
   sseAlumno(@Param('alumnoId', ParseIntPipe) alumnoId: number): Observable<MessageEvent> {
     return this.streamService.streamAlumno(alumnoId);
@@ -21,6 +27,7 @@ export class NotificacionController {
     return this.streamService.streamProfesor(profesorId);
   }
 
+  /** GET /notificacion/por-alumno/:alumnoId — Lista notificaciones del alumno. */
   @Get('por-alumno/:alumnoId')
   findByAlumno(@Param('alumnoId', ParseIntPipe) alumnoId: number) {
     return this.notificacionService.findByAlumno(alumnoId);
@@ -31,6 +38,7 @@ export class NotificacionController {
     return this.notificacionService.contarNoLeidas(alumnoId);
   }
 
+  /** PATCH /notificacion/:id/leer/:alumnoId — Marca una notificación como leída. */
   @Patch(':id/leer/:alumnoId')
   marcarLeida(
     @Param('id', ParseIntPipe) id: number,
@@ -67,6 +75,7 @@ export class NotificacionController {
     return this.notificacionService.marcarTodasLeidasProfesor(profesorId);
   }
 
+  /** SSE /notificacion/sse/admin/:adminId — Stream en tiempo real para un administrador. */
   @Sse('sse/admin/:adminId')
   sseAdmin(@Param('adminId', ParseIntPipe) adminId: number): Observable<MessageEvent> {
     return this.streamService.streamAdmin(adminId);

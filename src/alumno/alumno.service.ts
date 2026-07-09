@@ -1,3 +1,7 @@
+/**
+ * Servicio de dominio para alumnos.
+ * CRUD, validación de edad y asignación de contraseña inicial.
+ */
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +17,7 @@ export class AlumnoService {
     private alumnoRepository: Repository<Alumno>,
   ) {}
 
+  /** Crea alumno con contraseña explícita o la contraseña por defecto del sistema. */
   async create(createAlumnoDto: CreateAlumnoDto): Promise<Alumno> {
     this.validarEdad(createAlumnoDto.edad);
     const alumnoData: any = {
@@ -89,4 +94,3 @@ export class AlumnoService {
     }
   }
 }
-

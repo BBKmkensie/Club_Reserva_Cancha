@@ -1,3 +1,7 @@
+/**
+ * Cliente HTTP centralizado del frontend.
+ * Agrupa todas las peticiones REST hacia el backend del sistema de talleres y reservas de cancha.
+ */
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -10,6 +14,10 @@ export interface FichaAlumnoPayload {
   sedentario: boolean;
 }
 
+/**
+ * Servicio inyectable que encapsula la comunicación con la API REST.
+ * Expone métodos por dominio: autenticación, talleres, alumnos, reservas, asistencia y notificaciones.
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -18,14 +26,17 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
+  /** Autentica con tipo de usuario explícito (flujo legado). */
   login(tipo: 'admin' | 'directiva' | 'profesor' | 'alumno' | 'apoderado', usuario: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/auth/login`, { tipo, usuario, password });
   }
 
+  /** Autentica con usuario y contraseña; el backend resuelve el tipo de cuenta. */
   loginUnified(usuario: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/auth/login`, { usuario, password });
   }
 
+  /** Obtiene el resumen del portal del apoderado (hijo, asistencia, taller inscrito). */
   getApoderadoResumen(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/apoderado/resumen`);
   }
@@ -197,6 +208,7 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/reserva/${id}`);
   }
 
+  /** Consulta los slots disponibles/ocupados de la cancha para una fecha. */
   getDisponibilidadCancha(fecha: string, espacio = 'Cancha Principal'): Observable<any[]> {
     return this.http.get<any[]>(
       `${this.apiUrl}/reserva/disponibilidad?fecha=${fecha}&espacio=${encodeURIComponent(espacio)}`,
@@ -321,6 +333,7 @@ export class ApiService {
   }
 
   // Inscripción taller
+  /** Valida cupos, conflictos de horario y elegibilidad antes de inscribirse a un taller. */
   validarInscripcionTaller(alumnoId: number, tallerId: number, notificar = false): Observable<any> {
     const q = notificar ? '?notificar=true' : '';
     return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/validar/${alumnoId}/${tallerId}${q}`);
@@ -330,6 +343,7 @@ export class ApiService {
     return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/resumen/${tallerId}`);
   }
 
+  /** Envía una solicitud de inscripción con la ficha física del alumno. */
   solicitarInscripcionTaller(alumnoId: number, tallerId: number, ficha: FichaAlumnoPayload): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/inscripcion-taller`, { alumnoId, tallerId, ficha });
   }
@@ -401,6 +415,7 @@ export class ApiService {
   }
 
   // Asistencia
+  /** Abre una sesión de asistencia para el taller en la fecha indicada (hoy por defecto). */
   abrirSesionAsistencia(tallerId: number, profesorId: number, fecha?: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/asistencia/sesion/abrir`, { tallerId, profesorId, fecha });
   }

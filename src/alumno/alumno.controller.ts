@@ -1,3 +1,7 @@
+/**
+ * Controlador REST de alumnos.
+ * Expone CRUD y filtrado opcional por taller.
+ */
 import {
   Controller,
   Get,
@@ -21,6 +25,7 @@ export class AlumnoController {
     return this.alumnoService.create(createAlumnoDto);
   }
 
+  /** Lista todos los alumnos o solo los de un taller si se pasa `tallerId`. */
   @Get()
   findAll(@Query('tallerId') tallerId?: string) {
     if (tallerId) {
@@ -47,4 +52,3 @@ export class AlumnoController {
     return this.alumnoService.remove(id);
   }
 }
-

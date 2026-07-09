@@ -1,8 +1,13 @@
+/**
+ * Servicio de envío de correos electrónicos.
+ * Usa nodemailer cuando está habilitado; en modo desarrollo registra los mensajes en consola.
+ */
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
+/** Envío centralizado de correos transaccionales del sistema. */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -31,6 +36,7 @@ export class MailService {
     }
   }
 
+  /** Envía un correo de texto plano; simula en consola si el mail está deshabilitado. */
   async enviar(to: string, asunto: string, texto: string): Promise<boolean> {
     if (!to?.trim()) return false;
 
@@ -67,6 +73,7 @@ export class MailService {
     await this.enviar(email, `[Reservas Cancha] ${titulo}`, mensaje);
   }
 
+  /** Notifica al apoderado cuando el alumno supera el umbral de ausencias. */
   async alertaApoderado(
     email: string | null | undefined,
     alumnoNombre: string,
@@ -91,6 +98,7 @@ export class MailService {
     await this.enviar(email, `[Alerta] Asistencia — ${tallerNombre}`, texto);
   }
 
+  /** Informa al apoderado que el coordinador se puso en contacto por asistencia. */
   async contactoApoderado(
     email: string | null | undefined,
     alumnoNombre: string,
@@ -114,6 +122,7 @@ export class MailService {
     await this.enviar(email, `[Contacto] Asistencia — ${tallerNombre}`, texto);
   }
 
+  /** Confirma al apoderado la inscripción aceptada de su hijo/a en un taller. */
   async inscripcionTallerApoderado(
     email: string | null | undefined,
     alumnoNombre: string,
@@ -135,6 +144,7 @@ export class MailService {
     return await this.enviar(email, `[Inscripción] Taller ${tallerNombre}`, texto);
   }
 
+  /** Envía al apoderado el registro de asistencia al cerrar una sesión. */
   async asistenciaSesionApoderado(
     email: string | null | undefined,
     alumnoNombre: string,

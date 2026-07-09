@@ -1,3 +1,6 @@
+/**
+ * Estrategia Passport para validar tokens JWT en el header Authorization.
+ */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -18,6 +21,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /** Verifica campos mínimos del payload antes de adjuntarlo a `req.user`. */
   validate(payload: JwtPayload): JwtPayload {
     if (!payload?.sub || !payload?.role || !payload?.tipo) {
       throw new UnauthorizedException('Token inválido');

@@ -1,3 +1,7 @@
+/**
+ * Servicio de franjas horarias de cancha.
+ * Define bloques habilitados por la directiva y asegura la grilla base de 30 minutos.
+ */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -14,6 +18,7 @@ import {
   sumarMinutosAHora,
 } from './cancha.constants';
 
+/** Configuración y mantenimiento de franjas reservables por espacio y día. */
 @Injectable()
 export class FranjaCanchaService {
   constructor(
@@ -50,6 +55,7 @@ export class FranjaCanchaService {
     );
   }
 
+  /** Aplica o actualiza franjas según la directiva; amplía bloques y oculta sub-slots cubiertos. */
   async actualizar(dto: ActualizarFranjasCanchaDto): Promise<FranjaCancha[]> {
     const espacio = dto.espacio ?? CANCHA_ESPACIO_DEFAULT;
 
@@ -93,6 +99,7 @@ export class FranjaCanchaService {
     return this.findAll(espacio);
   }
 
+  /** Desactiva franjas de 30 min quedando cubiertas por un bloque más largo. */
   private async ocultarFranjasCubiertas(
     espacio: string,
     diaSemana: number,
@@ -157,6 +164,7 @@ export class FranjaCanchaService {
     await this.repo.save(filas.map((f) => this.repo.create(f)));
   }
 
+  /** Crea o migra la grilla base de franjas de 30 min y aplica reglas globales (13:00–14:00). */
   async asegurarFranjasBase(espacio = CANCHA_ESPACIO_DEFAULT): Promise<void> {
     const existentes = await this.findAll(espacio);
 

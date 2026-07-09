@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de talleres.
+ * Expone catálogo público, flujo de asignación docente, horarios, publicación y reportes.
+ */
 import {
   Controller,
   Get,
@@ -22,6 +26,7 @@ import { ActualizarPresentacionTallerDto } from '../dto/actualizar-presentacion-
 export class TallerController {
   constructor(private readonly tallerService: TallerService) {}
 
+  /** Catálogo público de actividades con inscripciones abiertas. */
   @Get('catalogo')
   findCatalogo() {
     return this.tallerService.findCatalogo();
@@ -32,6 +37,7 @@ export class TallerController {
     return this.tallerService.getAsignacionesPendientes(profesorId);
   }
 
+  /** Ranking y comparación de talleres por período académico. */
   @Get('estadisticas/semestre')
   getComparacionSemestre(
     @Query('periodoId') periodoId?: string,
@@ -52,6 +58,7 @@ export class TallerController {
     return this.tallerService.findAll();
   }
 
+  /** Directiva asigna docente a una actividad en borrador. */
   @Post(':id/asignar-docente')
   asignarDocente(
     @Param('id', ParseIntPipe) id: number,
@@ -60,6 +67,7 @@ export class TallerController {
     return this.tallerService.asignarDocente(id, dto);
   }
 
+  /** Docente acepta o rechaza una asignación pendiente. */
   @Patch('asignacion/:id/responder')
   responderAsignacion(
     @Param('id', ParseIntPipe) id: number,
@@ -82,6 +90,7 @@ export class TallerController {
     return this.tallerService.getHorarios(id);
   }
 
+  /** Publica la actividad en el catálogo con ventana de inscripción. */
   @Patch(':id/publicar')
   publicar(
     @Param('id', ParseIntPipe) id: number,

@@ -1,3 +1,7 @@
+/**
+ * Controlador HTTP de períodos académicos.
+ * Consulta el período activo y permite configurar fechas de apertura y cierre.
+ */
 import { Body, Controller, Get, Put } from '@nestjs/common';
 import { PeriodoService } from './periodo.service';
 import { PeriodoAcademicoDto } from '../dto/periodo-academico.dto';
