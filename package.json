@@ -12,10 +12,10 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
+    "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "npm run build && node dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -28,6 +28,7 @@
     "seed:catalogo-talleres": "nest build && node dist/scripts/seed-catalogo-talleres.js",
     "seed:horarios-talleres": "nest build && node dist/scripts/seed-horarios-talleres.js",
     "seed:reservas-deportes": "nest build && node dist/scripts/seed-reservas-deportes.js",
+    "report:personas": "nest build && node dist/scripts/report-personas-inscripciones.js",
     "fix:apoderado-nombres": "nest build && node dist/scripts/fix-apoderado-nombres.js",
     "fix:apoderado-emails": "nest build && node dist/scripts/fix-apoderado-emails.js",
     "notify:apoderados": "nest build && node dist/scripts/notify-apoderados.js"

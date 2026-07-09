@@ -76,6 +76,7 @@ export class NotificacionService {
     mensaje: string,
     tipo = 'ausencia_recurrente',
     refId?: number,
+    enviarCorreo = true,
   ): Promise<Notificacion> {
     const notificacion = this.repo.create({
       adminId,
@@ -89,12 +90,54 @@ export class NotificacionService {
     const guardada = await this.repo.save(notificacion);
 
     const admin = await this.adminRepo.findOne({ where: { id: adminId } });
-    if (admin?.email) {
+    if (enviarCorreo && admin?.email) {
       await this.mailService.notificarAdmin(admin.email, titulo, mensaje);
     }
     this.streamService.emitAdmin(adminId, guardada);
 
     return guardada;
+  }
+
+  /** Notifica a coordinadores sobre propuesta de apoderado con correo detallado. */
+  async notificarCoordinadoresPropuestaApoderado(params: {
+    propuestaId: number;
+    apoderadoNombre: string;
+    alumnoNombre: string;
+    alumnoRut?: string | null;
+    tallerNombre: string;
+    horarioPropuesto?: string | null;
+    mensajeApoderado?: string | null;
+  }): Promise<void> {
+    const titulo = 'Nueva propuesta de actividad';
+    const horarioTxt = params.horarioPropuesto ? ` Horario: ${params.horarioPropuesto}.` : '';
+    const mensaje =
+      `${params.apoderadoNombre} propuso "${params.tallerNombre}" para ${params.alumnoNombre}.${horarioTxt} Revisa la bandeja de propuestas.`;
+
+    const coordinadores = await this.adminRepo.find({
+      where: { rol: In(['super_admin', 'directiva']) },
+    });
+
+    for (const admin of coordinadores) {
+      await this.crearParaAdmin(
+        admin.id,
+        titulo,
+        mensaje,
+        'propuesta_actividad',
+        params.propuestaId,
+        false,
+      );
+      if (admin.email) {
+        await this.mailService.nuevaPropuestaDirectiva(admin.email, admin.nombre, {
+          apoderadoNombre: params.apoderadoNombre,
+          alumnoNombre: params.alumnoNombre,
+          alumnoRut: params.alumnoRut,
+          tallerNombre: params.tallerNombre,
+          horarioPropuesto: params.horarioPropuesto,
+          mensajeApoderado: params.mensajeApoderado,
+          propuestaId: params.propuestaId,
+        });
+      }
+    }
   }
 
   /** Notifica a super_admin y directiva sobre alertas de ausencias recurrentes. */

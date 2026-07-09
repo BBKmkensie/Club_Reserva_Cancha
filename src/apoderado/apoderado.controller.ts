@@ -2,11 +2,12 @@
  * Controlador REST del portal de apoderados.
  * Requiere JWT; expone resumen y propuesta de inscripción a talleres.
  */
-import { Controller, Get, Post, Req, UseGuards, ParseIntPipe, Param } from '@nestjs/common';
+import { Controller, Get, Post, Req, UseGuards, ParseIntPipe, Param, Body } from '@nestjs/common';
 import { ApoderadoService } from './apoderado.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { JwtPayload } from '../auth/auth.types';
 import { InscripcionTallerService } from '../inscripcion-taller/inscripcion-taller.service';
+import { ProponerInscripcionApoderadoDto } from '../dto/proponer-inscripcion-apoderado.dto';
 
 /** Endpoints protegidos para apoderados autenticados. */
 @Controller('apoderado')
@@ -24,13 +25,26 @@ export class ApoderadoController {
     return this.apoderadoService.getResumen(alumnoId);
   }
 
-  /** POST /apoderado/proponer-inscripcion/:tallerId — Propone inscripción del hijo/a a un taller. */
+  /** POST /apoderado/proponer-inscripcion/:tallerId — Propone inscripción del hijo/a con horario. */
   @Post('proponer-inscripcion/:tallerId')
   proponerInscripcion(
     @Req() req: { user: JwtPayload },
     @Param('tallerId', ParseIntPipe) tallerId: number,
+    @Body() body: ProponerInscripcionApoderadoDto,
   ) {
     const alumnoId = this.apoderadoService.assertApoderado(req.user);
-    return this.inscripcionTallerService.proponerDirectiva({ alumnoId, tallerId });
+    return this.inscripcionTallerService.proponerDirectiva({
+      alumnoId,
+      tallerId,
+      tallerHorarioId: body.tallerHorarioId,
+      mensajeApoderado: body.mensajeApoderado,
+    });
+  }
+
+  /** GET /apoderado/mis-propuestas — Historial de propuestas enviadas a la directiva. */
+  @Get('mis-propuestas')
+  misPropuestas(@Req() req: { user: JwtPayload }) {
+    const alumnoId = this.apoderadoService.assertApoderado(req.user);
+    return this.inscripcionTallerService.getPropuestasPorAlumno(alumnoId);
   }
 }

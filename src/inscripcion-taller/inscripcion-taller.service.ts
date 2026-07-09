@@ -21,9 +21,16 @@ import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
 import { ProponerInscripcionDirectivaDto } from '../dto/proponer-inscripcion-directiva.dto';
 import { ResponderPropuestaInscripcionDto } from '../dto/responder-propuesta-inscripcion.dto';
 import { PropuestaInscripcionTaller } from '../entities/propuesta-inscripcion-taller.entity';
+import { TallerHorario } from '../entities/taller-horario.entity';
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { MailService } from '../mail/mail.service';
+import {
+  opcionesHorarioTaller,
+  textoHorarioBloque,
+  textoHorarioPorId,
+  textoHorarioTaller,
+} from '../common/taller-horario.util';
 
 /** Resultado de la validación previa a inscribirse en un taller. */
 export interface ValidacionInscripcion {
@@ -54,6 +61,8 @@ export class InscripcionTallerService {
     private profesorRepo: Repository<Profesor>,
     @InjectRepository(PropuestaInscripcionTaller)
     private propuestaRepo: Repository<PropuestaInscripcionTaller>,
+    @InjectRepository(TallerHorario)
+    private tallerHorarioRepo: Repository<TallerHorario>,
     private notificacionService: NotificacionService,
     private periodoService: PeriodoService,
     private mailService: MailService,
@@ -654,12 +663,15 @@ export class InscripcionTallerService {
     return `${dias[taller.diaSemana]} ${this.normalizarHora(taller.horaInicio)} - ${this.normalizarHora(taller.horaFin)}`;
   }
 
-  /** Apoderado/directiva propone inscripción; notifica a coordinadores para revisión. */
+  /** Apoderado/directiva propone inscripción con horario; notifica a coordinadores. */
   async proponerDirectiva(dto: ProponerInscripcionDirectivaDto) {
     const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
     if (!alumno) throw new NotFoundException('Alumno no encontrado');
 
-    const taller = await this.tallerRepo.findOne({ where: { id: dto.tallerId } });
+    const taller = await this.tallerRepo.findOne({
+      where: { id: dto.tallerId },
+      relations: ['horarios'],
+    });
     if (!taller) throw new NotFoundException('Taller no encontrado');
     if (taller.estado !== 'PUBLICADO') {
       throw new BadRequestException('Solo se pueden proponer actividades publicadas en el catálogo');
@@ -670,6 +682,11 @@ export class InscripcionTallerService {
       throw new ConflictException(validacion.motivo ?? 'No se puede proponer esta inscripción');
     }
 
+    const { tallerHorarioId, horarioPropuestoTexto } = await this.resolverHorarioPropuesta(
+      taller,
+      dto.tallerHorarioId,
+    );
+
     const existente = await this.propuestaRepo.findOne({
       where: { alumnoId: dto.alumnoId, tallerId: dto.tallerId },
     });
@@ -678,29 +695,75 @@ export class InscripcionTallerService {
     }
 
     const propuesta = existente
-      ? Object.assign(existente, { estado: 'PENDIENTE', motivoRechazo: null, respondedAt: null })
+      ? Object.assign(existente, {
+          estado: 'PENDIENTE',
+          motivoRechazo: null,
+          mensajeDirectiva: null,
+          horarioSugeridoId: null,
+          respondedAt: null,
+          tallerHorarioId,
+          horarioPropuestoTexto,
+          mensajeApoderado: dto.mensajeApoderado?.trim() || null,
+        })
       : this.propuestaRepo.create({
           alumnoId: dto.alumnoId,
           tallerId: dto.tallerId,
           estado: 'PENDIENTE',
+          tallerHorarioId,
+          horarioPropuestoTexto,
+          mensajeApoderado: dto.mensajeApoderado?.trim() || null,
         });
     const guardada = await this.propuestaRepo.save(propuesta);
 
     const apoderadoNombre = alumno.apoderadoNombre ?? 'Apoderado';
-    await this.notificacionService.notificarCoordinadores(
-      'Nueva propuesta de actividad',
-      `${apoderadoNombre} propuso la actividad "${taller.tipo}" para el estudiante ${alumno.nombre}. Revisa la bandeja de propuestas.`,
-      'propuesta_actividad',
-      guardada.id,
-    );
+    await this.notificacionService.notificarCoordinadoresPropuestaApoderado({
+      propuestaId: guardada.id,
+      apoderadoNombre,
+      alumnoNombre: alumno.nombre,
+      alumnoRut: alumno.rut,
+      tallerNombre: taller.tipo,
+      horarioPropuesto: horarioPropuestoTexto,
+      mensajeApoderado: dto.mensajeApoderado?.trim() || null,
+    });
 
     return guardada;
+  }
+
+  private async resolverHorarioPropuesta(
+    taller: Taller,
+    tallerHorarioId?: number,
+  ): Promise<{ tallerHorarioId: number | null; horarioPropuestoTexto: string | null }> {
+    const opciones = opcionesHorarioTaller(taller);
+
+    if (opciones.length === 0) {
+      throw new BadRequestException('Esta actividad aún no tiene horario definido');
+    }
+
+    if (opciones.length === 1 && opciones[0].id == null) {
+      return { tallerHorarioId: null, horarioPropuestoTexto: opciones[0].etiqueta };
+    }
+
+    if (!tallerHorarioId) {
+      throw new BadRequestException('Debe seleccionar el horario de la actividad');
+    }
+
+    const horario = await this.tallerHorarioRepo.findOne({
+      where: { id: tallerHorarioId, tallerId: taller.id },
+    });
+    if (!horario) {
+      throw new BadRequestException('El horario seleccionado no pertenece a esta actividad');
+    }
+
+    return {
+      tallerHorarioId: horario.id,
+      horarioPropuestoTexto: textoHorarioBloque(horario),
+    };
   }
 
   async getPropuestasPendientes() {
     const propuestas = await this.propuestaRepo.find({
       where: { estado: 'PENDIENTE' },
-      relations: ['alumno', 'taller'],
+      relations: ['alumno', 'taller', 'taller.horarios', 'tallerHorario'],
       order: { createdAt: 'DESC' },
     });
     return propuestas.map((p) => ({
@@ -712,7 +775,36 @@ export class InscripcionTallerService {
       tallerNombre: p.taller?.tipo,
       apoderadoNombre: p.alumno?.apoderadoNombre,
       apoderadoEmail: p.alumno?.apoderadoEmail,
+      horarioPropuesto:
+        p.horarioPropuestoTexto ??
+        textoHorarioPorId(p.tallerHorario) ??
+        (p.taller ? textoHorarioTaller(p.taller) : null),
+      mensajeApoderado: p.mensajeApoderado,
+      tallerHorarioId: p.tallerHorarioId,
+      horariosDisponibles: p.taller ? opcionesHorarioTaller(p.taller) : [],
       createdAt: p.createdAt,
+    }));
+  }
+
+  async getPropuestasPorAlumno(alumnoId: number) {
+    const propuestas = await this.propuestaRepo.find({
+      where: { alumnoId },
+      relations: ['taller', 'tallerHorario', 'horarioSugerido'],
+      order: { createdAt: 'DESC' },
+    });
+    return propuestas.map((p) => ({
+      id: p.id,
+      tallerId: p.tallerId,
+      tallerNombre: p.taller?.tipo,
+      estado: p.estado,
+      horarioPropuesto:
+        p.horarioPropuestoTexto ?? textoHorarioPorId(p.tallerHorario),
+      horarioSugerido: textoHorarioPorId(p.horarioSugerido),
+      motivoRechazo: p.motivoRechazo,
+      mensajeApoderado: p.mensajeApoderado,
+      mensajeDirectiva: p.mensajeDirectiva,
+      createdAt: p.createdAt,
+      respondedAt: p.respondedAt,
     }));
   }
 
@@ -720,7 +812,7 @@ export class InscripcionTallerService {
   async responderPropuesta(id: number, dto: ResponderPropuestaInscripcionDto) {
     const propuesta = await this.propuestaRepo.findOne({
       where: { id },
-      relations: ['alumno', 'taller'],
+      relations: ['alumno', 'taller', 'tallerHorario'],
     });
     if (!propuesta) throw new NotFoundException('Propuesta no encontrada');
     if (propuesta.estado !== 'PENDIENTE') {
@@ -728,9 +820,14 @@ export class InscripcionTallerService {
     }
 
     propuesta.respondedAt = new Date();
+    const horarioPropuesto =
+      propuesta.horarioPropuestoTexto ?? textoHorarioPorId(propuesta.tallerHorario);
+    const horarioTxt = horarioPropuesto ? ` Horario propuesto: ${horarioPropuesto}.` : '';
 
     if (dto.acepta) {
       propuesta.estado = 'ACEPTADA';
+      propuesta.mensajeDirectiva = dto.mensajeDirectiva?.trim() || null;
+      propuesta.horarioSugeridoId = null;
       await this.propuestaRepo.save(propuesta);
 
       const inscripcionExistente = await this.repo.findOne({
@@ -749,22 +846,73 @@ export class InscripcionTallerService {
         await this.repo.save(inscripcionExistente);
       }
 
+      const extra = dto.mensajeDirectiva?.trim() ? ` ${dto.mensajeDirectiva.trim()}` : '';
       await this.notificacionService.crear(
         propuesta.alumnoId,
         'Propuesta aceptada por directiva',
-        `La directiva aceptó tu propuesta al taller "${propuesta.taller?.tipo}". Tu solicitud quedó pendiente de aprobación del profesor.`,
+        `La directiva aceptó tu propuesta al taller "${propuesta.taller?.tipo}".${horarioTxt} Tu solicitud quedó pendiente de aprobación del profesor.${extra}`,
         'propuesta_aceptada',
       );
+
+      await this.mailService.respuestaPropuestaDirectivaApoderado(
+        propuesta.alumno?.apoderadoEmail,
+        {
+          apoderadoNombre: propuesta.alumno?.apoderadoNombre,
+          alumnoNombre: propuesta.alumno?.nombre ?? 'Estudiante',
+          tallerNombre: propuesta.taller?.tipo ?? 'Taller',
+          aceptada: true,
+          horarioPropuesto,
+          mensajeDirectiva: dto.mensajeDirectiva?.trim() || null,
+        },
+      );
     } else {
+      let horarioSugeridoTexto: string | null = null;
+      if (dto.horarioSugeridoId) {
+        const horario = await this.tallerHorarioRepo.findOne({
+          where: { id: dto.horarioSugeridoId, tallerId: propuesta.tallerId },
+        });
+        if (!horario) {
+          throw new BadRequestException('El horario sugerido no pertenece a esta actividad');
+        }
+        propuesta.horarioSugeridoId = horario.id;
+        horarioSugeridoTexto = textoHorarioBloque(horario);
+      } else {
+        propuesta.horarioSugeridoId = null;
+      }
+
       propuesta.estado = 'RECHAZADA';
-      propuesta.motivoRechazo = dto.motivoRechazo ?? null;
+      propuesta.motivoRechazo = dto.motivoRechazo?.trim() || null;
+      propuesta.mensajeDirectiva = dto.mensajeDirectiva?.trim() || null;
       await this.propuestaRepo.save(propuesta);
+
+      const partes: string[] = [
+        `La directiva rechazó la propuesta al taller "${propuesta.taller?.tipo}".${horarioTxt}`,
+      ];
+      if (dto.motivoRechazo?.trim()) partes.push(`Motivo: ${dto.motivoRechazo.trim()}.`);
+      if (horarioSugeridoTexto) {
+        partes.push(`Horario alternativo disponible: ${horarioSugeridoTexto}.`);
+      }
+      if (dto.mensajeDirectiva?.trim()) partes.push(dto.mensajeDirectiva.trim());
 
       await this.notificacionService.crear(
         propuesta.alumnoId,
         'Propuesta rechazada',
-        `La directiva rechazó la propuesta al taller "${propuesta.taller?.tipo}".${dto.motivoRechazo ? ` Motivo: ${dto.motivoRechazo}` : ''}`,
+        partes.join(' '),
         'propuesta_rechazada',
+      );
+
+      await this.mailService.respuestaPropuestaDirectivaApoderado(
+        propuesta.alumno?.apoderadoEmail,
+        {
+          apoderadoNombre: propuesta.alumno?.apoderadoNombre,
+          alumnoNombre: propuesta.alumno?.nombre ?? 'Estudiante',
+          tallerNombre: propuesta.taller?.tipo ?? 'Taller',
+          aceptada: false,
+          horarioPropuesto,
+          motivoRechazo: dto.motivoRechazo?.trim() || null,
+          horarioSugerido: horarioSugeridoTexto,
+          mensajeDirectiva: dto.mensajeDirectiva?.trim() || null,
+        },
       );
     }
 

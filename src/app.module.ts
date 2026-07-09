@@ -24,6 +24,7 @@ import { AsistenciaModule } from './asistencia/asistencia.module';
 import { FichaAlumnoModule } from './ficha-alumno/ficha-alumno.module';
 import { NotificacionModule } from './notificacion/notificacion.module';
 import { ApoderadoModule } from './apoderado/apoderado.module';
+import { ReportesModule } from './reportes/reportes.module';
 import { Admin } from './entities/admin.entity';
 import { Taller } from './entities/taller.entity';
 import { Alumno } from './entities/alumno.entity';
@@ -75,6 +76,7 @@ import { InscripcionTaller } from './entities/inscripcion-taller.entity';
     FichaAlumnoModule,
     NotificacionModule,
     ApoderadoModule,
+    ReportesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

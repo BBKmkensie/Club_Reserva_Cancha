@@ -364,22 +364,47 @@ export class ApiService {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/pendientes`);
   }
 
-  proponerInscripcionDirectiva(alumnoId: number, tallerId: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller/proponer-directiva`, { alumnoId, tallerId });
+  proponerInscripcionDirectiva(
+    alumnoId: number,
+    tallerId: number,
+    opts?: { tallerHorarioId?: number; mensajeApoderado?: string },
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller/proponer-directiva`, {
+      alumnoId,
+      tallerId,
+      tallerHorarioId: opts?.tallerHorarioId,
+      mensajeApoderado: opts?.mensajeApoderado,
+    });
   }
 
-  proponerInscripcionApoderado(tallerId: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/apoderado/proponer-inscripcion/${tallerId}`, {});
+  proponerInscripcionApoderado(
+    tallerId: number,
+    opts?: { tallerHorarioId?: number; mensajeApoderado?: string },
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/apoderado/proponer-inscripcion/${tallerId}`, {
+      tallerHorarioId: opts?.tallerHorarioId,
+      mensajeApoderado: opts?.mensajeApoderado,
+    });
+  }
+
+  getMisPropuestasApoderado(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/apoderado/mis-propuestas`);
   }
 
   getPropuestasPendientes(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/propuestas/pendientes`);
   }
 
-  responderPropuestaInscripcion(id: number, acepta: boolean, motivoRechazo?: string): Observable<any> {
+  responderPropuestaInscripcion(
+    id: number,
+    acepta: boolean,
+    opts?: { motivoRechazo?: string; horarioSugeridoId?: number; mensajeDirectiva?: string },
+  ): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/propuestas/${id}/responder`, {
       acepta,
-      motivoRechazo,
+      motivoRechazo: opts?.motivoRechazo,
+      horarioSugeridoId: opts?.horarioSugeridoId,
+      mensajeDirectiva: opts?.mensajeDirectiva,
     });
   }
 

@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
@@ -8,13 +9,13 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
 @Component({
   selector: 'app-propuestas-actividad',
   standalone: true,
-  imports: [CommonModule, DatePipe, RouterLink],
+  imports: [CommonModule, DatePipe, RouterLink, FormsModule],
   template: `
     <div class="space-y-6">
       <div class="bg-surface rounded-xl shadow-lg p-6">
         <h1 class="text-3xl font-bold text-ink mb-2">Bandeja de propuestas</h1>
         <p class="text-ink-muted text-sm">
-          La directiva revisa propuestas de apoderados y decide si el estudiante puede inscribirse en la actividad.
+          La directiva revisa propuestas de apoderados (actividad y horario) y decide si el estudiante puede inscribirse.
         </p>
       </div>
 
@@ -40,15 +41,23 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                   @if (p.apoderadoNombre) {
                     <p class="text-sm text-ink-muted">Apoderado: {{ p.apoderadoNombre }}</p>
                   }
+                  @if (p.horarioPropuesto) {
+                    <p class="text-sm text-primary-700 font-medium mt-1">
+                      Horario propuesto: {{ p.horarioPropuesto }}
+                    </p>
+                  }
+                  @if (p.mensajeApoderado) {
+                    <p class="text-sm text-ink-muted mt-1 italic">«{{ p.mensajeApoderado }}»</p>
+                  }
                 </div>
                 <span class="text-xs text-ink-muted">{{ p.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
               </div>
               <div class="flex flex-wrap gap-2 mt-3">
-                <button (click)="responder(p.id, true)"
+                <button (click)="abrirAceptar(p)"
                         class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">
                   Aceptar propuesta
                 </button>
-                <button (click)="responder(p.id, false)"
+                <button (click)="abrirRechazar(p)"
                         class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">
                   Rechazar
                 </button>
@@ -60,6 +69,66 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
 
       <a routerLink="/dashboard" class="text-sm text-primary-500 hover:underline inline-block">← Volver al dashboard</a>
     </div>
+
+    @if (modal) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cerrarModal()">
+        <div class="bg-surface rounded-xl shadow-xl max-w-lg w-full p-5 border border-line"
+             (click)="$event.stopPropagation()">
+          @if (modal.tipo === 'aceptar') {
+            <h3 class="text-lg font-bold text-ink mb-2">Aceptar propuesta</h3>
+            <p class="text-sm text-ink-muted mb-4">
+              Se creará la solicitud de inscripción para el profesor del taller
+              <strong>{{ modal.propuesta.tallerNombre }}</strong>
+              @if (modal.propuesta.horarioPropuesto) {
+                ({{ modal.propuesta.horarioPropuesto }})
+              }.
+            </p>
+            <label class="block text-sm font-medium text-ink mb-1">Mensaje para el apoderado (opcional)</label>
+            <textarea [(ngModel)]="mensajeDirectiva" rows="2"
+                      class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-4"></textarea>
+            <div class="flex justify-end gap-2">
+              <button type="button" (click)="cerrarModal()" class="px-4 py-2 text-sm rounded-lg border border-line">Cancelar</button>
+              <button type="button" (click)="confirmarAceptar()"
+                      class="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700">
+                Confirmar aceptación
+              </button>
+            </div>
+          } @else {
+            <h3 class="text-lg font-bold text-ink mb-2">Rechazar propuesta</h3>
+            <p class="text-sm text-ink-muted mb-4">
+              Indique el motivo del rechazo. Puede sugerir otro horario disponible de la misma actividad.
+            </p>
+            <label class="block text-sm font-medium text-ink mb-1">Motivo del rechazo</label>
+            <textarea [(ngModel)]="motivoRechazo" rows="2" required
+                      class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3"
+                      placeholder="Ej.: El horario propuesto coincide con otra actividad del estudiante"></textarea>
+
+            @if (horariosAlternativos.length > 0) {
+              <label class="block text-sm font-medium text-ink mb-1">Horario alternativo disponible (opcional)</label>
+              <select [(ngModel)]="horarioSugeridoId"
+                      class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3">
+                <option [ngValue]="null">— Sin sugerir otro horario —</option>
+                @for (h of horariosAlternativos; track h.id) {
+                  <option [ngValue]="h.id">{{ h.etiqueta }}</option>
+                }
+              </select>
+            }
+
+            <label class="block text-sm font-medium text-ink mb-1">Mensaje adicional (opcional)</label>
+            <textarea [(ngModel)]="mensajeDirectiva" rows="2"
+                      class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-4"></textarea>
+
+            <div class="flex justify-end gap-2">
+              <button type="button" (click)="cerrarModal()" class="px-4 py-2 text-sm rounded-lg border border-line">Cancelar</button>
+              <button type="button" (click)="confirmarRechazar()" [disabled]="!motivoRechazo.trim()"
+                      class="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                Confirmar rechazo
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
   `,
 })
 export class PropuestasActividadComponent implements OnInit {
@@ -71,6 +140,12 @@ export class PropuestasActividadComponent implements OnInit {
   propuestas: any[] = [];
   cargando = true;
   destacarId: number | null = null;
+
+  modal: { tipo: 'aceptar' | 'rechazar'; propuesta: any } | null = null;
+  motivoRechazo = '';
+  mensajeDirectiva = '';
+  horarioSugeridoId: number | null = null;
+  horariosAlternativos: { id: number; etiqueta: string }[] = [];
 
   ngOnInit(): void {
     const id = this.route.snapshot.queryParamMap.get('id');
@@ -95,17 +170,63 @@ export class PropuestasActividadComponent implements OnInit {
     });
   }
 
-  responder(id: number, acepta: boolean): void {
-    let motivo: string | undefined;
-    if (!acepta) {
-      motivo = prompt('Motivo del rechazo (opcional):') ?? undefined;
-    }
-    this.api.responderPropuestaInscripcion(id, acepta, motivo).subscribe({
-      next: () => {
-        alert(acepta ? 'Propuesta aceptada. La solicitud quedó pendiente para el profesor.' : 'Propuesta rechazada.');
-        this.cargar();
-      },
-      error: (e) => alert(e?.error?.message || 'No se pudo responder la propuesta'),
-    });
+  abrirAceptar(propuesta: any): void {
+    this.modal = { tipo: 'aceptar', propuesta };
+    this.mensajeDirectiva = '';
+  }
+
+  abrirRechazar(propuesta: any): void {
+    this.modal = { tipo: 'rechazar', propuesta };
+    this.motivoRechazo = '';
+    this.mensajeDirectiva = '';
+    this.horarioSugeridoId = null;
+    const todos = (propuesta.horariosDisponibles ?? []).filter((h: { id: number | null }) => h.id != null);
+    this.horariosAlternativos = todos.filter(
+      (h: { id: number }) => h.id !== propuesta.tallerHorarioId,
+    );
+  }
+
+  cerrarModal(): void {
+    this.modal = null;
+    this.motivoRechazo = '';
+    this.mensajeDirectiva = '';
+    this.horarioSugeridoId = null;
+    this.horariosAlternativos = [];
+  }
+
+  confirmarAceptar(): void {
+    if (!this.modal) return;
+    const id = this.modal.propuesta.id;
+    this.api
+      .responderPropuestaInscripcion(id, true, {
+        mensajeDirectiva: this.mensajeDirectiva.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          alert('Propuesta aceptada. La solicitud quedó pendiente para el profesor.');
+          this.cerrarModal();
+          this.cargar();
+        },
+        error: (e) => alert(e?.error?.message || 'No se pudo responder la propuesta'),
+      });
+  }
+
+  confirmarRechazar(): void {
+    if (!this.modal || !this.motivoRechazo.trim()) return;
+    const id = this.modal.propuesta.id;
+    this.api
+      .responderPropuestaInscripcion(id, false, {
+        motivoRechazo: this.motivoRechazo.trim(),
+        horarioSugeridoId: this.horarioSugeridoId ?? undefined,
+        mensajeDirectiva: this.mensajeDirectiva.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          alert('Propuesta rechazada. El apoderado recibirá el motivo y el horario sugerido si indicó uno.');
+          this.cerrarModal();
+          this.cargar();
+        },
+        error: (e) => alert(e?.error?.message || 'No se pudo responder la propuesta'),
+      });
   }
 }
