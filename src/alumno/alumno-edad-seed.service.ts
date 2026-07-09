@@ -1,3 +1,7 @@
+/**
+ * Servicio de seed para edades de alumnos.
+ * Asigna edades sugeridas a registros que no tienen una edad válida.
+ */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,12 +13,14 @@ import {
   edadSugeridaParaAlumno,
 } from '../common/alumno-edad.constants';
 
+/** Resultado del proceso de seed de edades en alumnos. */
 export interface SeedAlumnoEdadesResult {
   actualizados: number;
   omitidos: number;
   detalle: Array<{ alumnoId: number; nombre: string; edadAnterior: number | null; edadNueva: number }>;
 }
 
+/** Completa edades faltantes o inválidas en el catálogo de alumnos. */
 @Injectable()
 export class AlumnoEdadSeedService {
   constructor(
@@ -22,6 +28,7 @@ export class AlumnoEdadSeedService {
     private alumnoRepo: Repository<Alumno>,
   ) {}
 
+  /** Recorre alumnos y asigna edad sugerida a quienes no tienen una válida. */
   async seedMissingEdades(): Promise<SeedAlumnoEdadesResult> {
     const alumnos = await this.alumnoRepo.find({ order: { id: 'ASC' } });
     const detalle: SeedAlumnoEdadesResult['detalle'] = [];

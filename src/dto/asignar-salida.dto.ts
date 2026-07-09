@@ -1,6 +1,12 @@
+/**
+ * DTO para asignar una salida pedagógica desde administración.
+ */
 import { IsInt, IsNotEmpty, IsOptional, IsString, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 
+/**
+ * Valida destino, fecha, horario y responsables de la salida.
+ */
 export class AsignarSalidaDto {
   @IsString()
   @IsNotEmpty()

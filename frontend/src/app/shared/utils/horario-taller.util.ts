@@ -1,3 +1,6 @@
+/**
+ * Utilidades de horarios de talleres: cursos, secciones, etiquetas y ordenamiento.
+ */
 export const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 export const CURSOS_TALLER = [
@@ -19,6 +22,7 @@ export const SECCIONES_TALLER_DEFAULT = ['A', 'B', 'C', 'D'] as const;
 
 export type ModoHorarioTaller = 'POR_CURSO' | 'POR_SECCION';
 
+/** Bloque horario de un taller (por curso, sección o semanal) */
 export interface TallerHorarioItem {
   id?: number;
   curso?: string | null;
@@ -28,6 +32,7 @@ export interface TallerHorarioItem {
   horaFin: string;
 }
 
+/** Taller con horario legacy (campos únicos) o lista de bloques por curso/sección */
 export interface TallerConHorarios {
   diaSemana?: number | null;
   horaInicio?: string | null;
@@ -36,21 +41,25 @@ export interface TallerConHorarios {
   horarios?: TallerHorarioItem[];
 }
 
+/** Etiqueta legible del código de curso (p. ej. "3B" → "3° Básico") */
 export function etiquetaCurso(code: string | null | undefined): string {
   if (!code) return '—';
   return CURSOS_TALLER.find((c) => c.code === code)?.label ?? code;
 }
 
+/** Formatea una hora HH:mm:ss a HH:mm */
 export function fmtHora(hora: string | null | undefined): string {
   if (!hora) return '—';
   return hora.slice(0, 5);
 }
 
+/** Texto de una fila de horario: día y rango horario */
 export function textoFilaHorario(h: TallerHorarioItem): string {
   const dia = DIAS_SEMANA[h.diaSemana] ?? `Día ${h.diaSemana}`;
   return `${dia} ${fmtHora(h.horaInicio)} - ${fmtHora(h.horaFin)}`;
 }
 
+/** Lista de horarios del taller ordenados por día/curso o sección según el modo */
 export function horariosOrdenados(taller: TallerConHorarios): TallerHorarioItem[] {
   const lista = taller.horarios ?? [];
   if (!lista.length) return [];
@@ -80,16 +89,19 @@ function esBloqueHorarioSemanal(h: TallerHorarioItem): boolean {
   return h.seccion === 'General' || /^\d+\|\d{1,2}:\d{2}$/.test(h.seccion);
 }
 
+/** Indica si el taller usa bloques semanales sin agrupación por curso/sección */
 export function horariosSinGrupo(taller: TallerConHorarios): boolean {
   const lista = taller.horarios ?? [];
   return lista.length > 0 && lista.every(esBloqueHorarioSemanal);
 }
 
+/** Etiqueta del grupo (curso o sección) para un bloque horario */
 export function etiquetaGrupoHorario(h: TallerHorarioItem, modo: ModoHorarioTaller): string {
   if (modo === 'POR_SECCION') return `Sección ${h.seccion ?? '—'}`;
   return etiquetaCurso(h.curso);
 }
 
+/** Texto resumido del horario del taller para mostrar en tarjetas o listados */
 export function textoHorarioTaller(
   taller: TallerConHorarios,
   mensajeSinHorario = 'El horario de este taller aún no se ha agregado.',
@@ -111,12 +123,14 @@ export function textoHorarioTaller(
   return `${dia} ${fmtHora(taller.horaInicio)} - ${fmtHora(taller.horaFin)}`;
 }
 
+/** Título de tabla de horarios según modo (semanal, por curso o por sección) */
 export function tituloTablaHorarios(taller: TallerConHorarios): string {
   if (horariosSinGrupo(taller)) return 'Horario semanal';
   const modo = taller.modoHorario ?? 'POR_CURSO';
   return modo === 'POR_SECCION' ? 'Horarios por sección' : 'Horarios por curso';
 }
 
+/** Borrador inicial de horarios por curso con valores por defecto */
 export function crearBorradorHorariosPorCurso(): Record<string, { diaSemana: number; horaInicio: string; horaFin: string }> {
   const draft: Record<string, { diaSemana: number; horaInicio: string; horaFin: string }> = {};
   for (const c of CURSOS_TALLER) {
@@ -125,6 +139,7 @@ export function crearBorradorHorariosPorCurso(): Record<string, { diaSemana: num
   return draft;
 }
 
+/** Borrador inicial de horarios por sección con valores por defecto */
 export function crearBorradorHorariosPorSeccion(
   secciones: readonly string[] = SECCIONES_TALLER_DEFAULT,
 ): Record<string, { diaSemana: number; horaInicio: string; horaFin: string }> {

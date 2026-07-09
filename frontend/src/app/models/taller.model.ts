@@ -1,8 +1,13 @@
+/**
+ * Modelos de taller, actividad extracurricular y asignación docente.
+ * Tipos para gestión de actividades, horarios y estados del ciclo de vida.
+ */
 import { Admin } from './admin.model';
 import { Alumno } from './alumno.model';
 import { Profesor } from './profesor.model';
 import { TallerHorarioItem } from '../shared/utils/horario-taller.util';
 
+/** Estados del flujo de publicación y cierre de una actividad. */
 export type EstadoActividad =
   | 'BORRADOR'
   | 'ESPERA_DOCENTE'
@@ -10,6 +15,7 @@ export type EstadoActividad =
   | 'PUBLICADO'
   | 'CERRADO';
 
+/** Taller o actividad con cupos, horarios, inscripciones y relaciones. */
 export interface Taller {
   id: number;
   tipo: string;
@@ -33,6 +39,7 @@ export interface Taller {
   profesores?: Profesor[];
 }
 
+/** Payload para crear un nuevo taller o actividad. */
 export interface CreateTallerDto {
   tipo: string;
   descripcion: string;
@@ -42,6 +49,7 @@ export interface CreateTallerDto {
   imagenUrl?: string;
 }
 
+/** Propuesta o asignación de un docente a un taller con estado de respuesta. */
 export interface AsignacionDocente {
   id: number;
   tallerId: number;
@@ -52,4 +60,3 @@ export interface AsignacionDocente {
   profesor?: Profesor;
   createdAt?: string;
 }
-

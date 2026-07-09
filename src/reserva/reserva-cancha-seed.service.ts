@@ -1,3 +1,7 @@
+/**
+ * Servicio de seed para reservas deportivas semestrales en cancha.
+ * Crea reservas de fútbol y vóley según horarios oficiales del periodo académico.
+ */
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,6 +24,7 @@ import {
   sumarMinutosAHora,
 } from './cancha.constants';
 
+/** Resultado del seed de reservas deportivas por taller y periodo. */
 export interface SeedReservasDeportesResult {
   periodo: { inicio: string; fin: string; nombre: string };
   talleres: Array<{ tipo: string; diaSemana: number; horario: string; reservasCreadas: number; reservasOmitidas: number }>;
@@ -27,6 +32,7 @@ export interface SeedReservasDeportesResult {
   totalOmitidas: number;
 }
 
+/** Genera reservas de cancha para talleres deportivos durante el semestre activo. */
 @Injectable()
 export class ReservaCanchaSeedService {
   private readonly logger = new Logger(ReservaCanchaSeedService.name);
@@ -43,6 +49,7 @@ export class ReservaCanchaSeedService {
     private franjaCanchaService: FranjaCanchaService,
   ) {}
 
+  /** Siembra reservas de fútbol y vóley en el espacio indicado (por defecto cancha principal). */
   async seedReservasDeportesSemestre(
     espacio = CANCHA_ESPACIO_DEFAULT,
   ): Promise<SeedReservasDeportesResult> {

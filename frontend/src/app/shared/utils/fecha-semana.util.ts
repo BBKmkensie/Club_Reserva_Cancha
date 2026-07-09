@@ -1,4 +1,6 @@
 /** Utilidades de fechas para calendario de cancha (semana Lunes–Domingo) */
+
+/** Convierte Date o ISO a cadena YYYY-MM-DD */
 export function parseFechaIso(fecha: string | Date): string {
   if (fecha instanceof Date) {
     const y = fecha.getFullYear();
@@ -9,6 +11,7 @@ export function parseFechaIso(fecha: string | Date): string {
   return fecha.split('T')[0];
 }
 
+/** Fecha del lunes de la semana que contiene la fecha dada (o la semana actual) */
 export function lunesDeSemana(fecha?: string | Date): string {
   const base = fecha
     ? new Date(`${parseFechaIso(fecha)}T12:00:00`)
@@ -19,12 +22,14 @@ export function lunesDeSemana(fecha?: string | Date): string {
   return parseFechaIso(base);
 }
 
+/** Suma días a una fecha ISO y devuelve YYYY-MM-DD */
 export function sumarDias(fecha: string, dias: number): string {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   d.setDate(d.getDate() + dias);
   return parseFechaIso(d);
 }
 
+/** Indica si la fecha coincide con el día de hoy */
 export function esHoy(fecha: string): boolean {
   return fecha === parseFechaIso(new Date());
 }
@@ -36,12 +41,14 @@ export const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+/** Día de la semana 1–7 (lunes=1, domingo=7) a partir de una fecha */
 export function diaSemanaDesdeFecha(fecha: string): number {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   const js = d.getDay();
   return js === 0 ? 7 : js;
 }
 
+/** Etiqueta corta del día para el calendario (ej. "L, Ene. 15. 2026") */
 export function etiquetaDiaCorto(fecha: string): string {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   const dia = DIAS_CORTO[diaSemanaDesdeFecha(fecha)];
@@ -49,6 +56,7 @@ export function etiquetaDiaCorto(fecha: string): string {
   return `${dia}, ${mes}. ${d.getDate()}. ${d.getFullYear()}`;
 }
 
+/** Celda de la grilla mensual del calendario */
 export interface CeldaMes {
   fecha: string;
   num: number;

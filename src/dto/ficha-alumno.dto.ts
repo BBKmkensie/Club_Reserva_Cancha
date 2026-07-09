@@ -1,6 +1,12 @@
+/**
+ * DTOs para ficha antropométrica del alumno en un taller.
+ */
 import { IsBoolean, IsNumber, IsOptional, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
+/**
+ * Valida medidas corporales completas requeridas en la inscripción.
+ */
 export class FichaAlumnoDto {
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -24,6 +30,9 @@ export class FichaAlumnoDto {
   sedentario: boolean;
 }
 
+/**
+ * Valida campos opcionales de la ficha a actualizar.
+ */
 export class ActualizarFichaAlumnoDto {
   @IsOptional()
   @Type(() => Number)

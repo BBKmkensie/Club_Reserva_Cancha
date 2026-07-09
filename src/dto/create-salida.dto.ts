@@ -1,5 +1,11 @@
+/**
+ * DTO para crear una salida pedagógica.
+ */
 import { IsString, IsInt, IsNotEmpty, IsDateString, IsOptional } from 'class-validator';
 
+/**
+ * Valida destino, fecha, horario, taller y responsables de la salida.
+ */
 export class CreateSalidaDto {
   @IsString()
   @IsNotEmpty()

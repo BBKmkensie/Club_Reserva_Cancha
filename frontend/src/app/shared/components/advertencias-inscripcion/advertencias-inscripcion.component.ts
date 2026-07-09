@@ -1,6 +1,13 @@
+/**
+ * Bloque de advertencias mostradas durante el flujo de inscripción a talleres.
+ * Lista mensajes de validación o conflictos detectados antes de confirmar.
+ */
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/**
+ * AdvertenciasInscripcion: alertas visuales con los avisos del proceso de inscripción.
+ */
 @Component({
   selector: 'app-advertencias-inscripcion',
   standalone: true,
@@ -17,6 +24,9 @@ import { CommonModule } from '@angular/common';
     }
   `,
 })
+/**
+ * Renderiza una lista de mensajes de advertencia sin lógica adicional de negocio.
+ */
 export class AdvertenciasInscripcionComponent {
   @Input() advertencias: string[] | null | undefined = [];
 }

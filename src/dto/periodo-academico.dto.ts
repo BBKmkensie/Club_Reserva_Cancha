@@ -1,5 +1,11 @@
+/**
+ * DTO para configurar el período académico vigente.
+ */
 import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
+/**
+ * Valida nombre opcional y fechas de apertura y cierre del período.
+ */
 export class PeriodoAcademicoDto {
   @IsString()
   @IsOptional()

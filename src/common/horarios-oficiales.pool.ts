@@ -1,3 +1,8 @@
+/**
+ * Horarios oficiales de talleres según cronograma semanal.
+ * Fuente para seeds y mensajes cuando un taller aún no tiene horario cargado.
+ */
+/** Bloque horario de un día con sala opcional. */
 export interface BloqueHorarioOficial {
   diaSemana: number;
   horaInicio: string;
@@ -5,6 +10,7 @@ export interface BloqueHorarioOficial {
   sala?: string;
 }
 
+/** Taller con sus bloques horarios oficiales y alias opcionales. */
 export interface TallerHorariosOficialesSeed {
   tipo: string;
   alias?: string[];
@@ -67,5 +73,6 @@ export const HORARIOS_OFICIALES_TALLERES: TallerHorariosOficialesSeed[] = [
   },
 ];
 
+/** Texto mostrado cuando un taller aún no tiene horario registrado. */
 export const MENSAJE_SIN_HORARIO =
   'El horario de este taller aún no se ha agregado.';

@@ -1,5 +1,10 @@
+/**
+ * Configuración de correo SMTP y URL del frontend.
+ * Controla habilitación, credenciales y remitente de los envíos.
+ */
 import { registerAs } from '@nestjs/config';
 
+/** Registro de configuración `mail` para NestJS ConfigModule. */
 export default registerAs('mail', () => ({
   enabled: process.env.MAIL_ENABLED === 'true',
   host: process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io',

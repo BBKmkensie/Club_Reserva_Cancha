@@ -1,6 +1,12 @@
+/**
+ * DTOs para actualizar franjas horarias de canchas deportivas.
+ */
 import { IsBoolean, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
+/**
+ * Valida día, horario, estado y duración de una franja.
+ */
 export class FranjaCanchaItemDto {
   @IsInt()
   @Min(1)
@@ -21,6 +27,9 @@ export class FranjaCanchaItemDto {
   duracionMinutos?: number;
 }
 
+/**
+ * Valida el espacio y el conjunto de franjas a modificar.
+ */
 export class ActualizarFranjasCanchaDto {
   @IsOptional()
   @IsString()

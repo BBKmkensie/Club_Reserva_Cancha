@@ -1,3 +1,7 @@
+/**
+ * Bandeja de propuestas de inscripción para la directiva.
+ * Revisa solicitudes de apoderados sobre actividades del catálogo y actividades libres fuera de catálogo.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +10,9 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
+/**
+ * Bandeja directiva: acepta o rechaza propuestas de apoderados (catálogo y actividad libre).
+ */
 @Component({
   selector: 'app-propuestas-actividad',
   standalone: true,
@@ -34,7 +41,15 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                  [class.ring-primary-200]="p.id === destacarId">
               <div class="flex flex-wrap justify-between gap-3 mb-2">
                 <div>
-                  <h2 class="text-lg font-bold text-ink">{{ p.tallerNombre }}</h2>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-lg font-bold text-ink">{{ p.tallerNombre }}</h2>
+                    @if (p.esActividadLibre) {
+                      <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded">Fuera de catálogo</span>
+                    }
+                  </div>
+                  @if (p.actividadDescripcion) {
+                    <p class="text-sm text-ink-muted mt-1">{{ p.actividadDescripcion }}</p>
+                  }
                   <p class="text-sm text-ink-muted">
                     Estudiante: <strong>{{ priv.nombre(p.alumnoNombre) }}</strong> ({{ priv.rut(p.alumnoRut) }})
                   </p>
@@ -77,11 +92,19 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
           @if (modal.tipo === 'aceptar') {
             <h3 class="text-lg font-bold text-ink mb-2">Aceptar propuesta</h3>
             <p class="text-sm text-ink-muted mb-4">
-              Se creará la solicitud de inscripción para el profesor del taller
-              <strong>{{ modal.propuesta.tallerNombre }}</strong>
-              @if (modal.propuesta.horarioPropuesto) {
-                ({{ modal.propuesta.horarioPropuesto }})
-              }.
+              @if (modal.propuesta.esActividadLibre) {
+                Aprobará la idea de la actividad <strong>{{ modal.propuesta.tallerNombre }}</strong>
+                @if (modal.propuesta.horarioPropuesto) {
+                  ({{ modal.propuesta.horarioPropuesto }})
+                }.
+                La coordinación deberá crear el taller en el sistema.
+              } @else {
+                Se creará la solicitud de inscripción para el profesor del taller
+                <strong>{{ modal.propuesta.tallerNombre }}</strong>
+                @if (modal.propuesta.horarioPropuesto) {
+                  ({{ modal.propuesta.horarioPropuesto }})
+                }.
+              }
             </p>
             <label class="block text-sm font-medium text-ink mb-1">Mensaje para el apoderado (opcional)</label>
             <textarea [(ngModel)]="mensajeDirectiva" rows="2"
@@ -104,7 +127,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                       placeholder="Ej.: El horario propuesto coincide con otra actividad del estudiante"></textarea>
 
             @if (horariosAlternativos.length > 0) {
-              <label class="block text-sm font-medium text-ink mb-1">Horario alternativo disponible (opcional)</label>
+              <label class="block text-sm font-medium text-ink mb-1">Horario alternativo del catálogo (opcional)</label>
               <select [(ngModel)]="horarioSugeridoId"
                       class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3">
                 <option [ngValue]="null">— Sin sugerir otro horario —</option>
@@ -112,6 +135,13 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                   <option [ngValue]="h.id">{{ h.etiqueta }}</option>
                 }
               </select>
+            }
+
+            @if (modal.propuesta.esActividadLibre) {
+              <label class="block text-sm font-medium text-ink mb-1">Horario alternativo sugerido (opcional)</label>
+              <input type="text" [(ngModel)]="horarioSugeridoTexto"
+                     class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3"
+                     placeholder="Ej.: Miércoles 15:00 - 16:30" />
             }
 
             <label class="block text-sm font-medium text-ink mb-1">Mensaje adicional (opcional)</label>
@@ -145,14 +175,17 @@ export class PropuestasActividadComponent implements OnInit {
   motivoRechazo = '';
   mensajeDirectiva = '';
   horarioSugeridoId: number | null = null;
+  horarioSugeridoTexto = '';
   horariosAlternativos: { id: number; etiqueta: string }[] = [];
 
+  /** Lee el id de query param para destacar una propuesta y carga la bandeja. */
   ngOnInit(): void {
     const id = this.route.snapshot.queryParamMap.get('id');
     this.destacarId = id ? Number(id) : null;
     this.cargar();
   }
 
+  /** Obtiene las propuestas pendientes desde la API (solo directiva/super admin). */
   cargar(): void {
     if (!this.auth.canGestionarPropuestas()) {
       this.cargando = false;
@@ -170,40 +203,51 @@ export class PropuestasActividadComponent implements OnInit {
     });
   }
 
+  /** Abre el modal de confirmación para aceptar una propuesta. */
   abrirAceptar(propuesta: any): void {
     this.modal = { tipo: 'aceptar', propuesta };
     this.mensajeDirectiva = '';
   }
 
+  /** Abre el modal de rechazo y prepara horarios alternativos del catálogo. */
   abrirRechazar(propuesta: any): void {
     this.modal = { tipo: 'rechazar', propuesta };
     this.motivoRechazo = '';
     this.mensajeDirectiva = '';
     this.horarioSugeridoId = null;
+    this.horarioSugeridoTexto = '';
     const todos = (propuesta.horariosDisponibles ?? []).filter((h: { id: number | null }) => h.id != null);
     this.horariosAlternativos = todos.filter(
       (h: { id: number }) => h.id !== propuesta.tallerHorarioId,
     );
   }
 
+  /** Cierra el modal y restablece el estado del formulario de respuesta. */
   cerrarModal(): void {
     this.modal = null;
     this.motivoRechazo = '';
     this.mensajeDirectiva = '';
     this.horarioSugeridoId = null;
+    this.horarioSugeridoTexto = '';
     this.horariosAlternativos = [];
   }
 
+  /** Confirma la aceptación; en actividad libre la coordinación deberá crear el taller. */
   confirmarAceptar(): void {
     if (!this.modal) return;
     const id = this.modal.propuesta.id;
+    const esLibre = this.modal.propuesta.esActividadLibre;
     this.api
       .responderPropuestaInscripcion(id, true, {
         mensajeDirectiva: this.mensajeDirectiva.trim() || undefined,
       })
       .subscribe({
         next: () => {
-          alert('Propuesta aceptada. La solicitud quedó pendiente para el profesor.');
+          alert(
+            esLibre
+              ? 'Propuesta aceptada. La coordinación gestionará la nueva actividad.'
+              : 'Propuesta aceptada. La solicitud quedó pendiente para el profesor.',
+          );
           this.cerrarModal();
           this.cargar();
         },
@@ -211,6 +255,7 @@ export class PropuestasActividadComponent implements OnInit {
       });
   }
 
+  /** Confirma el rechazo con motivo y horario alternativo opcional (catálogo o texto libre). */
   confirmarRechazar(): void {
     if (!this.modal || !this.motivoRechazo.trim()) return;
     const id = this.modal.propuesta.id;
@@ -218,6 +263,7 @@ export class PropuestasActividadComponent implements OnInit {
       .responderPropuestaInscripcion(id, false, {
         motivoRechazo: this.motivoRechazo.trim(),
         horarioSugeridoId: this.horarioSugeridoId ?? undefined,
+        horarioSugeridoTexto: this.horarioSugeridoTexto.trim() || undefined,
         mensajeDirectiva: this.mensajeDirectiva.trim() || undefined,
       })
       .subscribe({

@@ -1,7 +1,12 @@
+/**
+ * Script CLI para crear apoderados faltantes.
+ * Ejecuta ApoderadoSeedService.seedMissingApoderados y muestra el resultado en JSON.
+ */
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { ApoderadoSeedService } from '../apoderado/apoderado-seed.service';
 
+/** Punto de entrada: crea el contexto Nest y ejecuta el seed de apoderados. */
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn', 'log'],

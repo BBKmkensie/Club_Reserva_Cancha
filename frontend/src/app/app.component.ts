@@ -1,3 +1,7 @@
+/**
+ * Componente raíz de la aplicación.
+ * Define el layout principal con barra de navegación, sidebar y área de contenido.
+ */
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
@@ -5,6 +9,9 @@ import { SidebarComponent } from './shared/components/sidebar/sidebar.component'
 import { AuthRoleService } from './shared/services/auth-role.service';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Shell de la aplicación: navbar, sidebar condicional y router-outlet para las vistas.
+ */
 @Component({
   selector: 'app-root',
   standalone: true,

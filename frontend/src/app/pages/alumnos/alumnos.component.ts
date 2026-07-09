@@ -1,3 +1,7 @@
+/**
+ * Administración del registro de estudiantes del club.
+ * Permite crear, editar y eliminar alumnos con datos de contacto y edad.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -5,6 +9,9 @@ import { ApiService } from '../../services/api.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 import { Alumno, CreateAlumnoDto } from '../../models/alumno.model';
 
+/**
+ * CRUD de alumnos con enmascaramiento de datos sensibles según permisos.
+ */
 @Component({
   selector: 'app-alumnos',
   standalone: true,
@@ -122,10 +129,12 @@ export class AlumnosComponent implements OnInit {
     });
   }
 
+  /** Carga el listado de alumnos al iniciar la página. */
   ngOnInit() {
     this.loadAlumnos();
   }
 
+  /** Obtiene todos los alumnos desde la API. */
   loadAlumnos() {
     this.apiService.getAlumnos().subscribe({
       next: (data) => this.alumnos = data,
@@ -168,6 +177,7 @@ export class AlumnosComponent implements OnInit {
     };
   }
 
+  /** Crea o actualiza un alumno según el modo del modal. */
   saveAlumno() {
     if (this.alumnoForm.valid) {
       const data = this.buildAlumnoPayload();
@@ -197,6 +207,7 @@ export class AlumnosComponent implements OnInit {
     }
   }
 
+  /** Elimina un alumno tras confirmación del usuario. */
   deleteAlumno(id: number) {
     if (confirm('¿Estás seguro de eliminar este alumno?')) {
       this.apiService.deleteAlumno(id).subscribe({

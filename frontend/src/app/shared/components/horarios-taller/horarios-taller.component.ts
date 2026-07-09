@@ -1,3 +1,7 @@
+/**
+ * Tabla y listado responsivo de horarios de un taller.
+ * Adapta columnas según el modo (por curso, sección o horario único).
+ */
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -13,6 +17,9 @@ import {
   DIAS_SEMANA,
 } from '../../utils/horario-taller.util';
 
+/**
+ * HorariosTaller: presenta los bloques horarios de un taller en móvil y escritorio.
+ */
 @Component({
   selector: 'app-horarios-taller',
   standalone: true,
@@ -74,6 +81,9 @@ import {
     }
   `,
 })
+/**
+ * Deriva filas, títulos y etiquetas de grupo a partir de la configuración del taller.
+ */
 export class HorariosTallerComponent {
   @Input({ required: true }) taller!: TallerConHorarios;
   @Input() mostrarTitulo = true;
@@ -102,10 +112,12 @@ export class HorariosTallerComponent {
     return textoHorarioTaller(this.taller);
   }
 
+  /** Etiqueta de curso o sección según el modo de horario del taller. */
   etiqueta(h: TallerHorarioItem): string {
     return etiquetaGrupoHorario(h, this.modo);
   }
 
+  /** Nombre del día de la semana para un índice numérico. */
   diaLabel(dia: number): string {
     return DIAS_SEMANA[dia] ?? `Día ${dia}`;
   }

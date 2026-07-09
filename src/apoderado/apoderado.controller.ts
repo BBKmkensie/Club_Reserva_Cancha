@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { JwtPayload } from '../auth/auth.types';
 import { InscripcionTallerService } from '../inscripcion-taller/inscripcion-taller.service';
 import { ProponerInscripcionApoderadoDto } from '../dto/proponer-inscripcion-apoderado.dto';
+import { ProponerActividadLibreDto } from '../dto/proponer-actividad-libre.dto';
 
 /** Endpoints protegidos para apoderados autenticados. */
 @Controller('apoderado')
@@ -37,6 +38,7 @@ export class ApoderadoController {
       alumnoId,
       tallerId,
       tallerHorarioId: body.tallerHorarioId,
+      horarioPropuestoTexto: body.horarioPropuestoTexto,
       mensajeApoderado: body.mensajeApoderado,
     });
   }
@@ -46,5 +48,15 @@ export class ApoderadoController {
   misPropuestas(@Req() req: { user: JwtPayload }) {
     const alumnoId = this.apoderadoService.assertApoderado(req.user);
     return this.inscripcionTallerService.getPropuestasPorAlumno(alumnoId);
+  }
+
+  /** POST /apoderado/proponer-actividad-libre — Propone actividad nueva fuera del catálogo. */
+  @Post('proponer-actividad-libre')
+  proponerActividadLibre(
+    @Req() req: { user: JwtPayload },
+    @Body() body: ProponerActividadLibreDto,
+  ) {
+    const alumnoId = this.apoderadoService.assertApoderado(req.user);
+    return this.inscripcionTallerService.proponerActividadLibre(alumnoId, body);
   }
 }

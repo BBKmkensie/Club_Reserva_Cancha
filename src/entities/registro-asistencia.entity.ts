@@ -1,3 +1,6 @@
+/**
+ * Registro individual de asistencia por alumno y sesión. Tabla `registros_asistencia`.
+ */
 import {
   Entity,
   Column,
@@ -11,6 +14,9 @@ import { Alumno } from './alumno.entity';
 
 export type EstadoAsistencia = 'PRESENTE' | 'AUSENTE' | 'TARDE';
 
+/**
+ * Estado de asistencia de un alumno en una sesión de lista.
+ */
 @Entity('registros_asistencia')
 @Unique(['sesionId', 'alumnoId'])
 export class RegistroAsistencia {

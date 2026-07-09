@@ -1,7 +1,12 @@
+/**
+ * Script CLI para migrar correos de apoderados a Gmail.
+ * Ejecuta ApoderadoSeedService.migrarEmailsGmail y muestra el resultado en JSON.
+ */
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { ApoderadoSeedService } from '../apoderado/apoderado-seed.service';
 
+/** Punto de entrada: crea el contexto Nest y ejecuta la migración de emails. */
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn', 'log'],

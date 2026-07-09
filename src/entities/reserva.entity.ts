@@ -1,3 +1,6 @@
+/**
+ * Reservas de espacios deportivos por taller. Tabla `reservas`.
+ */
 import {
   Entity,
   Column,
@@ -9,6 +12,9 @@ import { Taller } from './taller.entity';
 import { Admin } from './admin.entity';
 import { Profesor } from './profesor.entity';
 
+/**
+ * Bloque reservado de cancha con fecha, horario y responsable.
+ */
 @Entity('reservas')
 export class Reserva {
   @PrimaryGeneratedColumn()

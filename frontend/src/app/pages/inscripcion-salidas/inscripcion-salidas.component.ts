@@ -1,3 +1,7 @@
+/**
+ * Gestión operativa de salidas y partidos deportivos.
+ * La directiva asigna o aprueba propuestas; los profesores proponen, aceptan y cierran salidas.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -8,6 +12,9 @@ import { Taller } from '../../models/taller.model';
 import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-picker.component';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
+/**
+ * Coordinación de salidas: asignación directiva, propuestas de profesores y ciclo de vida.
+ */
 @Component({
   selector: 'app-inscripcion-salidas',
   standalone: true,
@@ -223,6 +230,7 @@ export class InscripcionSalidasComponent implements OnInit {
     descripcion: [''],
   });
 
+  /** Carga talleres, profesores y listas según el rol (coordinación o profesor). */
   ngOnInit() {
     this.api.getTalleres().subscribe({ next: (d) => (this.talleres = d) });
     if (this.auth.isCoordinacion()) {
@@ -238,6 +246,7 @@ export class InscripcionSalidasComponent implements OnInit {
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }
   estadoLabel(s: Salida) { return etiquetaEstadoSalida(s); }
 
+  /** Recarga el listado completo de salidas (filtrado por profesor si aplica). */
   cargarSalidas() {
     const obs = this.auth.isProfesor() && this.auth.currentUserId()
       ? this.api.getSalidasPorProfesor(this.auth.currentUserId()!)
@@ -245,6 +254,7 @@ export class InscripcionSalidasComponent implements OnInit {
     obs.subscribe({ next: (d) => (this.salidas = d), error: () => (this.salidas = []) });
   }
 
+  /** Obtiene asignaciones de la directiva pendientes de respuesta del profesor. */
   cargarPendientesProfesor() {
     const id = this.auth.currentUserId();
     if (!id) return;
@@ -254,6 +264,7 @@ export class InscripcionSalidasComponent implements OnInit {
     });
   }
 
+  /** Obtiene propuestas de profesores pendientes de aprobación de la directiva. */
   cargarPendientesDirectiva() {
     this.api.getSalidasPendientesDirectiva().subscribe({
       next: (d) => (this.pendientesDirectiva = d),
@@ -261,6 +272,7 @@ export class InscripcionSalidasComponent implements OnInit {
     });
   }
 
+  /** Envía una asignación de partido/salida a un profesor (solo coordinación). */
   asignarPartido() {
     if (this.asignarForm.invalid) return;
     const v = this.asignarForm.value;
@@ -283,6 +295,7 @@ export class InscripcionSalidasComponent implements OnInit {
     });
   }
 
+  /** Envía una propuesta de salida a la directiva (solo profesor con taller asignado). */
   proponerPartido() {
     const profesorId = this.auth.currentUserId();
     const tallerId = this.auth.currentTallerId();
@@ -308,6 +321,7 @@ export class InscripcionSalidasComponent implements OnInit {
     });
   }
 
+  /** Acepta o rechaza una salida según el actor (profesor o directiva). */
   responder(id: number, acepta: boolean, actor: 'profesor' | 'directiva') {
     const motivo = !acepta ? prompt('Motivo del rechazo (opcional)') ?? undefined : undefined;
     this.api.responderSalida(id, acepta, actor, this.auth.currentUserId() ?? undefined, motivo).subscribe({
@@ -321,6 +335,7 @@ export class InscripcionSalidasComponent implements OnInit {
     });
   }
 
+  /** Marca una salida publicada como en curso (profesor responsable). */
   abrirSalida(s: Salida) {
     const comentario = prompt('Comentario al abrir la salida (opcional)') ?? undefined;
     const id = this.auth.currentUserId();
@@ -331,6 +346,7 @@ export class InscripcionSalidasComponent implements OnInit {
     });
   }
 
+  /** Cierra una salida en curso registrando resultado y comentario del profesor. */
   cerrarSalida(s: Salida, resultado: 'EXITO' | 'FRACASO') {
     const comentario = prompt('¿Cómo le fue la salida? Escribe un comentario:');
     if (!comentario?.trim()) return;

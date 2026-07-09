@@ -1,3 +1,6 @@
+/**
+ * Sesiones de toma de lista de asistencia por taller. Tabla `sesiones_asistencia`.
+ */
 import {
   Entity,
   Column,
@@ -13,6 +16,9 @@ import { RegistroAsistencia } from './registro-asistencia.entity';
 
 export type EstadoSesion = 'ABIERTA' | 'CERRADA';
 
+/**
+ * Lista de asistencia abierta o cerrada por un profesor en una fecha.
+ */
 @Entity('sesiones_asistencia')
 export class SesionAsistencia {
   @PrimaryGeneratedColumn()
@@ -41,6 +47,7 @@ export class SesionAsistencia {
   @Column({ type: 'text', nullable: true })
   observaciones: string | null;
 
+  /** Indica si el profesor confirmó la lista antes de cerrar la sesión. */
   @Column({ type: 'boolean', default: false, name: 'lista_guardada' })
   listaGuardada: boolean;
 

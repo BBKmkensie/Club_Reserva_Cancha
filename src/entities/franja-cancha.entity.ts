@@ -1,5 +1,11 @@
+/**
+ * Franjas horarias disponibles para reservar canchas. Tabla `franjas_cancha`.
+ */
 import { Entity, Column, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
+/**
+ * Bloque semanal de uso de un espacio deportivo.
+ */
 @Entity('franjas_cancha')
 @Unique(['espacio', 'diaSemana', 'horaInicio'])
 export class FranjaCancha {

@@ -1,3 +1,6 @@
+/**
+ * Notificaciones in-app para alumnos, profesores y administradores. Tabla `notificaciones`.
+ */
 import {
   Entity,
   Column,
@@ -10,6 +13,9 @@ import { Alumno } from './alumno.entity';
 import { Profesor } from './profesor.entity';
 import { Admin } from './admin.entity';
 
+/**
+ * Aviso dirigido a un destinatario con referencia opcional a otra entidad.
+ */
 @Entity('notificaciones')
 export class Notificacion {
   @PrimaryGeneratedColumn()
@@ -45,6 +51,7 @@ export class Notificacion {
   @Column({ type: 'varchar', length: 30, default: 'inscripcion_taller' })
   tipo: string;
 
+  /** ID de la entidad relacionada según el tipo de notificación. */
   @Column({ name: 'ref_id', type: 'int', nullable: true })
   refId: number | null;
 

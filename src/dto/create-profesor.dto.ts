@@ -1,5 +1,11 @@
+/**
+ * DTO para crear un profesor y asociarlo a un taller.
+ */
 import { IsString, IsEmail, IsInt, IsNotEmpty, IsOptional } from 'class-validator';
 
+/**
+ * Valida datos personales, contacto, taller y contraseña del profesor.
+ */
 export class CreateProfesorDto {
   @IsString()
   @IsNotEmpty()

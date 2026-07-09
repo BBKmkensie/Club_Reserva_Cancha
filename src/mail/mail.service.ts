@@ -186,6 +186,7 @@ export class MailService {
       motivoRechazo?: string | null;
       horarioSugerido?: string | null;
       mensajeDirectiva?: string | null;
+      esActividadLibre?: boolean;
     },
   ): Promise<boolean> {
     if (!email) return false;
@@ -198,13 +199,17 @@ export class MailService {
 
     if (opts.aceptada) {
       lineas.push(
-        `La directiva **aceptó** su propuesta de inscripción para su hijo/a **${opts.alumnoNombre}**:\n`,
+        `La directiva **aceptó** su propuesta para su hijo/a **${opts.alumnoNombre}**:\n`,
         `Actividad: ${opts.tallerNombre}`,
       );
       if (opts.horarioPropuesto) lineas.push(`Horario propuesto: ${opts.horarioPropuesto}`);
-      lineas.push(
-        `\nLa solicitud quedó **pendiente de aprobación del profesor** del taller.`,
-      );
+      if (opts.esActividadLibre) {
+        lineas.push(
+          `\nLa coordinación evaluará la creación de esta actividad y se pondrá en contacto con usted.`,
+        );
+      } else {
+        lineas.push(`\nLa solicitud quedó **pendiente de aprobación del profesor** del taller.`);
+      }
       if (opts.mensajeDirectiva?.trim()) {
         lineas.push(`\nMensaje de la directiva:\n${opts.mensajeDirectiva.trim()}`);
       }
@@ -249,17 +254,25 @@ export class MailService {
       horarioPropuesto?: string | null;
       mensajeApoderado?: string | null;
       propuestaId: number;
+      actividadDescripcion?: string | null;
+      esActividadLibre?: boolean;
     },
   ): Promise<boolean> {
     const enlace = `${this.frontendUrl}/propuestas-actividad?id=${opts.propuestaId}`;
+    const tituloPropuesta = opts.esActividadLibre
+      ? 'nueva actividad (fuera del catálogo)'
+      : 'nueva propuesta de inscripción';
     const lineas: string[] = [
       `Estimado/a ${directivaNombre},\n`,
-      `Un apoderado envió una **nueva propuesta de inscripción** que requiere su revisión:\n`,
+      `Un apoderado envió una **${tituloPropuesta}** que requiere su revisión:\n`,
       `Apoderado: ${opts.apoderadoNombre}`,
       `Estudiante: ${opts.alumnoNombre}`,
     ];
     if (opts.alumnoRut?.trim()) lineas.push(`RUT estudiante: ${opts.alumnoRut.trim()}`);
     lineas.push(`Actividad: ${opts.tallerNombre}`);
+    if (opts.actividadDescripcion?.trim()) {
+      lineas.push(`Descripción: ${opts.actividadDescripcion.trim()}`);
+    }
     if (opts.horarioPropuesto) lineas.push(`Horario propuesto: ${opts.horarioPropuesto}`);
     if (opts.mensajeApoderado?.trim()) {
       lineas.push(`\nComentario del apoderado:\n${opts.mensajeApoderado.trim()}`);

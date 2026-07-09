@@ -1,3 +1,7 @@
+/**
+ * Definición de rutas de la aplicación.
+ * Mapea paths a componentes de página y aplica authGuard en rutas protegidas.
+ */
 import { Routes } from '@angular/router';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { TalleresComponent } from './pages/talleres/talleres.component';
@@ -21,6 +25,7 @@ import { PortalApoderadoComponent } from './pages/portal-apoderado/portal-apoder
 import { PropuestasActividadComponent } from './pages/propuestas-actividad/propuestas-actividad.component';
 import { authGuard } from './shared/guards/auth.guard';
 
+/** Rutas principales: login público, dashboard y módulos con guard de autenticación. */
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },

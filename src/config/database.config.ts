@@ -1,5 +1,10 @@
+/**
+ * Configuración de conexión a PostgreSQL.
+ * Lee host, puerto, credenciales y SSL desde variables de entorno.
+ */
 import { registerAs } from '@nestjs/config';
 
+/** Registro de configuración `database` para NestJS ConfigModule. */
 export default registerAs('database', () => {
   const rawPort = process.env.DB_PORT || '5432';
   const port = parseInt(rawPort, 10);

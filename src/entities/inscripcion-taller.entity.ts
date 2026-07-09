@@ -1,3 +1,6 @@
+/**
+ * Solicitud de inscripción de un alumno a un taller. Tabla `inscripcion_taller`.
+ */
 import {
   Entity,
   Column,
@@ -12,6 +15,9 @@ import { Taller } from './taller.entity';
 
 export type EstadoInscripcionTaller = 'PENDIENTE' | 'ACEPTADO' | 'RECHAZADO';
 
+/**
+ * Postulación con datos físicos y estado de aprobación del taller.
+ */
 @Entity('inscripcion_taller')
 @Unique(['alumnoId', 'tallerId'])
 export class InscripcionTaller {

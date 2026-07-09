@@ -1,3 +1,7 @@
+/**
+ * Enlaces de navegación según el rol del usuario autenticado.
+ * Se adapta al modo navbar (horizontal) o sidebar (vertical).
+ */
 import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
@@ -9,6 +13,9 @@ export interface NavLinkItem {
   label: string;
 }
 
+/**
+ * NavLinks: construye y muestra rutas permitidas según permisos y contexto del alumno.
+ */
 @Component({
   selector: 'app-nav-links',
   standalone: true,
@@ -52,6 +59,9 @@ export interface NavLinkItem {
     }
   `],
 })
+/**
+ * Genera dinámicamente el menú de navegación principal según el rol y las inscripciones.
+ */
 export class NavLinksComponent implements OnInit {
   @Input() mode: 'navbar' | 'sidebar' = 'navbar';
   @Output() navigated = new EventEmitter<void>();
@@ -61,11 +71,13 @@ export class NavLinksComponent implements OnInit {
   links: NavLinkItem[] = [];
   private puedeVerMisSalidas = false;
 
+  /** Arma los enlaces iniciales y consulta si el alumno puede ver «Mis salidas». */
   ngOnInit(): void {
     this.buildLinks();
     this.actualizarMisSalidas();
   }
 
+  /** Notifica al padre que el usuario eligió una ruta (útil para cerrar el sidebar móvil). */
   navigate(): void {
     this.navigated.emit();
   }

@@ -1,3 +1,4 @@
+/* Estilos globales: Tailwind, variables de tema claro/oscuro y utilidades compartidas. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

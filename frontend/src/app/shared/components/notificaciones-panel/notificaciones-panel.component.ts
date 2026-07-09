@@ -1,11 +1,17 @@
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+/**
+ * Panel desplegable de notificaciones en la barra superior.
+ * Consulta en tiempo real, marca como leídas y navega al destino de cada aviso.
+ */
+import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { NotificacionPollService } from '../../services/notificacion-poll.service';
 import { AuthRoleService } from '../../services/auth-role.service';
 import { rutaDesdeNotificacion } from '../../utils/notificacion-nav.util';
 import { Subscription } from 'rxjs';
 
+/**
+ * NotificacionesPanel: campana con contador y lista de avisos del usuario.
+ */
 @Component({
   selector: 'app-notificaciones-panel',
   standalone: true,
@@ -79,6 +85,9 @@ import { Subscription } from 'rxjs';
     }
   `],
 })
+/**
+ * Gestiona el polling de notificaciones y las acciones de lectura, eliminación y navegación.
+ */
 export class NotificacionesPanelComponent implements OnInit, OnDestroy {
   auth = inject(AuthRoleService);
   private poll = inject(NotificacionPollService);
@@ -90,6 +99,7 @@ export class NotificacionesPanelComponent implements OnInit, OnDestroy {
   noLeidas = 0;
   activo = false;
 
+  /** Inicia el polling si el rol actual tiene notificaciones habilitadas. */
   ngOnInit(): void {
     this.activo = this.tieneNotificaciones();
     if (!this.activo) return;
@@ -113,6 +123,7 @@ export class NotificacionesPanelComponent implements OnInit, OnDestroy {
       || this.auth.isAdmin();
   }
 
+  /** Abre o cierra el panel y refresca la lista al abrir. */
   toggle(): void {
     this.abierto = !this.abierto;
     if (this.abierto) this.poll.refrescar();
@@ -122,6 +133,7 @@ export class NotificacionesPanelComponent implements OnInit, OnDestroy {
     return !!rutaDesdeNotificacion(n);
   }
 
+  /** Marca la notificación como leída y navega a la ruta asociada, si existe. */
   abrirNotificacion(n: any): void {
     if (!n.leida) this.poll.marcarLeida(n.id);
     const ruta = rutaDesdeNotificacion(n);
@@ -136,6 +148,7 @@ export class NotificacionesPanelComponent implements OnInit, OnDestroy {
     this.poll.eliminar(n.id);
   }
 
+  /** Marca todas las notificaciones pendientes como leídas. */
   marcarTodas(): void {
     this.poll.marcarTodasLeidas();
   }

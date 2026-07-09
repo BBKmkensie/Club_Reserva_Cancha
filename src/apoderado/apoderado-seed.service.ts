@@ -1,3 +1,7 @@
+/**
+ * Servicio de seed y migración de datos de apoderados.
+ * Completa datos faltantes, reemplaza valores genéricos y migra dominios de email.
+ */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +16,7 @@ import {
 } from '../common/apoderado-nombres.pool';
 import { hashPassword } from '../common/password.util';
 
+/** Resultado de operaciones de seed o migración de apoderados. */
 export interface SeedApoderadosResult {
   actualizados: number;
   omitidos: number;
@@ -19,6 +24,7 @@ export interface SeedApoderadosResult {
   detalle: Array<{ alumnoId: number; nombre: string; apoderadoNombre: string; apoderadoRut: string; apoderadoEmail: string }>;
 }
 
+/** Completa y normaliza datos de apoderados asociados a alumnos. */
 @Injectable()
 export class ApoderadoSeedService {
   constructor(
@@ -28,6 +34,7 @@ export class ApoderadoSeedService {
     private profesorRepo: Repository<Profesor>,
   ) {}
 
+  /** Asigna nombre, RUT, email y contraseña a alumnos con datos de apoderado incompletos. */
   async seedMissingApoderados(): Promise<SeedApoderadosResult> {
     const usados = new Set<string>();
     const alumnos = await this.alumnoRepo.find();

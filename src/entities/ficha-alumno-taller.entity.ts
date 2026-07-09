@@ -1,3 +1,6 @@
+/**
+ * Ficha antropométrica de un alumno por taller. Tabla `ficha_alumno_taller`.
+ */
 import {
   Entity,
   Column,
@@ -11,6 +14,9 @@ import {
 import { Alumno } from './alumno.entity';
 import { Taller } from './taller.entity';
 
+/**
+ * Medidas físicas y hábitos del alumno asociados a un taller concreto.
+ */
 @Entity('ficha_alumno_taller')
 @Unique(['alumnoId', 'tallerId'])
 export class FichaAlumnoTaller {

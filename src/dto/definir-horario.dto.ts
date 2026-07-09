@@ -1,5 +1,11 @@
+/**
+ * DTO para definir un bloque horario individual.
+ */
 import { IsInt, IsNotEmpty, IsString, Max, Min } from 'class-validator';
 
+/**
+ * Valida día de la semana y rango de horas del bloque.
+ */
 export class DefinirHorarioDto {
   @IsInt()
   @Min(1)

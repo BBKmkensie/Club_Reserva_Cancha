@@ -1,3 +1,7 @@
+/**
+ * Consulta de fichas físicas de alumnos por taller.
+ * La directiva puede ver todos los estudiantes o solo inscritos; el profesor ve su taller.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +10,9 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
+/**
+ * Consulta de fichas físicas filtradas por taller y modo de vista (directiva/profesor).
+ */
 @Component({
   selector: 'app-fichas-alumnos',
   standalone: true,
@@ -107,6 +114,7 @@ export class FichasAlumnosComponent implements OnInit {
   cargando = false;
   error = '';
 
+  /** Inicializa taller desde query param o sesión y carga fichas según permisos. */
   ngOnInit() {
     const qTaller = this.route.snapshot.queryParamMap.get('tallerId');
     if (qTaller) this.tallerId = Number(qTaller);
@@ -128,6 +136,7 @@ export class FichasAlumnosComponent implements OnInit {
     }
   }
 
+  /** Obtiene fichas de alumnos del taller con filtro de inscritos o todos. */
   cargarFichas() {
     if (!this.tallerId) return;
     this.cargando = true;

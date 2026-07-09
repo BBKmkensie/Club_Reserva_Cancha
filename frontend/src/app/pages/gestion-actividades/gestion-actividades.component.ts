@@ -1,3 +1,7 @@
+/**
+ * Flujo del coordinador para crear y publicar actividades extracurriculares (BPMN 3).
+ * Cubre período académico, asignación de docentes, horarios y publicación del catálogo.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -36,6 +40,9 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
   CERRADO: 'Cerrado',
 };
 
+/**
+ * Gestión del ciclo de vida de actividades: borrador, docente, horario, publicación y cierre.
+ */
 @Component({
   selector: 'app-gestion-actividades',
   standalone: true,
@@ -335,12 +342,14 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Carga actividades, período académico y listado de profesores. */
   ngOnInit() {
     this.cargar();
     this.cargarPeriodo();
     this.api.getProfesores().subscribe({ next: (d) => (this.profesores = d) });
   }
 
+  /** Obtiene el período académico activo y rellena el formulario de configuración. */
   cargarPeriodo() {
     this.api.getPeriodoActivo().subscribe({
       next: (p) => {
@@ -354,6 +363,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Persiste fechas globales de apertura y cierre de inscripciones. */
   guardarPeriodo() {
     if (!this.periodoForm.apertura || !this.periodoForm.cierre) {
       alert('Indica fecha de apertura y cierre');
@@ -372,6 +382,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Recarga el listado de actividades e inicializa borradores de horario y publicación. */
   cargar() {
     this.api.getTalleres().subscribe({
       next: (data) => {
@@ -440,15 +451,18 @@ export class GestionActividadesComponent implements OnInit {
     }
   }
 
+  /** Abre el modal para crear una nueva actividad extracurricular. */
   abrirCrear() {
     this.form.reset({ capacidad: 20 });
     this.showModal = true;
   }
 
+  /** Cierra el modal de creación de actividad. */
   cerrarModal() {
     this.showModal = false;
   }
 
+  /** Crea una actividad en estado borrador con los datos del formulario. */
   guardar() {
     if (!this.form.valid) return;
     this.api.createTaller(this.form.value).subscribe({
@@ -460,6 +474,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Envía la asignación de docente y pasa la actividad a espera de confirmación. */
   asignar(tallerId: number) {
     const pid = this.profesorPorActividad[tallerId];
     if (!pid) return;
@@ -472,6 +487,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Guarda horarios por curso o por sección tras confirmación del docente. */
   guardarHorario(tallerId: number) {
     const modo = this.modoHorarioDraft[tallerId] ?? 'POR_CURSO';
     const horarios =
@@ -494,6 +510,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Publica la actividad en el catálogo con fechas opcionales de inscripción. */
   publicar(tallerId: number) {
     const p = this.publicarDraft[tallerId];
     const body: { fechaAperturaInscripcion?: string; fechaCierreInscripcion?: string } = {};
@@ -508,6 +525,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Cierra el período de inscripción de una actividad publicada. */
   cerrar(tallerId: number) {
     if (!confirm('¿Cerrar el período de esta actividad?')) return;
     this.api.cerrarActividad(tallerId).subscribe({
@@ -516,6 +534,7 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
+  /** Descarga el reporte final de inscripciones de la actividad en texto plano. */
   descargarReporte(tallerId: number) {
     this.api.getReporteActividad(tallerId).subscribe({
       next: (r) => {

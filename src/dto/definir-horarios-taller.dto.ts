@@ -1,3 +1,6 @@
+/**
+ * DTOs para definir horarios de un taller por curso o sección.
+ */
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -14,6 +17,9 @@ import {
 
 export type ModoHorarioTaller = 'POR_CURSO' | 'POR_SECCION';
 
+/**
+ * Valida curso/sección, día y rango horario de un bloque.
+ */
 export class HorarioTallerItemDto {
   @IsOptional()
   @IsString()
@@ -37,6 +43,9 @@ export class HorarioTallerItemDto {
   horaFin: string;
 }
 
+/**
+ * Valida el modo de asignación y la lista de horarios del taller.
+ */
 export class DefinirHorariosTallerDto {
   @IsIn(['POR_CURSO', 'POR_SECCION'])
   modo: ModoHorarioTaller;

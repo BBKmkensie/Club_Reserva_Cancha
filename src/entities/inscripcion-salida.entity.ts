@@ -1,3 +1,6 @@
+/**
+ * Inscripción de un alumno a una salida pedagógica. Tabla `inscripcion_salida`.
+ */
 import {
   Entity,
   Column,
@@ -9,6 +12,9 @@ import {
 import { Alumno } from './alumno.entity';
 import { Salida } from './salida.entity';
 
+/**
+ * Relación única entre alumno y salida.
+ */
 @Entity('inscripcion_salida')
 @Unique(['alumnoId', 'salidaId'])
 export class InscripcionSalida {

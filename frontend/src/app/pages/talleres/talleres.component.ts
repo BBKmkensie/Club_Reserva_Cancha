@@ -1,3 +1,7 @@
+/**
+ * Catálogo administrativo de talleres con CRUD completo.
+ * Lista, crea, edita y elimina talleres; admite filtro por tipo vía query params.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -7,6 +11,9 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Taller, CreateTallerDto } from '../../models/taller.model';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
+/**
+ * CRUD de talleres: listado en tarjetas, filtro por tipo y modal de creación/edición.
+ */
 @Component({
   selector: 'app-talleres',
   standalone: true,
@@ -152,6 +159,7 @@ export class TalleresComponent implements OnInit {
     });
   }
 
+  /** Lee query params de filtro y carga el catálogo de talleres. */
   ngOnInit() {
     // Leer queryParams para filtrar por tipo
     this.route.queryParams.subscribe(params => {
@@ -160,6 +168,7 @@ export class TalleresComponent implements OnInit {
     });
   }
 
+  /** Obtiene todos los talleres desde la API y aplica el filtro activo. */
   loadTalleres() {
     this.apiService.getTalleres().subscribe({
       next: (data) => {
@@ -204,6 +213,7 @@ export class TalleresComponent implements OnInit {
     this.showModal = true;
   }
 
+  /** Crea o actualiza un taller según el modo del modal (nuevo o edición). */
   saveTaller() {
     if (this.tallerForm.valid) {
       const data: CreateTallerDto = this.tallerForm.value;
@@ -225,6 +235,7 @@ export class TalleresComponent implements OnInit {
     }
   }
 
+  /** Elimina un taller tras confirmación del usuario. */
   deleteTaller(id: number) {
     if (confirm('¿Estás seguro de eliminar este taller?')) {
       this.apiService.deleteTaller(id).subscribe({

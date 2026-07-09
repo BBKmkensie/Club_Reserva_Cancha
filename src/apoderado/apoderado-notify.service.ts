@@ -1,3 +1,7 @@
+/**
+ * Servicio de notificaciones por correo a apoderados.
+ * Envía avisos de inscripción a taller y de asistencia en sesiones cerradas.
+ */
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -5,6 +9,7 @@ import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { RegistroAsistencia } from '../entities/registro-asistencia.entity';
 import { MailService } from '../mail/mail.service';
 
+/** Resultado del envío masivo de correos a apoderados. */
 export interface NotifyApoderadosResult {
   inscripcionesEnviadas: number;
   asistenciasEnviadas: number;
@@ -13,6 +18,7 @@ export interface NotifyApoderadosResult {
   detalle: Array<{ tipo: 'inscripcion' | 'asistencia'; alumno: string; email: string; taller: string }>;
 }
 
+/** Orquesta el envío de correos transaccionales hacia apoderados. */
 @Injectable()
 export class ApoderadoNotifyService {
   private readonly logger = new Logger(ApoderadoNotifyService.name);
@@ -26,6 +32,10 @@ export class ApoderadoNotifyService {
     private mailService: MailService,
   ) {}
 
+  /**
+   * Notifica inscripciones aceptadas y la última asistencia por alumno
+   * a apoderados con email registrado.
+   */
   async notifyInscripcionesYAsistencia(): Promise<NotifyApoderadosResult> {
     const result: NotifyApoderadosResult = {
       inscripcionesEnviadas: 0,

@@ -1,3 +1,7 @@
+/**
+ * Portal del estudiante para ver e inscribirse en salidas publicadas.
+ * Lista salidas disponibles de los talleres en los que está inscrito.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -5,6 +9,9 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 
+/**
+ * Vista estudiante: inscripción y desinscripción en salidas de sus talleres.
+ */
 @Component({
   selector: 'app-mis-salidas',
   standalone: true,
@@ -107,6 +114,7 @@ export class MisSalidasComponent implements OnInit {
   alumnoId: number | null = null;
   inscritoEnTaller = false;
 
+  /** Verifica inscripción en taller y carga salidas e inscripciones del alumno. */
   ngOnInit() {
     this.alumnoId = this.auth.currentUserId();
     if (!this.alumnoId) return;
@@ -130,6 +138,7 @@ export class MisSalidasComponent implements OnInit {
     });
   }
 
+  /** Obtiene salidas publicadas disponibles para el alumno autenticado. */
   private cargarSalidas() {
     if (!this.alumnoId) return;
     this.api.getSalidasPublicadas(undefined, this.alumnoId).subscribe({
@@ -145,6 +154,7 @@ export class MisSalidasComponent implements OnInit {
     return this.misInscripciones.some((i) => i.salidaId === salidaId || i.salida?.id === salidaId);
   }
 
+  /** Inscribe al alumno en una salida publicada o en curso. */
   inscribir(salidaId: number) {
     if (!this.alumnoId) return;
     this.api.inscribirSalida(this.alumnoId, salidaId).subscribe({
@@ -153,6 +163,7 @@ export class MisSalidasComponent implements OnInit {
     });
   }
 
+  /** Cancela la inscripción del alumno en una salida. */
   desinscribir(salidaId: number) {
     if (!this.alumnoId || !confirm('¿Desinscribirse?')) return;
     this.api.desinscribirSalida(this.alumnoId, salidaId).subscribe({
@@ -161,6 +172,7 @@ export class MisSalidasComponent implements OnInit {
     });
   }
 
+  /** Recarga el listado de inscripciones del alumno tras un cambio. */
   private refrescarInscripciones() {
     if (!this.alumnoId) return;
     this.api.getInscripcionesPorAlumno(this.alumnoId).subscribe({

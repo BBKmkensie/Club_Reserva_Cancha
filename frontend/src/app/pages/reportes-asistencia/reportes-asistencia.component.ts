@@ -1,3 +1,7 @@
+/**
+ * Reportes de asistencia y gestión de alertas por ausencias.
+ * Permite revisar estadísticas, contactar apoderados y configurar umbrales por taller.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -5,6 +9,9 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
+/**
+ * Panel de reportes de asistencia, alertas por ausencias y contacto con apoderados.
+ */
 @Component({
   selector: 'app-reportes-asistencia',
   standalone: true,
@@ -167,6 +174,7 @@ export class ReportesAsistenciaComponent implements OnInit {
   umbralEdit = 3;
   notasAlerta: Record<number, string> = {};
 
+  /** Preselecciona el taller del profesor o carga listado para coordinación. */
   ngOnInit() {
     if (this.auth.isProfesor() && this.auth.currentTallerId()) {
       this.tallerIdSeleccionado = this.auth.currentTallerId();
@@ -180,11 +188,13 @@ export class ReportesAsistenciaComponent implements OnInit {
     }
   }
 
+  /** Recarga reporte estadístico y alertas pendientes del taller seleccionado. */
   cargarTodo() {
     this.cargarReporte();
     this.cargarAlertas();
   }
 
+  /** Obtiene el reporte de asistencia por alumno del taller. */
   cargarReporte() {
     if (!this.tallerIdSeleccionado) return;
     this.api.getReporteAsistencia(this.tallerIdSeleccionado).subscribe({
@@ -196,6 +206,7 @@ export class ReportesAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Carga alertas de ausencias pendientes de gestión. */
   cargarAlertas() {
     const tallerId = this.tallerIdSeleccionado ?? undefined;
     this.api.getAlertasGestion(tallerId).subscribe({
@@ -204,6 +215,7 @@ export class ReportesAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Actualiza el umbral de ausencias que dispara alertas en el taller. */
   guardarUmbral() {
     if (!this.tallerIdSeleccionado) return;
     this.api.actualizarUmbralAusencias(this.tallerIdSeleccionado, this.umbralEdit).subscribe({
@@ -215,6 +227,7 @@ export class ReportesAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Marca una alerta como apoderado contactado con notas opcionales. */
   contactar(id: number) {
     this.api.contactarApoderado(id, this.notasAlerta[id] || '').subscribe({
       next: () => {
@@ -225,6 +238,7 @@ export class ReportesAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Resuelve una alerta registrando la medida correctiva tomada. */
   resolver(id: number) {
     this.api.resolverAlerta(id, this.notasAlerta[id] || '').subscribe({
       next: () => {
@@ -235,6 +249,7 @@ export class ReportesAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Genera y descarga el reporte final de asistencia en formato texto. */
   exportar() {
     if (!this.reporte) return;
     const lineas = [

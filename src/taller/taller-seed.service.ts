@@ -1,3 +1,7 @@
+/**
+ * Servicio de seed para talleres.
+ * Carga catálogo oficial, asigna profesores y sincroniza horarios institucionales.
+ */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +16,7 @@ import {
 import { HORARIOS_OFICIALES_TALLERES } from '../common/horarios-oficiales.pool';
 import { hashPassword } from '../common/password.util';
 
+/** Resultado del seed del catálogo de talleres y asignación de profesores. */
 export interface SeedCatalogoTalleresResult {
   creados: number;
   actualizados: number;
@@ -24,12 +29,14 @@ export interface SeedCatalogoTalleresResult {
   }>;
 }
 
+/** Resultado de la carga de horarios oficiales por taller. */
 export interface SeedHorariosOficialesResult {
   actualizados: string[];
   bloquesCargados: number;
   noEncontrados: string[];
 }
 
+/** Carga y sincroniza talleres, profesores y bloques horarios del catálogo institucional. */
 @Injectable()
 export class TallerSeedService {
   constructor(
@@ -41,6 +48,7 @@ export class TallerSeedService {
     private horarioRepo: Repository<TallerHorario>,
   ) {}
 
+  /** Crea o actualiza talleres del catálogo y asigna profesores cuando corresponde. */
   async seedCatalogoTalleres(): Promise<SeedCatalogoTalleresResult> {
     const existentes = await this.tallerRepo.find({ relations: ['profesores'] });
     const porNombre = new Map<string, Taller>();
@@ -129,6 +137,7 @@ export class TallerSeedService {
     return result;
   }
 
+  /** Sincroniza bloques horarios oficiales y limpia horarios de talleres fuera del catálogo. */
   async seedHorariosOficiales(): Promise<SeedHorariosOficialesResult> {
     const talleres = await this.tallerRepo.find();
     const porNombre = new Map<string, Taller>();

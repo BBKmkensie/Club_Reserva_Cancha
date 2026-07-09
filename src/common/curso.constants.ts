@@ -1,3 +1,8 @@
+/**
+ * Códigos y etiquetas de cursos del establecimiento.
+ * Usado en talleres, inscripciones y reportes académicos.
+ */
+/** Cursos de básico y medio con código, etiqueta legible y orden. */
 export const CURSOS_TALLER = [
   { code: '1B', label: '1° Básico', orden: 1 },
   { code: '2B', label: '2° Básico', orden: 2 },
@@ -13,8 +18,10 @@ export const CURSOS_TALLER = [
   { code: '4M', label: '4° Medio', orden: 12 },
 ] as const;
 
+/** Secciones por defecto asignables a un taller. */
 export const SECCIONES_TALLER_DEFAULT = ['A', 'B', 'C', 'D'] as const;
 
+/** Devuelve la etiqueta legible de un código de curso o el código si no existe. */
 export function etiquetaCurso(code: string | null | undefined): string {
   if (!code) return '—';
   return CURSOS_TALLER.find((c) => c.code === code)?.label ?? code;

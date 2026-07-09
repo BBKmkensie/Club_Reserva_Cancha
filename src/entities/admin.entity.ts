@@ -1,3 +1,6 @@
+/**
+ * Usuarios administradores del sistema. Tabla `admin`.
+ */
 import {
   Entity,
   Column,
@@ -8,6 +11,9 @@ import { Taller } from './taller.entity';
 import { Reserva } from './reserva.entity';
 import { Salida } from './salida.entity';
 
+/**
+ * Cuenta de administración con credenciales y rol.
+ */
 @Entity('admin')
 export class Admin {
   @PrimaryGeneratedColumn()

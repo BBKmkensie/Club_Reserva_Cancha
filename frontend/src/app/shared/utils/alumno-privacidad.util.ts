@@ -1,3 +1,7 @@
+/**
+ * Utilidades para enmascarar datos personales de alumnos.
+ * Usadas cuando el rol del usuario no debe ver información sensible completa.
+ */
 /** Ej.: "Nicolas Reyes" → "Nicolas R" */
 export function enmascararNombreCompleto(nombre: string | null | undefined): string {
   if (!nombre?.trim()) return '—';
@@ -15,7 +19,7 @@ export function enmascararRut(rut: string | null | undefined): string {
   return digitos.slice(0, 5);
 }
 
-/** Ej.: "nicolasreyes@gmail.com" → "nicolasr@gmail.com */
+/** Ej.: "nicolasreyes@gmail.com" → "nicolasr@gmail.com" */
 export function enmascararEmail(email: string | null | undefined): string {
   if (!email?.trim()) return '—';
   const trimmed = email.trim();
@@ -29,6 +33,7 @@ export function enmascararEmail(email: string | null | undefined): string {
   return `${visible}@${domain}`;
 }
 
+/** Solo los primeros 4 dígitos del teléfono */
 export function enmascararTelefono(telefono: string | null | undefined): string {
   if (!telefono?.trim()) return '—';
   const digitos = telefono.replace(/\D/g, '');
@@ -36,6 +41,7 @@ export function enmascararTelefono(telefono: string | null | undefined): string 
   return digitos.slice(0, 4);
 }
 
+/** Campos de alumno listos para mostrar en la interfaz */
 export interface DatosAlumnoVisibles {
   nombre: string;
   rut: string;
@@ -43,6 +49,9 @@ export interface DatosAlumnoVisibles {
   telefono: string;
 }
 
+/**
+ * Resuelve los datos visibles de un alumno, aplicando enmascaramiento si corresponde.
+ */
 export function datosAlumnoVisibles(
   alumno: { nombre?: string | null; rut?: string | null; email?: string | null; telefono?: string | null } | null | undefined,
   enmascarar: boolean,

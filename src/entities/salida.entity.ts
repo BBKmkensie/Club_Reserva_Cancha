@@ -1,3 +1,6 @@
+/**
+ * Salidas pedagógicas o actividades fuera del establecimiento. Tabla `salidas`.
+ */
 import {
   Entity,
   Column,
@@ -11,6 +14,9 @@ import { Admin } from './admin.entity';
 import { Profesor } from './profesor.entity';
 import { InscripcionSalida } from './inscripcion-salida.entity';
 
+/**
+ * Actividad con ciclo de propuesta, publicación, inscripción y cierre.
+ */
 @Entity('salidas')
 export class Salida {
   @PrimaryGeneratedColumn()
@@ -49,12 +55,15 @@ export class Salida {
   @JoinColumn({ name: 'profesor_id' })
   profesor: Profesor | null;
 
+  /** Origen de la salida: propuesta del profesor o creación administrativa. */
   @Column({ type: 'varchar', length: 30, default: 'PROPUESTA_PROFESOR' })
   origen: string;
 
+  /** Ciclo de vida: PUBLICADA, CERRADA, RECHAZADA, etc. */
   @Column({ type: 'varchar', length: 30, default: 'PUBLICADA' })
   estado: string;
 
+  /** Resultado al cerrar la salida (por ejemplo, realizada o cancelada). */
   @Column({ type: 'varchar', length: 20, nullable: true })
   resultado: string | null;
 

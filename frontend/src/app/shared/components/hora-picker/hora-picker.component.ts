@@ -1,8 +1,15 @@
+/**
+ * Selector de hora con minutos en intervalos de 15.
+ * Implementa ControlValueAccessor para integrarse con formularios reactivos o template-driven.
+ */
 import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { HORAS_SELECTOR } from '../../utils/cancha.constants';
 
+/**
+ * HoraPicker: dos desplegables (hora y minutos) con valor en formato HH:mm.
+ */
 @Component({
   selector: 'app-hora-picker',
   standalone: true,
@@ -50,6 +57,9 @@ import { HORAS_SELECTOR } from '../../utils/cancha.constants';
     </div>
   `,
 })
+/**
+ * Control de hora reutilizable; sincroniza el valor con el formulario padre vía CVA.
+ */
 export class HoraPickerComponent implements ControlValueAccessor {
   @Input() opcional = true;
 
@@ -88,6 +98,7 @@ export class HoraPickerComponent implements ControlValueAccessor {
     this.disabled = isDisabled;
   }
 
+  /** Propaga el valor HH:mm al formulario y marca el control como tocado. */
   emitir(): void {
     if (!this.hora) {
       this.minuto = '00';

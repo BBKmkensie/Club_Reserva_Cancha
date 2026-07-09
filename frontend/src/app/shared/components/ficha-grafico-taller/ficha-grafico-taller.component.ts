@@ -1,3 +1,7 @@
+/**
+ * Gráficos y resúmenes de fichas físicas de alumnos inscritos en un taller.
+ * Muestra promedios, barras por alumno y distribución de sedentarismo.
+ */
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { enmascararNombreCompleto } from '../../utils/alumno-privacidad.util';
@@ -18,6 +22,9 @@ interface BarraAlumno {
   anchoPct: number;
 }
 
+/**
+ * FichaGraficoTaller: visualización estadística de datos antropométricos del grupo.
+ */
 @Component({
   selector: 'app-ficha-grafico-taller',
   standalone: true,
@@ -127,6 +134,9 @@ interface BarraAlumno {
     }
   `,
 })
+/**
+ * Calcula promedios y series para gráficos de barras y torta a partir de inscripciones con ficha.
+ */
 export class FichaGraficoTallerComponent {
   @Input() inscripciones: InscripcionConFicha[] = [];
   @Input() enmascararNombres = false;
@@ -182,6 +192,7 @@ export class FichaGraficoTallerComponent {
     };
   }
 
+  /** Formatea un número para mostrar en tarjetas y leyendas (entero o un decimal). */
   fmt(n: number | null): string {
     if (n == null) return '—';
     return Number.isInteger(n) ? String(n) : n.toFixed(1);
@@ -192,12 +203,14 @@ export class FichaGraficoTallerComponent {
     return Math.round((parte / total) * 100).toString();
   }
 
+  /** Devuelve la clase de color según el rango saludable de % grasa corporal. */
   colorGrasa(valor: number): string {
     if (valor < 15) return 'bg-emerald-500';
     if (valor <= 25) return 'bg-amber-500';
     return 'bg-rose-500';
   }
 
+  /** Genera el degradado cónico para el gráfico circular de sedentarismo. */
   conicSedentario(): string {
     const { activos, sedentarios, total } = this.sedentarioStats;
     if (!total) return '#e5e7eb';

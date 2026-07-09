@@ -1,3 +1,7 @@
+/**
+ * Punto de entrada de la aplicación Angular.
+ * Arranca la app standalone con enrutamiento, cliente HTTP e interceptor de autenticación.
+ */
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -11,4 +15,3 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptors([authInterceptor]))
   ]
 }).catch(err => console.error(err));
-

@@ -1,8 +1,13 @@
+/**
+ * Constantes y utilidades de franjas horarias de la cancha deportiva.
+ * Define slots de 30 minutos, selectores de hora y formato de intervalos.
+ */
 /** Horario de operación de la cancha: 09:00–20:00 */
 export const CANCHA_HORA_INICIO = 9;
 export const CANCHA_HORA_FIN = 20;
 export const CANCHA_DURACION_SLOT_MIN = 30;
 
+/** Inicio de una franja de reserva (hora, minuto y clave HH:mm) */
 export interface SlotFranjaCancha {
   hora: number;
   minuto: number;
@@ -35,15 +40,18 @@ export const HORAS_SELECTOR = Array.from(
 
 export const DURACIONES_FRANJA_MIN = [30, 60, 90, 120, 150, 180] as const;
 
+/** Formatea el inicio de un slot como HH:mm */
 export function fmtSlotInicio(hora: number, minuto: number): string {
   return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
 }
 
+/** Formatea el fin de un slot (inicio + duración estándar de 30 min) */
 export function fmtSlotFin(hora: number, minuto: number): string {
   const total = hora * 60 + minuto + CANCHA_DURACION_SLOT_MIN;
   return fmtSlotInicio(Math.floor(total / 60), total % 60);
 }
 
+/** Indica si el slot cae en el bloque 13:00–14:00 reservado para todos los cursos */
 export function esSlotParaTodos(hora: number, minuto: number): boolean {
   const ini = hora * 60 + minuto;
   const bloqueIni = 13 * 60;

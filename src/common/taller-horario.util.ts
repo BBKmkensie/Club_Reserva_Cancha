@@ -1,12 +1,18 @@
+/**
+ * Utilidades para formatear y mostrar horarios de talleres.
+ * Convierte bloques horarios en texto legible para la UI y APIs.
+ */
 import { Taller } from '../entities/taller.entity';
 import { TallerHorario } from '../entities/taller-horario.entity';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+/** Recorta una hora a formato HH:MM. */
 export function normalizarHora(hora: string): string {
   return hora.length >= 5 ? hora.slice(0, 5) : hora;
 }
 
+/** Formatea un bloque horario con día, rango y curso o sección opcional. */
 export function textoHorarioBloque(h: {
   diaSemana: number;
   horaInicio: string;
@@ -21,6 +27,7 @@ export function textoHorarioBloque(h: {
   return base;
 }
 
+/** Resume todos los horarios de un taller en un solo texto o `null` si no hay datos. */
 export function textoHorarioTaller(taller: Taller): string | null {
   if (taller.horarios?.length) {
     return taller.horarios.map((h) => textoHorarioBloque(h)).join(' · ');
@@ -35,6 +42,7 @@ export function textoHorarioTaller(taller: Taller): string | null {
   return null;
 }
 
+/** Lista opciones de horario (id + etiqueta) para selección en formularios. */
 export function opcionesHorarioTaller(taller: Taller): { id: number | null; etiqueta: string }[] {
   if (taller.horarios?.length) {
     return taller.horarios.map((h) => ({
@@ -47,6 +55,7 @@ export function opcionesHorarioTaller(taller: Taller): { id: number | null; etiq
   return [];
 }
 
+/** Formatea un horario por entidad o devuelve un texto de respaldo. */
 export function textoHorarioPorId(
   horario: TallerHorario | null | undefined,
   fallback?: string | null,

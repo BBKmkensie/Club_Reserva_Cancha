@@ -265,12 +265,14 @@ export class GestionInscripcionesComponent implements OnInit {
     });
   }
 
+  /** Resume en texto los datos de ficha física de una solicitud. */
   textoFicha(s: any): string {
     if (s.altura == null && s.peso == null) return 'Sin datos';
     const sed = s.sedentario === true ? 'sedentario' : s.sedentario === false ? 'activo' : '—';
     return `${s.altura ?? '—'} cm · ${s.peso ?? '—'} kg · ${s.porcentajeGrasa ?? '—'}% grasa · ${sed}`;
   }
 
+  /** Abre el modal de edición de ficha física de un alumno inscrito. */
   abrirEditarFicha(s: any) {
     this.fichaEditando = s;
     this.fichaForm = {
@@ -281,6 +283,7 @@ export class GestionInscripcionesComponent implements OnInit {
     };
   }
 
+  /** Cierra el modal de edición de ficha sin guardar cambios. */
   cerrarEditarFicha() {
     this.fichaEditando = null;
   }
@@ -302,6 +305,7 @@ export class GestionInscripcionesComponent implements OnInit {
     });
   }
 
+  /** Formatea el horario del taller para mostrar en el encabezado. */
   textoHorario(taller: any): string {
     if (!taller?.diaSemana || !taller?.horaInicio || !taller?.horaFin) {
       return 'Horario por confirmar';

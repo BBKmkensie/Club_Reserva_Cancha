@@ -1,3 +1,7 @@
+/**
+ * Selector de fecha con calendario desplegable.
+ * Implementa ControlValueAccessor; emite fechas en formato ISO (YYYY-MM-DD).
+ */
 import { Component, ElementRef, HostListener, Input, forwardRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -10,6 +14,9 @@ import {
   parseFechaIso,
 } from '../../utils/fecha-semana.util';
 
+/**
+ * FechaPicker: campo con panel de calendario mensual para elegir una fecha.
+ */
 @Component({
   selector: 'app-fecha-picker',
   standalone: true,
@@ -139,6 +146,9 @@ import {
     }
   `],
 })
+/**
+ * Control de fecha reutilizable; sincroniza el valor con formularios Angular vía CVA.
+ */
 export class FechaPickerComponent implements ControlValueAccessor {
   @Input() anchoCompleto = false;
 
@@ -190,6 +200,7 @@ export class FechaPickerComponent implements ControlValueAccessor {
 
   setDisabledState(_isDisabled: boolean): void {}
 
+  /** Abre o cierra el panel del calendario. */
   toggle(event: MouseEvent): void {
     event.stopPropagation();
     this.abierto = !this.abierto;
@@ -205,6 +216,7 @@ export class FechaPickerComponent implements ControlValueAccessor {
     }
   }
 
+  /** Confirma la fecha seleccionada y notifica al formulario padre. */
   elegir(fecha: string): void {
     this.valor = fecha;
     this.sincronizarMesConValor();
@@ -213,6 +225,7 @@ export class FechaPickerComponent implements ControlValueAccessor {
     this.abierto = false;
   }
 
+  /** Selecciona el día de hoy y cierra el panel. */
   irHoy(): void {
     this.elegir(parseFechaIso(new Date()));
   }

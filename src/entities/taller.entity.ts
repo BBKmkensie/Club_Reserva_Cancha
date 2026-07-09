@@ -1,3 +1,6 @@
+/**
+ * Talleres y actividades extracurriculares del establecimiento. Tabla `talleres`.
+ */
 import {
   Entity,
   Column,
@@ -23,6 +26,9 @@ export type EstadoTaller =
   | 'PUBLICADO'
   | 'CERRADO';
 
+/**
+ * Actividad con capacidad, horarios, inscripciones y ciclo de publicación.
+ */
 @Entity('talleres')
 export class Taller {
   @PrimaryGeneratedColumn()
@@ -37,6 +43,7 @@ export class Taller {
   @Column({ type: 'int', default: 20 })
   capacidad: number;
 
+  /** Ausencias consecutivas o acumuladas antes de generar alerta. */
   @Column({ type: 'int', default: 3, name: 'umbral_ausencias' })
   umbralAusencias: number;
 
@@ -55,9 +62,11 @@ export class Taller {
   @Column({ type: 'time', nullable: true, name: 'hora_fin' })
   horaFin: string | null;
 
+  /** Flujo de configuración y visibilidad del taller. */
   @Column({ type: 'varchar', length: 30, default: 'BORRADOR' })
   estado: EstadoTaller;
 
+  /** Define si los horarios se organizan por curso o por sección. */
   @Column({ type: 'varchar', length: 20, default: 'POR_CURSO', name: 'modo_horario' })
   modoHorario: ModoHorarioTaller;
 

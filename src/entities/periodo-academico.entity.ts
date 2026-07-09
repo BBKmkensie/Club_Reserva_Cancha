@@ -1,5 +1,11 @@
+/**
+ * Períodos académicos con ventanas de inscripción. Tabla `periodo_academico`.
+ */
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
 
+/**
+ * Rango de fechas vigente para operaciones del ciclo escolar.
+ */
 @Entity('periodo_academico')
 export class PeriodoAcademico {
   @PrimaryGeneratedColumn()

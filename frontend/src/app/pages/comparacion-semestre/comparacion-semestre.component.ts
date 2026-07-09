@@ -1,9 +1,16 @@
+/**
+ * Comparación estadística de talleres por período académico.
+ * Muestra ocupación, ranking de inscripciones y sugerencias para el próximo semestre.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 
+/**
+ * Panel de comparación semestral: resumen, ranking y sugerencias por período.
+ */
 @Component({
   selector: 'app-comparacion-semestre',
   standalone: true,
@@ -99,6 +106,7 @@ export class ComparacionSemestreComponent implements OnInit {
   cargando = false;
   error = '';
 
+  /** Carga períodos académicos y preselecciona el activo antes de consultar estadísticas. */
   ngOnInit() {
     this.api.getPeriodos().subscribe({
       next: (data) => {
@@ -111,6 +119,7 @@ export class ComparacionSemestreComponent implements OnInit {
     });
   }
 
+  /** Obtiene ranking de ocupación y sugerencias del período seleccionado. */
   cargar() {
     this.cargando = true;
     this.error = '';

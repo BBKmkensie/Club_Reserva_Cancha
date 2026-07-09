@@ -1,3 +1,6 @@
+/**
+ * Propuestas de asignación de un profesor a un taller. Tabla `asignaciones_docente`.
+ */
 import {
   Entity,
   Column,
@@ -11,6 +14,9 @@ import { Profesor } from './profesor.entity';
 
 export type EstadoAsignacionDocente = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA';
 
+/**
+ * Solicitud de docente a un taller y respuesta del profesor.
+ */
 @Entity('asignaciones_docente')
 export class AsignacionDocente {
   @PrimaryGeneratedColumn()

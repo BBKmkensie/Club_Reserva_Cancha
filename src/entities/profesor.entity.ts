@@ -1,3 +1,6 @@
+/**
+ * Docentes del establecimiento vinculados a talleres. Tabla `profesores`.
+ */
 import {
   Entity,
   Column,
@@ -10,6 +13,9 @@ import { Taller } from './taller.entity';
 import { Salida } from './salida.entity';
 import { Reserva } from './reserva.entity';
 
+/**
+ * Perfil del profesor, credenciales y relaciones con taller, salidas y reservas.
+ */
 @Entity('profesores')
 export class Profesor {
   @PrimaryGeneratedColumn()

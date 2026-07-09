@@ -1,3 +1,6 @@
+/**
+ * Horarios semanales asignados a un taller. Tabla `taller_horario`.
+ */
 import {
   Entity,
   Column,
@@ -7,6 +10,9 @@ import {
 } from 'typeorm';
 import { Taller } from './taller.entity';
 
+/**
+ * Bloque de día y hora asociado a curso o sección del taller.
+ */
 @Entity('taller_horario')
 export class TallerHorario {
   @PrimaryGeneratedColumn()

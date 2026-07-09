@@ -1,9 +1,16 @@
+/**
+ * Administración de cuentas de directiva y super administradores.
+ * Permite registrar nuevos administradores y eliminar existentes.
+ */
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { Admin, CreateAdminDto } from '../../models/admin.model';
 
+/**
+ * CRUD de administradores del sistema (directiva y super admin).
+ */
 @Component({
   selector: 'app-admins',
   standalone: true,
@@ -107,10 +114,12 @@ export class AdminsComponent implements OnInit {
     });
   }
 
+  /** Carga el listado de administradores al iniciar. */
   ngOnInit() {
     this.loadAdmins();
   }
 
+  /** Obtiene todos los administradores desde la API. */
   loadAdmins() {
     this.apiService.getAdmins().subscribe({
       next: (data) => this.admins = data,
@@ -130,6 +139,7 @@ export class AdminsComponent implements OnInit {
     this.adminForm.reset();
   }
 
+  /** Crea un nuevo administrador con los datos del formulario. */
   saveAdmin() {
     if (this.adminForm.valid) {
       const data: CreateAdminDto = this.adminForm.value;
@@ -142,6 +152,7 @@ export class AdminsComponent implements OnInit {
     }
   }
 
+  /** Elimina un administrador tras confirmación del usuario. */
   deleteAdmin(id: number) {
     if (confirm('¿Estás seguro de eliminar este administrador?')) {
       this.apiService.deleteAdmin(id).subscribe({

@@ -1,7 +1,14 @@
+/**
+ * Conmutador de tema claro/oscuro.
+ * Menú desplegable con la preferencia actual del usuario.
+ */
 import { Component, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ThemeMode, ThemeService } from '../../services/theme.service';
 
+/**
+ * ThemeToggle: botón con menú para elegir aspecto claro u oscuro.
+ */
 @Component({
   selector: 'app-theme-toggle',
   standalone: true,
@@ -49,6 +56,9 @@ import { ThemeMode, ThemeService } from '../../services/theme.service';
     </div>
   `,
 })
+/**
+ * Controla la apertura del menú y delega el cambio de tema al ThemeService.
+ */
 export class ThemeToggleComponent {
   theme = inject(ThemeService);
   menuOpen = false;
@@ -58,10 +68,12 @@ export class ThemeToggleComponent {
     { mode: 'dark', label: 'Oscuro' },
   ];
 
+  /** Abre o cierra el menú de selección de aspecto. */
   toggleMenu(): void {
     this.menuOpen = !this.menuOpen;
   }
 
+  /** Aplica el modo elegido y cierra el menú. */
   select(mode: ThemeMode): void {
     this.theme.setMode(mode);
     this.menuOpen = false;

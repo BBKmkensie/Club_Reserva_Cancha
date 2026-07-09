@@ -1,3 +1,7 @@
+/**
+ * Servicio de reportes consolidados.
+ * Cruza datos de alumnos, inscripciones, apoderados, profesores y administración.
+ */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -6,6 +10,7 @@ import { Admin } from '../entities/admin.entity';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { Profesor } from '../entities/profesor.entity';
 
+/** Estructura del reporte de personas e inscripciones activas. */
 export interface ReportePersonasInscripciones {
   alumnosSinTaller: Array<{ id: number; nombre: string; rut: string; edad: number | null }>;
   alumnosInscritos: Array<{
@@ -37,6 +42,7 @@ export interface ReportePersonasInscripciones {
   }>;
 }
 
+/** Lógica de negocio para armar reportes administrativos. */
 @Injectable()
 export class ReportesService {
   constructor(
@@ -50,6 +56,10 @@ export class ReportesService {
     private profesorRepo: Repository<Profesor>,
   ) {}
 
+  /**
+   * Arma el reporte de personas: alumnos sin taller, inscritos, apoderados,
+   * directiva, super admins y profesores con su taller asignado.
+   */
   async getPersonasInscripciones(): Promise<ReportePersonasInscripciones> {
     const alumnos = await this.alumnoRepo.find({ order: { nombre: 'ASC' } });
     const inscripciones = await this.inscripcionRepo.find({

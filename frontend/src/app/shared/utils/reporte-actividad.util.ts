@@ -1,3 +1,9 @@
+/**
+ * Utilidades para generar y descargar reportes de actividad en texto plano.
+ */
+/**
+ * Construye el contenido textual de un reporte final de actividad (taller, inscripciones, asistencia).
+ */
 export function textoReporteActividad(
   r: {
     actividad: { tipo: string; estado: string };
@@ -58,6 +64,7 @@ export function textoReporteActividad(
   return lineas.filter((l) => l != null).join('\n');
 }
 
+/** Descarga un archivo de texto con el contenido del reporte en el navegador */
 export function descargarTextoReporte(contenido: string, nombreArchivo: string): void {
   const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');

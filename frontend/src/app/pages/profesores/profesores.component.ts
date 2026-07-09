@@ -1,3 +1,7 @@
+/**
+ * Administración del registro de profesores y su asignación a talleres.
+ * Permite crear, editar y eliminar docentes del sistema.
+ */
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -5,6 +9,9 @@ import { ApiService } from '../../services/api.service';
 import { Profesor, CreateProfesorDto } from '../../models/profesor.model';
 import { Taller } from '../../models/taller.model';
 
+/**
+ * CRUD de profesores con asignación obligatoria a un taller.
+ */
 @Component({
   selector: 'app-profesores',
   standalone: true,
@@ -118,11 +125,13 @@ export class ProfesoresComponent implements OnInit {
     });
   }
 
+  /** Carga profesores y talleres disponibles al iniciar. */
   ngOnInit() {
     this.loadProfesores();
     this.loadTalleres();
   }
 
+  /** Obtiene el listado de profesores desde la API. */
   loadProfesores() {
     this.apiService.getProfesores().subscribe({
       next: (data) => this.profesores = data,
@@ -160,6 +169,7 @@ export class ProfesoresComponent implements OnInit {
     this.showModal = true;
   }
 
+  /** Crea o actualiza un profesor según el modo del modal. */
   saveProfesor() {
     if (this.profesorForm.valid) {
       const data: CreateProfesorDto = this.profesorForm.value;
@@ -181,6 +191,7 @@ export class ProfesoresComponent implements OnInit {
     }
   }
 
+  /** Elimina un profesor tras confirmación del usuario. */
   deleteProfesor(id: number) {
     if (confirm('¿Estás seguro de eliminar este profesor?')) {
       this.apiService.deleteProfesor(id).subscribe({

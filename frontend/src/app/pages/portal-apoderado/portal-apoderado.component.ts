@@ -1,6 +1,7 @@
 /**
  * Portal exclusivo para apoderados.
- * Muestra datos del hijo/a, asistencia, taller inscrito y propuestas de inscripción a la directiva.
+ * Muestra datos del hijo/a, asistencia, taller inscrito y propuestas de inscripción
+ * (catálogo o actividad libre fuera de catálogo) a la directiva.
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -17,7 +18,7 @@ import {
 } from '../../shared/utils/horario-taller.util';
 
 /**
- * Vista del apoderado: resumen familiar, historial de asistencia y catálogo para proponer inscripciones.
+ * Vista del apoderado: resumen familiar, asistencia, propuestas de catálogo y actividad libre.
  */
 @Component({
   selector: 'app-portal-apoderado',
@@ -118,6 +119,9 @@ import {
                   @if (p.horarioPropuesto) {
                     <p class="text-ink-muted mt-1">Horario propuesto: {{ p.horarioPropuesto }}</p>
                   }
+                  @if (p.esActividadLibre && p.actividadDescripcion) {
+                    <p class="text-ink-muted mt-1">{{ p.actividadDescripcion }}</p>
+                  }
                   @if (p.estado === 'RECHAZADA') {
                     @if (p.motivoRechazo) {
                       <p class="text-red-700 mt-1">Motivo: {{ p.motivoRechazo }}</p>
@@ -141,8 +145,7 @@ import {
         <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
           <h2 class="font-bold text-ink mb-3">Proponer inscripción a la directiva</h2>
           <p class="text-sm text-ink-muted mb-4">
-            Si desea que su hijo/a participe en otra actividad, envíe una propuesta indicando el horario.
-            La directiva la revisará, la aprobará o rechazará con un motivo, y puede sugerirle otro horario disponible.
+            Elija una actividad del catálogo o proponga otra actividad nueva. En ambos casos indique el horario deseado.
           </p>
           @if (catalogo.length === 0) {
             <p class="text-ink-muted text-sm">No hay actividades publicadas disponibles.</p>
@@ -169,6 +172,43 @@ import {
           }
         </section>
 
+        <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
+          <h2 class="font-bold text-ink mb-3">Proponer otra actividad (fuera del catálogo)</h2>
+          <p class="text-sm text-ink-muted mb-4">
+            Si la actividad que busca no está en la lista, puede proponerla aquí con nombre, horario y una breve descripción.
+          </p>
+          <div class="space-y-3 max-w-lg">
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Nombre de la actividad *</label>
+              <input type="text" [(ngModel)]="actividadLibreNombre"
+                     class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                     placeholder="Ej.: Ajedrez, Danza contemporánea" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Descripción (opcional)</label>
+              <textarea [(ngModel)]="actividadLibreDescripcion" rows="2"
+                        class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                        placeholder="Ej.: Taller de estrategia para estudiantes de enseñanza media"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Horario propuesto *</label>
+              <input type="text" [(ngModel)]="actividadLibreHorario"
+                     class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                     placeholder="Ej.: Jueves 17:00 - 18:30" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Mensaje para la directiva (opcional)</label>
+              <textarea [(ngModel)]="actividadLibreMensaje" rows="2"
+                        class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                        placeholder="Ej.: Mi hijo/a tiene experiencia previa en esta actividad"></textarea>
+            </div>
+            <button type="button" (click)="enviarActividadLibre()" [disabled]="!puedeEnviarActividadLibre() || enviandoLibre"
+                    class="text-sm bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {{ enviandoLibre ? 'Enviando…' : 'Enviar propuesta a la directiva' }}
+            </button>
+          </div>
+        </section>
+
         <section class="bg-surface rounded-xl border border-line p-5 shadow-sm text-sm text-ink-muted">
           <p><strong class="text-ink">Apoderado:</strong> {{ data.apoderado.nombre }} · RUT {{ data.apoderado.rut }}</p>
           <p class="mt-1"><strong class="text-ink">Correo:</strong> {{ data.apoderado.email || '—' }}</p>
@@ -180,24 +220,28 @@ import {
           <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-5 border border-line"
                (click)="$event.stopPropagation()">
             <h3 class="text-lg font-bold text-ink mb-1">Proponer {{ modalTaller.tipo }}</h3>
-            <p class="text-sm text-ink-muted mb-4">Seleccione el horario que desea para su hijo/a.</p>
+            <p class="text-sm text-ink-muted mb-4">
+              Escriba el horario que desea para su hijo/a. Si la actividad tiene horarios publicados, puede usarlos como referencia o modificar el texto.
+            </p>
 
-            @if (opcionesModal.length > 1) {
-              <label class="block text-sm font-medium text-ink mb-1">Horario</label>
-              <select [(ngModel)]="horarioSeleccionadoId"
+            @if (opcionesModal.length > 0) {
+              <label class="block text-sm font-medium text-ink mb-1">Horarios publicados (referencia)</label>
+              <select [(ngModel)]="horarioSeleccionadoId" (ngModelChange)="aplicarHorarioCatalogo($event)"
                       class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3">
+                <option [ngValue]="null">— Escribir horario manualmente —</option>
                 @for (h of opcionesModal; track h.id ?? h.etiqueta) {
                   <option [ngValue]="h.id">{{ h.etiqueta }}</option>
                 }
               </select>
-            } @else if (opcionesModal.length === 1) {
-              <p class="text-sm bg-muted/50 rounded-lg p-3 mb-3">{{ opcionesModal[0].etiqueta }}</p>
-            } @else {
-              <p class="text-sm text-red-600 mb-3">Esta actividad no tiene horario definido.</p>
             }
 
-            <label class="block text-sm font-medium text-ink mb-1">Comentario (opcional)</label>
-            <textarea [(ngModel)]="mensajeApoderado" rows="2"
+            <label class="block text-sm font-medium text-ink mb-1">Horario propuesto *</label>
+            <input type="text" [(ngModel)]="horarioLibre"
+                   class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3"
+                   placeholder="Ej.: Martes 16:00 - 17:30" />
+
+            <label class="block text-sm font-medium text-ink mb-1">Mensaje para la directiva (opcional)</label>
+            <textarea [(ngModel)]="mensajeApoderado" rows="3"
                       class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-4"
                       placeholder="Ej.: Prefiere este horario por compromisos familiares"></textarea>
 
@@ -231,7 +275,14 @@ export class PortalApoderadoComponent implements OnInit {
   modalTaller: any = null;
   opcionesModal: { id: number | null; etiqueta: string }[] = [];
   horarioSeleccionadoId: number | null = null;
+  horarioLibre = '';
   mensajeApoderado = '';
+
+  actividadLibreNombre = '';
+  actividadLibreDescripcion = '';
+  actividadLibreHorario = '';
+  actividadLibreMensaje = '';
+  enviandoLibre = false;
 
   /** Valida acceso de apoderado y carga resumen + catálogo de talleres publicados. */
   ngOnInit(): void {
@@ -260,17 +311,56 @@ export class PortalApoderadoComponent implements OnInit {
     });
   }
 
+  /** Devuelve el texto de horario formateado de un taller del catálogo. */
   horarioTaller(t: TallerConHorarios): string {
     return textoHorarioTaller(t);
   }
 
+  /** Indica si ya existe una propuesta pendiente para el taller indicado. */
   propuestaPendiente(tallerId: number): boolean {
     return this.misPropuestas.some((p) => p.tallerId === tallerId && p.estado === 'PENDIENTE');
   }
 
+  /** Valida que nombre y horario de actividad libre cumplan requisitos mínimos. */
+  puedeEnviarActividadLibre(): boolean {
+    return this.actividadLibreNombre.trim().length >= 2 && this.actividadLibreHorario.trim().length >= 3;
+  }
+
+  /** Envía una propuesta de actividad nueva fuera del catálogo a la directiva. */
+  enviarActividadLibre(): void {
+    if (!this.puedeEnviarActividadLibre()) return;
+    this.enviandoLibre = true;
+    this.api
+      .proponerActividadLibre({
+        actividadNombre: this.actividadLibreNombre.trim(),
+        actividadDescripcion: this.actividadLibreDescripcion.trim() || undefined,
+        horarioPropuestoTexto: this.actividadLibreHorario.trim(),
+        mensajeApoderado: this.actividadLibreMensaje.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.enviandoLibre = false;
+          this.actividadLibreNombre = '';
+          this.actividadLibreDescripcion = '';
+          this.actividadLibreHorario = '';
+          this.actividadLibreMensaje = '';
+          alert('Propuesta de actividad enviada a la directiva.');
+          this.api.getMisPropuestasApoderado().subscribe({
+            next: (p) => (this.misPropuestas = p ?? []),
+          });
+        },
+        error: (err) => {
+          this.enviandoLibre = false;
+          alert(err?.error?.message || 'No se pudo enviar la propuesta');
+        },
+      });
+  }
+
+  /** Abre el modal de propuesta para un taller del catálogo con horarios de referencia. */
   abrirModal(taller: any): void {
     this.modalTaller = taller;
     this.mensajeApoderado = '';
+    this.horarioLibre = '';
     const horarios = horariosOrdenados(taller);
     if (horarios.length > 0) {
       this.opcionesModal = horarios.map((h: TallerHorarioItem) => ({
@@ -287,22 +377,38 @@ export class PortalApoderadoComponent implements OnInit {
     } else {
       this.opcionesModal = [];
     }
-    this.horarioSeleccionadoId = this.opcionesModal[0]?.id ?? null;
+    if (this.opcionesModal.length > 0) {
+      const primero = this.opcionesModal[0];
+      this.horarioSeleccionadoId = primero.id;
+      this.horarioLibre = primero.etiqueta;
+    } else {
+      this.horarioSeleccionadoId = null;
+      this.horarioLibre = '';
+    }
   }
 
+  /** Copia al campo de texto el horario seleccionado del catálogo. */
+  aplicarHorarioCatalogo(horarioId: number | null): void {
+    if (horarioId == null) return;
+    const opcion = this.opcionesModal.find((h) => h.id === horarioId);
+    if (opcion) this.horarioLibre = opcion.etiqueta;
+  }
+
+  /** Cierra el modal de propuesta de taller del catálogo. */
   cerrarModal(): void {
     this.modalTaller = null;
     this.opcionesModal = [];
     this.horarioSeleccionadoId = null;
+    this.horarioLibre = '';
     this.mensajeApoderado = '';
   }
 
+  /** Valida que haya taller y horario propuesto antes de enviar. */
   puedeEnviarPropuesta(): boolean {
-    if (!this.modalTaller || this.opcionesModal.length === 0) return false;
-    if (this.opcionesModal.length > 1 && this.horarioSeleccionadoId == null) return false;
-    return true;
+    return !!this.modalTaller && this.horarioLibre.trim().length > 0;
   }
 
+  /** Envía la propuesta de inscripción del catálogo a la directiva con horario indicado. */
   confirmarPropuesta(): void {
     if (!this.modalTaller || !this.puedeEnviarPropuesta()) return;
     const tallerId = this.modalTaller.id;
@@ -310,6 +416,7 @@ export class PortalApoderadoComponent implements OnInit {
     this.api
       .proponerInscripcionApoderado(tallerId, {
         tallerHorarioId: this.horarioSeleccionadoId ?? undefined,
+        horarioPropuestoTexto: this.horarioLibre.trim(),
         mensajeApoderado: this.mensajeApoderado.trim() || undefined,
       })
       .subscribe({

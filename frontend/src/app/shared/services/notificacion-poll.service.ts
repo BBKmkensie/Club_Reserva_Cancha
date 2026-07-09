@@ -8,6 +8,7 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from './auth-role.service';
 import { environment } from '../../../environments/environment';
 
+/** Payload emitido cuando cambia el listado o el conteo de notificaciones no leídas. */
 export interface NotificacionActualizada {
   notificaciones: any[];
   noLeidas: number;
@@ -132,6 +133,7 @@ export class NotificacionPollService implements OnDestroy {
     obs.subscribe({ next: () => this.refrescar() });
   }
 
+  /** Marca todas las notificaciones como leídas según el destinatario actual. */
   marcarTodasLeidas(): void {
     if (!this.destinatario || !this.userId) return;
     const obs =
@@ -143,6 +145,7 @@ export class NotificacionPollService implements OnDestroy {
     obs.subscribe({ next: () => this.refrescar() });
   }
 
+  /** Elimina una notificación y refresca el listado. */
   eliminar(id: number): void {
     if (!this.destinatario || !this.userId) return;
     this.api.eliminarNotificacion(id, this.userId, this.destinatario).subscribe({

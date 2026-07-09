@@ -1,9 +1,14 @@
+/**
+ * Interceptor HTTP de autenticación.
+ * Adjunta el token JWT a las peticiones y cierra sesión ante respuestas 401.
+ */
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthRoleService } from '../services/auth-role.service';
 
+/** Inyecta Authorization Bearer y redirige al login si la API responde no autorizado. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthRoleService);
   const router = inject(Router);

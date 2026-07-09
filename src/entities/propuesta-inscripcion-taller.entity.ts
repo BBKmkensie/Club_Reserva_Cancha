@@ -1,3 +1,6 @@
+/**
+ * Propuestas de inscripción iniciadas por apoderado o directiva. Tabla `propuestas_inscripcion_taller`.
+ */
 import {
   Entity,
   Column,
@@ -5,7 +8,6 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
-  Unique,
 } from 'typeorm';
 import { Alumno } from './alumno.entity';
 import { Taller } from './taller.entity';
@@ -13,8 +15,10 @@ import { TallerHorario } from './taller-horario.entity';
 
 export type EstadoPropuestaInscripcion = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA';
 
+/**
+ * Solicitud externa a un taller o actividad libre con horario propuesto.
+ */
 @Entity('propuestas_inscripcion_taller')
-@Unique(['alumnoId', 'tallerId'])
 export class PropuestaInscripcionTaller {
   @PrimaryGeneratedColumn()
   id: number;
@@ -26,12 +30,19 @@ export class PropuestaInscripcionTaller {
   @JoinColumn({ name: 'alumno_id' })
   alumno: Alumno;
 
-  @Column({ name: 'taller_id' })
-  tallerId: number;
+  @Column({ name: 'taller_id', nullable: true })
+  tallerId: number | null;
 
-  @ManyToOne(() => Taller, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Taller, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'taller_id' })
-  taller: Taller;
+  taller: Taller | null;
+
+  /** Nombre cuando la propuesta no apunta a un taller del catálogo. */
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'actividad_libre_nombre' })
+  actividadLibreNombre: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'actividad_libre_descripcion' })
+  actividadLibreDescripcion: string | null;
 
   @Column({ type: 'varchar', length: 20, default: 'PENDIENTE' })
   estado: EstadoPropuestaInscripcion;
@@ -55,6 +66,9 @@ export class PropuestaInscripcionTaller {
   @ManyToOne(() => TallerHorario, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'horario_sugerido_id' })
   horarioSugerido: TallerHorario | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true, name: 'horario_sugerido_texto' })
+  horarioSugeridoTexto: string | null;
 
   @Column({ type: 'text', nullable: true, name: 'mensaje_apoderado' })
   mensajeApoderado: string | null;

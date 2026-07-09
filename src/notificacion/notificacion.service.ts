@@ -107,11 +107,16 @@ export class NotificacionService {
     tallerNombre: string;
     horarioPropuesto?: string | null;
     mensajeApoderado?: string | null;
+    actividadDescripcion?: string | null;
+    esActividadLibre?: boolean;
   }): Promise<void> {
-    const titulo = 'Nueva propuesta de actividad';
+    const titulo = params.esActividadLibre
+      ? 'Nueva propuesta de actividad (fuera de catálogo)'
+      : 'Nueva propuesta de actividad';
     const horarioTxt = params.horarioPropuesto ? ` Horario: ${params.horarioPropuesto}.` : '';
+    const tipoTxt = params.esActividadLibre ? ' una actividad nueva ' : ' ';
     const mensaje =
-      `${params.apoderadoNombre} propuso "${params.tallerNombre}" para ${params.alumnoNombre}.${horarioTxt} Revisa la bandeja de propuestas.`;
+      `${params.apoderadoNombre} propuso${tipoTxt}"${params.tallerNombre}" para ${params.alumnoNombre}.${horarioTxt} Revisa la bandeja de propuestas.`;
 
     const coordinadores = await this.adminRepo.find({
       where: { rol: In(['super_admin', 'directiva']) },
@@ -135,6 +140,8 @@ export class NotificacionService {
           horarioPropuesto: params.horarioPropuesto,
           mensajeApoderado: params.mensajeApoderado,
           propuestaId: params.propuestaId,
+          actividadDescripcion: params.actividadDescripcion,
+          esActividadLibre: params.esActividadLibre,
         });
       }
     }

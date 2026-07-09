@@ -1,5 +1,11 @@
+/**
+ * DTO para crear un nuevo taller extracurricular.
+ */
 import { IsString, IsInt, IsNotEmpty, IsDateString, IsOptional, Min } from 'class-validator';
 
+/**
+ * Valida tipo, descripción, capacidad y fechas del taller.
+ */
 export class CreateTallerDto {
   @IsString()
   @IsNotEmpty()

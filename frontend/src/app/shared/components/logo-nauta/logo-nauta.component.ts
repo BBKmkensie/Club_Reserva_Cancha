@@ -1,6 +1,12 @@
-import { Component, Input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+/**
+ * Logo institucional «nauta» con variantes para navbar y pantalla de login.
+ * Opcionalmente enlaza a una ruta interna.
+ */
+import { Component, Input } from '@angular/core';import { RouterLink } from '@angular/router';
 
+/**
+ * LogoNauta: imagen de marca con tamaños responsivos según el contexto de uso.
+ */
 @Component({
   selector: 'app-logo-nauta',
   standalone: true,
@@ -84,6 +90,9 @@ import { RouterLink } from '@angular/router';
     }
   `],
 })
+/**
+ * Renderiza el logo con clases y enlace adaptados a la variante navbar o login.
+ */
 export class LogoNautaComponent {
   @Input() variant: 'navbar' | 'login' = 'navbar';
   @Input() linkTo: string | null = '/dashboard';

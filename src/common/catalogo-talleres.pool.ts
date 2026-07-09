@@ -1,9 +1,15 @@
+/**
+ * Catálogo de talleres para seeds iniciales.
+ * Incluye datos de presentación, alias y profesores asociados.
+ */
+/** Datos de profesor usados al sembrar un taller del catálogo. */
 export interface ProfesorCatalogoSeed {
   nombre: string;
   rut: string;
   email: string;
 }
 
+/** Definición de un taller en el catálogo de seeds. */
 export interface TallerCatalogoSeed {
   /** Nombre canónico del taller */
   tipo: string;
@@ -19,6 +25,7 @@ function img(id: string): string {
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=80`;
 }
 
+/** Listado completo de talleres a crear o actualizar en la base de datos. */
 export const CATALOGO_TALLERES_SEED: TallerCatalogoSeed[] = [
   {
     tipo: 'Futbol',
@@ -206,6 +213,7 @@ export const CATALOGO_TALLERES_SEED: TallerCatalogoSeed[] = [
   },
 ];
 
+/** Normaliza un nombre de taller para comparación (sin tildes ni espacios). */
 export function normalizarNombreTaller(nombre: string): string {
   return nombre
     .normalize('NFD')

@@ -1,6 +1,12 @@
+/**
+ * DTO para crear una reserva de cancha o espacio deportivo.
+ */
 import { IsString, IsInt, IsNotEmpty, IsDateString, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
+/**
+ * Valida espacio, fecha, horario y responsables de la reserva.
+ */
 export class CreateReservaDto {
   @IsString()
   @IsNotEmpty()

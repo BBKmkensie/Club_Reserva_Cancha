@@ -1,3 +1,7 @@
+/**
+ * Estilos visuales (gradiente, icono y descripción) para tarjetas de taller en el dashboard.
+ */
+/** Apariencia de una tarjeta de taller en la interfaz */
 export interface EstiloTarjetaTaller {
   classes: string;
   icon: string;
@@ -73,6 +77,7 @@ const PALETA_RESPALDO: { classes: string; icon: string }[] = [
   { classes: 'bg-gradient-to-br from-lime-600 to-green-800', icon: '🍀' },
 ];
 
+/** Normaliza el nombre del tipo de taller (minúsculas, sin acentos ni separadores) */
 export function normalizarTipoTaller(s: string): string {
   return (s || '')
     .toLowerCase()
@@ -89,6 +94,10 @@ function hashTipo(clave: string): number {
   return h;
 }
 
+/**
+ * Resuelve clases CSS, emoji e descripción para la tarjeta de un taller.
+ * Usa paleta de respaldo determinística si el tipo no está catalogado.
+ */
 export function estiloTarjetaTaller(tipo: string): EstiloTarjetaTaller {
   const clave = normalizarTipoTaller(tipo);
   const descripcion =

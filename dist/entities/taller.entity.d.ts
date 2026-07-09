@@ -1,0 +1,35 @@
+import { Admin } from './admin.entity';
+import { Alumno } from './alumno.entity';
+import { Profesor } from './profesor.entity';
+import { Reserva } from './reserva.entity';
+import { Salida } from './salida.entity';
+import { InscripcionTaller } from './inscripcion-taller.entity';
+import { TallerHorario } from './taller-horario.entity';
+export type ModoHorarioTaller = 'POR_CURSO' | 'POR_SECCION';
+export type EstadoTaller = 'BORRADOR' | 'ESPERA_DOCENTE' | 'ESPERA_HORARIO' | 'PUBLICADO' | 'CERRADO';
+export declare class Taller {
+    id: number;
+    tipo: string;
+    descripcion: string;
+    capacidad: number;
+    umbralAusencias: number;
+    imagenUrl: string | null;
+    fechaInicio: Date | null;
+    diaSemana: number | null;
+    horaInicio: string | null;
+    horaFin: string | null;
+    estado: EstadoTaller;
+    modoHorario: ModoHorarioTaller;
+    fechaAperturaInscripcion: Date | null;
+    fechaCierreInscripcion: Date | null;
+    publicadoAt: Date | null;
+    cerradoAt: Date | null;
+    adminId: number;
+    admin: Admin;
+    alumnos: Alumno[];
+    profesores: Profesor[];
+    reservas: Reserva[];
+    salidas: Salida[];
+    inscripciones: InscripcionTaller[];
+    horarios: TallerHorario[];
+}

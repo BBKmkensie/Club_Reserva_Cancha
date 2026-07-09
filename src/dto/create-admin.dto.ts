@@ -1,5 +1,11 @@
+/**
+ * DTO para crear una cuenta de administrador o directiva.
+ */
 import { IsString, IsEmail, IsNotEmpty, MinLength, IsOptional, IsIn } from 'class-validator';
 
+/**
+ * Valida nombre, RUT, email, contraseña y rol del administrador.
+ */
 export class CreateAdminDto {
   @IsString()
   @IsNotEmpty()

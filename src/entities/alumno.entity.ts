@@ -1,3 +1,6 @@
+/**
+ * Estudiantes del establecimiento y datos de su apoderado. Tabla `alumnos`.
+ */
 import {
   Entity,
   Column,
@@ -10,6 +13,9 @@ import { Taller } from './taller.entity';
 import { InscripcionSalida } from './inscripcion-salida.entity';
 import { InscripcionTaller } from './inscripcion-taller.entity';
 
+/**
+ * Perfil del alumno, credenciales y vínculo con taller e inscripciones.
+ */
 @Entity('alumnos')
 export class Alumno {
   @PrimaryGeneratedColumn()
@@ -30,6 +36,7 @@ export class Alumno {
   @Column({ type: 'int', nullable: true })
   edad: number;
 
+  /** Taller principal asignado al alumno (legado). */
   @Column({ name: 'taller_id', nullable: true })
   tallerId: number | null;
 

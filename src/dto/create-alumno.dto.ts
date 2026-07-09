@@ -1,7 +1,13 @@
+/**
+ * DTO para registrar un nuevo alumno.
+ */
 import { IsString, IsEmail, IsInt, IsNotEmpty, Min, Max, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EDAD_ALUMNO_MAX, EDAD_ALUMNO_MIN } from '../common/alumno-edad.constants';
 
+/**
+ * Valida datos personales, edad, taller y contraseña del alumno.
+ */
 export class CreateAlumnoDto {
   @IsString()
   @IsNotEmpty()

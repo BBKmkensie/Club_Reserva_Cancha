@@ -1,3 +1,8 @@
+/**
+ * Utilidades de navegación a partir de notificaciones del usuario.
+ * Mapea tipo/título de notificación a rutas de la aplicación.
+ */
+/** Notificación mínima para resolver la ruta de destino */
 export interface NotificacionNav {
   id?: number;
   tipo?: string;
@@ -5,6 +10,9 @@ export interface NotificacionNav {
   refId?: number | null;
 }
 
+/**
+ * Devuelve la ruta de la app asociada a una notificación, o null si no aplica.
+ */
 export function rutaDesdeNotificacion(n: NotificacionNav): string | null {
   const tipo = n.tipo ?? inferirTipo(n.titulo);
   const refId = n.refId ?? undefined;
@@ -30,6 +38,7 @@ export function rutaDesdeNotificacion(n: NotificacionNav): string | null {
   }
 }
 
+/** Infiere el tipo de notificación a partir del título cuando no viene explícito */
 function inferirTipo(titulo?: string): string | undefined {
   if (!titulo) return undefined;
   const t = titulo.toLowerCase();

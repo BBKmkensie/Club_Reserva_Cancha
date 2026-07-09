@@ -1,9 +1,16 @@
+/**
+ * Vista de consulta del historial de salidas programadas.
+ * Muestra destino, profesor responsable, estado y resultado al cierre.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 
+/**
+ * Vista de solo lectura del historial de salidas con estado y resultado.
+ */
 @Component({
   selector: 'app-salidas',
   standalone: true,
@@ -61,10 +68,12 @@ export class SalidasComponent implements OnInit {
 
   salidas: Salida[] = [];
 
+  /** Carga el listado de salidas al iniciar la página. */
   ngOnInit() {
     this.cargar();
   }
 
+  /** Obtiene todas las salidas registradas desde la API. */
   cargar() {
     this.api.getSalidas().subscribe({
       next: (d) => (this.salidas = d),

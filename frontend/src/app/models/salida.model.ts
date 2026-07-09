@@ -1,8 +1,15 @@
+/**
+ * Modelos de salida pedagógica o actividad fuera del establecimiento.
+ * Tipos, estados del flujo directiva–profesor y utilidades de etiquetado en UI.
+ */
 import { Taller } from './taller.model';
 import { Admin } from './admin.model';
 import { Profesor } from './profesor.model';
 
+/** Origen de la salida: asignación directiva o propuesta del profesor. */
 export type OrigenSalida = 'ASIGNACION_DIRECTIVA' | 'PROPUESTA_PROFESOR';
+
+/** Estado del ciclo de aprobación, ejecución y cierre de una salida. */
 export type EstadoSalida =
   | 'PENDIENTE_PROFESOR'
   | 'PENDIENTE_DIRECTIVA'
@@ -10,8 +17,11 @@ export type EstadoSalida =
   | 'EN_CURSO'
   | 'CERRADA'
   | 'RECHAZADA';
+
+/** Resultado final al cerrar una salida ya realizada. */
 export type ResultadoSalida = 'EXITO' | 'FRACASO';
 
+/** Salida con destino, fechas, responsables y relaciones cargadas. */
 export interface Salida {
   id: number;
   destino: string;
@@ -35,6 +45,7 @@ export interface Salida {
   profesor?: Profesor;
 }
 
+/** Payload para crear o proponer una nueva salida. */
 export interface CreateSalidaDto {
   destino: string;
   fecha: string;
@@ -45,6 +56,7 @@ export interface CreateSalidaDto {
   profesorId?: number;
 }
 
+/** Texto descriptivo del flujo de aprobación según origen y estado actual. */
 export function etiquetaFlujoSalida(s: Salida): string {
   if (s.estado === 'RECHAZADA') return 'Rechazada';
   if (s.estado === 'PENDIENTE_PROFESOR') {
@@ -59,6 +71,7 @@ export function etiquetaFlujoSalida(s: Salida): string {
   return `Propuesta de ${s.profesor?.nombre ?? 'profesor'} · aceptada por directiva`;
 }
 
+/** Etiqueta legible del estado operativo de la salida para listados y detalle. */
 export function etiquetaEstadoSalida(s: Salida): string {
   switch (s.estado) {
     case 'PENDIENTE_PROFESOR': return 'Pendiente profesor';

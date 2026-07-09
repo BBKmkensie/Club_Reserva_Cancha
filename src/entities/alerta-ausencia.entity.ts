@@ -1,3 +1,6 @@
+/**
+ * Alertas por acumulación de ausencias de un alumno en un taller. Tabla `alertas_ausencia`.
+ */
 import {
   Entity,
   Column,
@@ -11,6 +14,9 @@ import { Taller } from './taller.entity';
 
 export type EstadoAlertaAusencia = 'PENDIENTE' | 'APODERADO_CONTACTADO' | 'RESUELTO';
 
+/**
+ * Seguimiento del umbral de ausencias y su resolución con apoderado.
+ */
 @Entity('alertas_ausencia')
 export class AlertaAusencia {
   @PrimaryGeneratedColumn()
@@ -33,6 +39,7 @@ export class AlertaAusencia {
   @Column({ name: 'cantidad_ausencias', type: 'int' })
   cantidadAusencias: number;
 
+  /** PENDIENTE, APODERADO_CONTACTADO o RESUELTO. */
   @Column({ type: 'varchar', length: 30, default: 'PENDIENTE' })
   estado: EstadoAlertaAusencia;
 
