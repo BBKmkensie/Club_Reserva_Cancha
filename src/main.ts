@@ -24,7 +24,7 @@ async function bootstrap() {
 
   app.enableCors();
 
-  const frontendDist = join(__dirname, '..', 'frontend', 'dist');
+  const frontendDist = join(__dirname, '..', 'frontend', 'dist', 'reservas-frontend', 'browser');
   app.use(express.static(frontendDist));
 
   setupSwagger(app);

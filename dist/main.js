@@ -47,7 +47,7 @@ async function bootstrap() {
         transform: true,
     }));
     app.enableCors();
-    const frontendDist = (0, path_1.join)(__dirname, '..', 'frontend', 'dist');
+    const frontendDist = (0, path_1.join)(__dirname, '..', 'frontend', 'dist', 'reservas-frontend', 'browser');
     app.use(express.static(frontendDist));
     (0, swagger_setup_1.setupSwagger)(app);
     const expressApp = app.getHttpAdapter().getInstance();
