@@ -51,8 +51,14 @@ async function bootstrap() {
     app.use(express.static(frontendDist));
 
     const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.get('*', (req, res, next) => {
+    expressApp.use((req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return next();
+      }
       if (API_ROUTE_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
+        return next();
+      }
+      if (req.path.includes('.')) {
         return next();
       }
       res.sendFile(join(frontendDist, 'index.html'), (err) => {

@@ -6,7 +6,9 @@ node_modules/
 .env.local
 .env.*.local
 
-# Build outputs
+# Build outputs (generados por npm run build en CI/local)
+dist/
+frontend/dist/
 build/
 out-tsc/
 *.tsbuildinfo
