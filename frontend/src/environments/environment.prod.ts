@@ -5,5 +5,5 @@
 /** Variables de entorno para builds de producción. */
 export const environment = {
   production: true,
-  apiUrl: 'http://localhost:3000'
+  apiUrl: ''
 };

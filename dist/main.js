@@ -35,10 +35,31 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = __importStar(require("express"));
 const path_1 = require("path");
+const fs_1 = require("fs");
 const core_1 = require("@nestjs/core");
 const common_1 = require("@nestjs/common");
 const app_module_1 = require("./app.module");
 const swagger_setup_1 = require("./config/swagger.setup");
+const API_ROUTE_PREFIXES = [
+    '/auth',
+    '/admin',
+    '/taller',
+    '/alumno',
+    '/profesor',
+    '/reserva',
+    '/salida',
+    '/inscripcion-salida',
+    '/inscripcion-taller',
+    '/periodo',
+    '/asistencia',
+    '/ficha-alumno',
+    '/notificacion',
+    '/apoderado',
+    '/reportes',
+    '/franja-cancha',
+    '/health',
+    '/api',
+];
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.useGlobalPipes(new common_1.ValidationPipe({
@@ -48,16 +69,30 @@ async function bootstrap() {
     }));
     app.enableCors();
     const frontendDist = (0, path_1.join)(__dirname, '..', 'frontend', 'dist', 'reservas-frontend', 'browser');
-    app.use(express.static(frontendDist));
+    if ((0, fs_1.existsSync)(frontendDist)) {
+        app.use(express.static(frontendDist));
+        const expressApp = app.getHttpAdapter().getInstance();
+        expressApp.get('*', (req, res, next) => {
+            if (API_ROUTE_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
+                return next();
+            }
+            res.sendFile((0, path_1.join)(frontendDist, 'index.html'), (err) => {
+                if (err)
+                    next(err);
+            });
+        });
+    }
+    else {
+        console.warn(`Frontend no encontrado en ${frontendDist}; solo API disponible.`);
+    }
     (0, swagger_setup_1.setupSwagger)(app);
-    const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.get('*', (req, res) => {
-        res.sendFile((0, path_1.join)(frontendDist, 'index.html'));
-    });
-    const port = process.env.PORT ?? 3000;
-    await app.listen(port);
-    console.log(`🚀 Aplicación corriendo en: http://localhost:${port}`);
-    console.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
+    const port = parseInt(process.env.PORT ?? '', 10);
+    if (!Number.isFinite(port)) {
+        throw new Error('La variable de entorno PORT no está definida.');
+    }
+    await app.listen(port, '0.0.0.0');
+    console.log(`Aplicación corriendo en el puerto ${port}`);
+    console.log('Swagger UI: /api/docs');
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

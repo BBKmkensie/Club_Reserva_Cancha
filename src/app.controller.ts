@@ -9,8 +9,8 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  /** Devuelve el mensaje de bienvenida de la API. */
-  @Get()
+  /** Endpoint de salud para monitoreo y Azure App Service. */
+  @Get('health')
   getHello(): string {
     return this.appService.getHello();
   }
