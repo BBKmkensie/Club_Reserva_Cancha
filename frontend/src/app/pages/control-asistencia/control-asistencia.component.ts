@@ -1,6 +1,12 @@
 /**
- * Control de asistencia diaria del taller.
- * Permite abrir sesión, marcar presente/tarde/ausente y generar reporte del docente.
+ * =============================================================================
+ * app/pages/control-asistencia/control-asistencia.component.ts — Control de asistencia
+ * =============================================================================
+ * Sesión diaria de asistencia del taller: abrir, marcar estados, cerrar y reporte.
+ * Rol: profesor del taller o coordinación — canGestionarAsistencia().
+ * Endpoints ApiService: getTaller, getSesionActiva, getHistorialSesiones,
+ * abrirSesionAsistencia, actualizarAsistencia, cerrarSesionAsistencia, getReporteActividad
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -8,20 +14,17 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
-import { descargarTextoReporte, textoReporteActividad } from '../../shared/utils/reporte-actividad.util';
+import { descargarPdfReporteActividad } from '../../shared/utils/reporte-pdf.util';
 
 interface RegistroUI {
   alumnoId: number;
   nombre: string;
   rut: string;
-  estado: 'PRESENTE' | 'AUSENTE' | 'TARDE';
+  estado: 'PRESENTE' | 'AUSENTE';
   observacion: string;
   expandido: boolean;
 }
 
-/**
- * Componente de asistencia: sesión del día, lista de alumnos y cierre con observaciones.
- */
 @Component({
   selector: 'app-control-asistencia',
   standalone: true,
@@ -31,7 +34,7 @@ interface RegistroUI {
       <div class="bg-surface rounded-xl shadow-lg p-6">
         <h1 class="text-3xl font-bold text-ink mb-2">Control de Asistencia</h1>
         <p class="text-ink-muted">
-          Abre una sesión, marca asistencia (presente, tarde o ausente) y registra observaciones por alumno.
+          Abre una sesión, marca asistencia (presente o ausente) y registra observaciones por alumno.
         </p>
       </div>
 
@@ -69,8 +72,6 @@ interface RegistroUI {
                 <p class="text-sm text-ink-muted">
                   <span class="text-green-700 font-semibold">{{ contarPresentes() }} presentes</span>
                   ·
-                  <span class="text-amber-700 font-semibold">{{ contarTardes() }} tarde</span>
-                  ·
                   <span class="text-red-700 font-semibold">{{ contarAusentes() }} ausentes</span>
                   · {{ registros.length }} alumnos
                 </p>
@@ -81,16 +82,12 @@ interface RegistroUI {
               </div>
             </div>
             <p class="text-xs text-ink-muted mb-3">
-              Toca el círculo para cambiar estado: presente → tarde → ausente. Usa «Obs.» para notas por alumno.
+              Toca el círculo para cambiar: presente ↔ ausente. Usa «Obs.» para notas por alumno.
             </p>
             <div class="flex flex-wrap gap-4 text-xs text-ink-muted mb-4">
               <span class="inline-flex items-center gap-1.5">
                 <span class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[10px]">✓</span>
                 Presente
-              </span>
-              <span class="inline-flex items-center gap-1.5">
-                <span class="w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center text-white text-[10px] font-bold">T</span>
-                Tarde
               </span>
               <span class="inline-flex items-center gap-1.5">
                 <span class="w-6 h-6 rounded-full border-2 border-red-400 bg-surface"></span>
@@ -115,14 +112,11 @@ interface RegistroUI {
                             [attr.aria-label]="etiquetaEstado(r.estado)"
                             class="asistencia-circulo shrink-0"
                             [class.asistencia-circulo--presente]="r.estado === 'PRESENTE'"
-                            [class.asistencia-circulo--tarde]="r.estado === 'TARDE'"
                             [class.asistencia-circulo--ausente]="r.estado === 'AUSENTE'">
                       @if (r.estado === 'PRESENTE') {
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                         </svg>
-                      } @else if (r.estado === 'TARDE') {
-                        <span class="text-sm font-bold">T</span>
                       }
                     </button>
                   </div>
@@ -181,7 +175,6 @@ interface RegistroUI {
                   <span>{{ h.fecha | date:'dd/MM/yyyy' }} — {{ h.estado }}</span>
                   <span class="text-ink-muted">
                     {{ contarEstado(h, 'PRESENTE') }} presentes,
-                    {{ contarEstado(h, 'TARDE') }} tarde,
                     {{ contarEstado(h, 'AUSENTE') }} ausentes
                   </span>
                 </li>
@@ -221,17 +214,8 @@ interface RegistroUI {
       border-color: #f87171;
       box-shadow: 0 1px 4px rgba(239, 68, 68, 0.12);
     }
-    .asistencia-circulo--tarde {
-      background-color: #fbbf24;
-      border-color: #d97706;
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.35);
-    }
     .fila-presente {
       background-color: rgba(16, 185, 129, 0.08);
-    }
-    .fila-tarde {
-      background-color: rgba(251, 191, 36, 0.1);
     }
     .fila-ausente {
       background-color: rgba(239, 68, 68, 0.06);
@@ -239,19 +223,32 @@ interface RegistroUI {
   `],
 })
 export class ControlAsistenciaComponent implements OnInit {
+  /** Cliente HTTP: sesión activa, guardar/cerrar, historial, PDF. */
   private api = inject(ApiService);
+  /** Profesor logueado → tallerId y profesorId de sesión. */
   auth = inject(AuthRoleService);
+  /** Enmascara nombre/RUT en la lista de asistencia. */
   priv = inject(AlumnoPrivacidadService);
 
+  /** Taller del profesor (desde AuthRoleService). */
   tallerId: number | null = null;
+  /** Id del profesor logueado. */
   profesorId: number | null = null;
+  /** Nombre del taller para el encabezado. */
   nombreTaller = '';
+  /** Sesión abierta del día (null si aún no se abrió). */
   sesion: any = null;
+  /** Filas UI de asistencia (alumno + estado + observación). */
   registros: RegistroUI[] = [];
+  /** Sesiones cerradas previas. */
   historial: any[] = [];
+  /** Observación general de la sesión al cerrar. */
   observacionesSesion = '';
+  /** Mensaje de error de operaciones. */
   error = '';
+  /** true mientras se abre/guarda/cierra sesión. */
   cargando = false;
+  /** Fecha mostrada como «hoy» en la UI. */
   fechaHoy = new Date();
 
   /** Inicializa taller del profesor y carga sesión activa e historial. */
@@ -268,6 +265,7 @@ export class ControlAsistenciaComponent implements OnInit {
     }
   }
 
+  /** Consulta la sesión de asistencia abierta del taller, si existe. */
   cargarSesionActiva() {
     if (!this.tallerId) return;
     this.api.getSesionActiva(this.tallerId).subscribe({
@@ -279,6 +277,7 @@ export class ControlAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Carga el historial de sesiones de asistencia cerradas del taller. */
   cargarHistorial() {
     if (!this.tallerId) return;
     this.api.getHistorialSesiones(this.tallerId).subscribe({
@@ -287,15 +286,22 @@ export class ControlAsistenciaComponent implements OnInit {
     });
   }
 
+  /** Convierte registros del API a filas UI (TARDE histórica → PRESENTE). */
   mapearRegistros(sesion: any) {
-    this.registros = (sesion.registros ?? []).map((r: any) => ({
-      alumnoId: r.alumnoId,
-      nombre: r.alumno?.nombre ?? 'Alumno',
-      rut: r.alumno?.rut ?? '',
-      estado: (['PRESENTE', 'AUSENTE', 'TARDE'].includes(r.estado) ? r.estado : 'PRESENTE') as RegistroUI['estado'],
-      observacion: r.observacion ?? '',
-      expandido: !!r.observacion,
-    }));
+    this.registros = (sesion.registros ?? []).map((r: any) => {
+      // Datos históricos con TARDE se tratan como presente al editar
+      const estadoRaw = String(r.estado ?? '').toUpperCase();
+      const estado: RegistroUI['estado'] =
+        estadoRaw === 'AUSENTE' ? 'AUSENTE' : 'PRESENTE';
+      return {
+        alumnoId: r.alumnoId,
+        nombre: r.alumno?.nombre ?? 'Alumno',
+        rut: r.alumno?.rut ?? '',
+        estado,
+        observacion: r.observacion ?? '',
+        expandido: !!r.observacion,
+      };
+    });
     this.observacionesSesion = sesion.observaciones ?? '';
   }
 
@@ -375,43 +381,31 @@ export class ControlAsistenciaComponent implements OnInit {
     return this.registros.filter((r) => r.estado === 'AUSENTE').length;
   }
 
-  contarTardes(): number {
-    return this.registros.filter((r) => r.estado === 'TARDE').length;
-  }
-
-  /** Alterna el estado del alumno: presente → tarde → ausente. */
+  /** Alterna el estado del alumno: presente ↔ ausente. */
   ciclarEstado(r: RegistroUI) {
-    const orden: RegistroUI['estado'][] = ['PRESENTE', 'TARDE', 'AUSENTE'];
-    const idx = orden.indexOf(r.estado);
-    r.estado = orden[(idx + 1) % orden.length];
+    r.estado = r.estado === 'PRESENTE' ? 'AUSENTE' : 'PRESENTE';
   }
 
   claseFila(estado: RegistroUI['estado']): string {
-    if (estado === 'TARDE') return 'fila-tarde';
-    if (estado === 'AUSENTE') return 'fila-ausente';
-    return 'fila-presente';
+    return estado === 'AUSENTE' ? 'fila-ausente' : 'fila-presente';
   }
 
   etiquetaEstado(estado: RegistroUI['estado']): string {
-    const map: Record<RegistroUI['estado'], string> = {
-      PRESENTE: 'Presente, tocar para marcar tarde',
-      TARDE: 'Tarde, tocar para marcar ausente',
-      AUSENTE: 'Ausente, tocar para marcar presente',
-    };
-    return map[estado];
+    return estado === 'PRESENTE'
+      ? 'Presente, tocar para marcar ausente'
+      : 'Ausente, tocar para marcar presente';
   }
 
   marcarTodosPresentes() {
     this.registros.forEach((r) => { r.estado = 'PRESENTE'; });
   }
 
-  /** Genera y descarga el reporte de actividad del taller en formato texto. */
+  /** Genera y descarga el reporte de actividad del taller en PDF. */
   generarReporteFinal() {
     if (!this.tallerId) return;
     this.api.getReporteActividad(this.tallerId).subscribe({
       next: (r) => {
-        const txt = textoReporteActividad(r, 'REPORTE FINAL DEL DOCENTE', (al) => this.priv.alumno(al));
-        descargarTextoReporte(txt, `reporte-docente-${r.actividad.tipo}.txt`);
+        descargarPdfReporteActividad(r, 'REPORTE FINAL DEL DOCENTE', (al) => this.priv.alumno(al));
       },
       error: (e) => alert(e?.error?.message || 'No se pudo generar el reporte'),
     });

@@ -1,6 +1,15 @@
 /**
- * Pantalla de inicio de sesión unificada.
- * Permite autenticarse con RUT, correo o nombre de profesor; redirige según el tipo de cuenta.
+ * =============================================================================
+ * app/pages/login/login.component.ts — Inicio de sesión
+ * =============================================================================
+ * Pantalla pública de autenticación unificada.
+ * Rol: cualquier usuario (admin, directiva, profesor, alumno, apoderado).
+ * Endpoints ApiService: loginUnified(usuario, password)
+ *
+ * Tras login exitoso guarda sesión en AuthRoleService y redirige:
+ * - Apoderado → /portal-apoderado
+ * - Resto → /dashboard
+ * =============================================================================
  */
 import { Component, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -11,9 +20,6 @@ import { ApiService } from '../../services/api.service';
 import { LogoNautaComponent } from '../../shared/components/logo-nauta/logo-nauta.component';
 import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme-toggle.component';
 
-/**
- * Componente de login: formulario de credenciales y redirección post-autenticación.
- */
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -62,13 +68,20 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme
   styles: [],
 })
 export class LoginComponent implements OnInit {
+  /** Sesión actual (token, rol, redirecciones). */
   private auth = inject(AuthRoleService);
+  /** Cliente HTTP hacia el backend NestJS. */
   private api = inject(ApiService);
+  /** Navegación entre pantallas tras login o si ya hay sesión. */
   private router = inject(Router);
 
+  /** Campo del formulario: RUT, correo o nombre de profesor. */
   usuario = '';
+  /** Campo del formulario: contraseña en texto (se envía por HTTPS al API). */
   password = '';
+  /** Mensaje de error visible bajo el formulario (credenciales inválidas, etc.). */
   error = '';
+  /** true mientras la petición loginUnified está en curso (deshabilita el botón). */
   cargando = false;
 
   /** Redirige al dashboard o portal si ya hay sesión activa. */

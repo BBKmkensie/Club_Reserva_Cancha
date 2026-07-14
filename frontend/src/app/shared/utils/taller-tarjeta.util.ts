@@ -1,13 +1,23 @@
 /**
- * Estilos visuales (gradiente, icono y descripción) para tarjetas de taller en el dashboard.
+ * =============================================================================
+ * app/shared/utils/taller-tarjeta.util.ts — Estilos visuales de tarjetas de taller
+ * =============================================================================
+ * Resuelve gradientes CSS, emojis e descripciones para las tarjetas de taller
+ * en el dashboard. Usa un catálogo fijo por tipo y una paleta de respaldo
+ * determinística para talleres nuevos.
+ *
+ * Exporta: EstiloTarjetaTaller, normalizarTipoTaller(), estiloTarjetaTaller().
+ * =============================================================================
  */
-/** Apariencia de una tarjeta de taller en la interfaz */
+
+/** Apariencia visual completa de una tarjeta de taller en la interfaz. */
 export interface EstiloTarjetaTaller {
   classes: string;
   icon: string;
   descripcion: string;
 }
 
+/** Descripciones legibles por tipo de taller normalizado. */
 const DESCRIPCIONES: Record<string, string> = {
   atletismo: 'Gestiona el taller de atletismo',
   basquet: 'Gestiona el taller de básquet',
@@ -36,7 +46,7 @@ const DESCRIPCIONES: Record<string, string> = {
   cocina: 'Gestiona el taller de cocina',
 };
 
-/** Colores e iconos únicos por taller (clave normalizada sin acentos) */
+/** Colores e iconos únicos por tipo de taller (clave normalizada sin acentos). */
 const ESTILOS: Record<string, { classes: string; icon: string }> = {
   atletismo: { classes: 'bg-gradient-to-br from-orange-500 to-orange-700', icon: '🏃' },
   basquet: { classes: 'bg-gradient-to-br from-red-500 to-red-700', icon: '🏀' },
@@ -65,7 +75,7 @@ const ESTILOS: Record<string, { classes: string; icon: string }> = {
   cocina: { classes: 'bg-gradient-to-br from-amber-500 to-orange-600', icon: '👨‍🍳' },
 };
 
-/** Paleta de respaldo para talleres nuevos sin entrada explícita */
+/** Paleta de respaldo para talleres nuevos sin entrada explícita en el catálogo. */
 const PALETA_RESPALDO: { classes: string; icon: string }[] = [
   { classes: 'bg-gradient-to-br from-slate-500 to-slate-700', icon: '⭐' },
   { classes: 'bg-gradient-to-br from-blue-600 to-indigo-800', icon: '🌟' },
@@ -77,7 +87,10 @@ const PALETA_RESPALDO: { classes: string; icon: string }[] = [
   { classes: 'bg-gradient-to-br from-lime-600 to-green-800', icon: '🍀' },
 ];
 
-/** Normaliza el nombre del tipo de taller (minúsculas, sin acentos ni separadores) */
+/**
+ * Normaliza el nombre del tipo de taller para usarlo como clave de búsqueda:
+ * minúsculas, sin acentos ni separadores (ej. «Tenis de Mesa» → «tenisdemesa»).
+ */
 export function normalizarTipoTaller(s: string): string {
   return (s || '')
     .toLowerCase()
@@ -86,6 +99,7 @@ export function normalizarTipoTaller(s: string): string {
     .replace(/[^a-z0-9]+/g, '');
 }
 
+/** Genera un hash numérico determinístico a partir de una cadena. */
 function hashTipo(clave: string): number {
   let h = 0;
   for (let i = 0; i < clave.length; i++) {
@@ -95,8 +109,9 @@ function hashTipo(clave: string): number {
 }
 
 /**
- * Resuelve clases CSS, emoji e descripción para la tarjeta de un taller.
- * Usa paleta de respaldo determinística si el tipo no está catalogado.
+ * Resuelve clases CSS de gradiente, emoji e descripción para la tarjeta de un taller.
+ * Si el tipo no está catalogado, usa una entrada de la paleta de respaldo
+ * seleccionada de forma determinística por hash.
  */
 export function estiloTarjetaTaller(tipo: string): EstiloTarjetaTaller {
   const clave = normalizarTipoTaller(tipo);

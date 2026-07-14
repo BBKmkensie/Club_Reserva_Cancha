@@ -1,6 +1,15 @@
 /**
- * Enlaces de navegación según el rol del usuario autenticado.
- * Se adapta al modo navbar (horizontal) o sidebar (vertical).
+ * =============================================================================
+ * app/shared/components/nav-links/nav-links.component.ts — Enlaces de navegación
+ * =============================================================================
+ * Genera y muestra los enlaces del menú principal según el rol y permisos del
+ * usuario autenticado. Se usa dentro del navbar (horizontal) y del sidebar
+ * (vertical).
+ *
+ * Inputs: mode ('navbar' | 'sidebar').
+ * Outputs: navigated (emite al elegir un enlace en modo sidebar).
+ * Métodos clave: ngOnInit(), navigate().
+ * =============================================================================
  */
 import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -13,9 +22,6 @@ export interface NavLinkItem {
   label: string;
 }
 
-/**
- * NavLinks: construye y muestra rutas permitidas según permisos y contexto del alumno.
- */
 @Component({
   selector: 'app-nav-links',
   standalone: true,
@@ -59,29 +65,42 @@ export interface NavLinkItem {
     }
   `],
 })
-/**
- * Genera dinámicamente el menú de navegación principal según el rol y las inscripciones.
- */
 export class NavLinksComponent implements OnInit {
+  /** Disposición: horizontal (navbar) o lista vertical (sidebar). */
   @Input() mode: 'navbar' | 'sidebar' = 'navbar';
+  /** Emite al hacer clic en un enlace (el sidebar móvil cierra el panel). */
   @Output() navigated = new EventEmitter<void>();
 
+  /** Permisos del usuario → qué rutas aparecen en el menú. */
   private auth = inject(AuthRoleService);
+  /** Verifica inscripciones aceptadas para añadir «Mis salidas». */
   private api = inject(ApiService);
+  /** Enlaces visibles ya filtrados por rol (se reconstruyen en buildLinks). */
   links: NavLinkItem[] = [];
+  /** Flag interno: alumno con inscripción aceptada. */
   private puedeVerMisSalidas = false;
 
-  /** Arma los enlaces iniciales y consulta si el alumno puede ver «Mis salidas». */
+  /**
+   * Construye la lista inicial de enlaces según permisos y consulta al backend
+   * si el alumno tiene inscripciones aceptadas (para mostrar «Mis salidas»).
+   */
   ngOnInit(): void {
     this.buildLinks();
     this.actualizarMisSalidas();
   }
 
-  /** Notifica al padre que el usuario eligió una ruta (útil para cerrar el sidebar móvil). */
+  /**
+   * Notifica al componente padre que el usuario eligió una ruta.
+   * En modo sidebar, el padre cierra el panel móvil al recibir este evento.
+   */
   navigate(): void {
     this.navigated.emit();
   }
 
+  /**
+   * Pregunta al API si el alumno tiene talleres aceptados y, según eso,
+   * incluye o no el enlace «Mis salidas» al reconstruir el menú.
+   */
   private actualizarMisSalidas(): void {
     if (!this.auth.canInscribirseTalleres()) {
       this.buildLinks();
@@ -89,23 +108,25 @@ export class NavLinksComponent implements OnInit {
     }
     const alumnoId = this.auth.currentUserId();
     if (!alumnoId) {
-      this.puedeVerMisSalidas = !!this.auth.currentTallerId();
+      this.puedeVerMisSalidas = false;
       this.buildLinks();
       return;
     }
     this.api.getInscripcionesTallerPorAlumno(alumnoId).subscribe({
       next: (inscs) => {
-        const aceptadas = (inscs ?? []).some((i: { estado: string }) => i.estado === 'ACEPTADO');
-        this.puedeVerMisSalidas = aceptadas || !!this.auth.currentTallerId();
+        this.puedeVerMisSalidas = (inscs ?? []).some(
+          (i: { estado: string }) => String(i.estado).toUpperCase() === 'ACEPTADO',
+        );
         this.buildLinks();
       },
       error: () => {
-        this.puedeVerMisSalidas = !!this.auth.currentTallerId();
+        this.puedeVerMisSalidas = false;
         this.buildLinks();
       },
     });
   }
 
+  /** Arma el arreglo de enlaces visibles según el rol y los permisos del usuario. */
   private buildLinks(): void {
     const items: NavLinkItem[] = [];
 

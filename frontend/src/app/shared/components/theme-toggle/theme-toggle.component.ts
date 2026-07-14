@@ -1,14 +1,18 @@
 /**
- * Conmutador de tema claro/oscuro.
- * Menú desplegable con la preferencia actual del usuario.
+ * =============================================================================
+ * app/shared/components/theme-toggle/theme-toggle.component.ts — Conmutador de tema
+ * =============================================================================
+ * Botón con menú desplegable para elegir aspecto claro u oscuro. Delega la
+ * persistencia y aplicación del tema al ThemeService. Se usa en navbar,
+ * sidebar móvil y pantalla de login.
+ *
+ * Métodos clave: toggleMenu(), select(), onDocumentClick().
+ * =============================================================================
  */
 import { Component, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ThemeMode, ThemeService } from '../../services/theme.service';
 
-/**
- * ThemeToggle: botón con menú para elegir aspecto claro u oscuro.
- */
 @Component({
   selector: 'app-theme-toggle',
   standalone: true,
@@ -56,29 +60,34 @@ import { ThemeMode, ThemeService } from '../../services/theme.service';
     </div>
   `,
 })
-/**
- * Controla la apertura del menú y delega el cambio de tema al ThemeService.
- */
 export class ThemeToggleComponent {
+  /** Servicio que persiste y aplica el tema claro/oscuro en toda la app. */
   theme = inject(ThemeService);
+  /** true = menú desplegable de opciones visible. */
   menuOpen = false;
 
+  /** Opciones del menú: modo técnico + etiqueta en español. */
   readonly options: { mode: ThemeMode; label: string }[] = [
     { mode: 'light', label: 'Claro' },
     { mode: 'dark', label: 'Oscuro' },
   ];
 
-  /** Abre o cierra el menú de selección de aspecto. */
+  /**
+   * Abre o cierra el menú desplegable de selección de aspecto.
+   */
   toggleMenu(): void {
     this.menuOpen = !this.menuOpen;
   }
 
-  /** Aplica el modo elegido y cierra el menú. */
+  /**
+   * Aplica el modo de tema elegido (claro u oscuro) y cierra el menú.
+   */
   select(mode: ThemeMode): void {
     this.theme.setMode(mode);
     this.menuOpen = false;
   }
 
+  /** Cierra el menú si el usuario hace clic fuera del componente. */
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;

@@ -1,10 +1,17 @@
 /**
- * Reserva y gestión de la cancha principal.
- * Muestra disponibilidad por fecha, franjas semanales (directiva) y listado de reservas.
+ * =============================================================================
+ * app/pages/reservas/reservas.component.ts — Reserva de cancha
+ * =============================================================================
+ * Disponibilidad por fecha, reserva de slots, franjas semanales (directiva) y listado.
+ * Rol: reserva canReservarCancha(); franjas canGestionarFranjasCancha().
+ * Endpoints ApiService: getTalleres, getFranjasCancha, actualizarFranjasCancha,
+ * getDisponibilidadCancha, createReserva, getReservas, deleteReserva
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Reserva } from '../../models/reserva.model';
@@ -78,10 +85,13 @@ interface FranjaConfig {
 
       <section class="bg-surface rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-ink mb-4">Reservar horario</h2>
+        <p class="text-sm text-ink-muted mb-4">
+          Selecciona uno o más horarios disponibles y luego confirma la reserva.
+        </p>
         <div class="flex flex-col lg:flex-row gap-6 mb-6">
           <div class="w-full lg:w-auto shrink-0">
             <span class="block text-sm text-ink-secondary font-medium mb-2">Fecha</span>
-            <app-fecha-picker [(ngModel)]="fechaSeleccionada" (ngModelChange)="cargarDisponibilidad()" />
+            <app-fecha-picker [(ngModel)]="fechaSeleccionada" (ngModelChange)="onFechaChange()" />
           </div>
           <div class="flex flex-wrap gap-4 items-end flex-1">
           @if (auth.isSuperAdmin() || auth.isDirectiva()) {
@@ -109,11 +119,15 @@ interface FranjaConfig {
             @for (slot of slots; track slot.horaInicio) {
               <button type="button"
                       [disabled]="slot.estado !== 'disponible' || reservando"
-                      (click)="reservarSlot(slot)"
+                      (click)="toggleSlot(slot)"
                       class="p-3 rounded-lg border text-left transition"
-                      [class.bg-green-50]="slot.estado === 'disponible'"
-                      [class.border-green-300]="slot.estado === 'disponible'"
-                      [class.hover:bg-green-100]="slot.estado === 'disponible'"
+                      [class.bg-green-50]="slot.estado === 'disponible' && !estaSeleccionado(slot)"
+                      [class.border-green-300]="slot.estado === 'disponible' && !estaSeleccionado(slot)"
+                      [class.hover:bg-green-100]="slot.estado === 'disponible' && !estaSeleccionado(slot)"
+                      [class.bg-primary-100]="estaSeleccionado(slot)"
+                      [class.border-primary-500]="estaSeleccionado(slot)"
+                      [class.ring-2]="estaSeleccionado(slot)"
+                      [class.ring-primary-400]="estaSeleccionado(slot)"
                       [class.cursor-pointer]="slot.estado === 'disponible'"
                       [class.bg-red-50]="slot.estado === 'ocupada'"
                       [class.border-red-300]="slot.estado === 'ocupada'"
@@ -127,7 +141,9 @@ interface FranjaConfig {
                 @if (slot.duracionMinutos && slot.duracionMinutos > CANCHA_DURACION_SLOT_MIN) {
                   <p class="text-xs text-blue-700">{{ etiquetaDuracion(slot.duracionMinutos) }}</p>
                 }
-                @if (slot.estado === 'disponible') {
+                @if (estaSeleccionado(slot)) {
+                  <p class="text-xs text-primary-700 mt-1 font-medium">Seleccionado</p>
+                } @else if (slot.estado === 'disponible') {
                   <p class="text-xs text-green-700 mt-1">Disponible</p>
                 } @else if (slot.estado === 'ocupada') {
                   <p class="text-xs text-red-700 mt-1">Ocupada</p>
@@ -137,6 +153,30 @@ interface FranjaConfig {
                 }
               </button>
             }
+          </div>
+        }
+
+        @if (slotsSeleccionados.length > 0) {
+          <div class="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border border-primary-200 bg-primary-50">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-ink">
+                {{ slotsSeleccionados.length }}
+                {{ slotsSeleccionados.length === 1 ? 'horario seleccionado' : 'horarios seleccionados' }}
+              </p>
+              <p class="text-xs text-ink-muted mt-0.5 break-words">
+                {{ resumenSeleccion() }}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 shrink-0">
+              <button type="button" (click)="limpiarSeleccion()" [disabled]="reservando"
+                      class="px-4 py-2 rounded-lg border border-line-strong text-ink-secondary hover:bg-page text-sm disabled:opacity-50">
+                Limpiar
+              </button>
+              <button type="button" (click)="confirmarReservas()" [disabled]="reservando"
+                      class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium disabled:opacity-50">
+                {{ reservando ? 'Reservando...' : 'Confirmar reserva' }}
+              </button>
+            </div>
           </div>
         }
 
@@ -258,7 +298,9 @@ interface FranjaConfig {
   styles: []
 })
 export class ReservasComponent implements OnInit {
+  /** Permisos: reservar, gestionar franjas, cancelar. */
   auth = inject(AuthRoleService);
+  /** Cliente HTTP: reservas, disponibilidad y franjas. */
   private api = inject(ApiService);
 
   readonly DIAS_SEMANA = DIAS_SEMANA;
@@ -272,22 +314,45 @@ export class ReservasComponent implements OnInit {
   readonly CANCHA_HORA_FIN = CANCHA_HORA_FIN;
   readonly ESPACIO = ESPACIO;
 
+  /** Incrementar fuerza recarga de app-cancha-semana-vista. */
   versionSemana = 0;
 
+  /** Historial de reservas existentes. */
   reservas: Reserva[] = [];
+  /** Talleres para asociar la reserva. */
   talleres: Taller[] = [];
+  /** Slots del día seleccionado (disponible/ocupada/cerrada). */
   slots: SlotCancha[] = [];
+  /** Configuración semanal de franjas (solo coordinación). */
   franjasConfig: FranjaConfig[] = [];
+  /** true si el usuario cambió franjas y aún no guardó. */
   franjasModificadas = false;
+  /** true mientras se persisten las franjas. */
   guardandoFranjas = false;
 
+  /** Día ISO (YYYY-MM-DD) cuya disponibilidad se consulta. */
   fechaSeleccionada = new Date().toISOString().split('T')[0];
+  /** Taller asociado a la reserva (fijo si es profesor). */
   tallerReservaId: number | null = null;
+  /** Etiqueta del taller del profesor en la UI. */
   nombreTallerProfesor = '';
+  /** true mientras se pide disponibilidad del día. */
   cargandoSlots = false;
+  /** true mientras se confirman las reservas seleccionadas. */
   reservando = false;
+  /** Error al crear reserva. */
   errorReserva = '';
+  /** Claves horaInicio de slots elegidos (aún no confirmados). */
+  slotsSeleccionadosKeys = new Set<string>();
 
+  /** Slots disponibles marcados por el usuario. */
+  get slotsSeleccionados(): SlotCancha[] {
+    return this.slots.filter(
+      (s) => s.estado === 'disponible' && this.slotsSeleccionadosKeys.has(s.horaInicio),
+    );
+  }
+
+  /** Notifica a la vista semanal que debe recargar. */
   private refrescarSemana(): void {
     this.versionSemana++;
   }
@@ -382,6 +447,7 @@ export class ReservasComponent implements OnInit {
     return `${minutos} min`;
   }
 
+  /** Obtiene la configuración semanal de franjas horarias de la cancha. */
   cargarFranjas() {
     this.api.getFranjasCancha(ESPACIO).subscribe({
       next: (data) => {
@@ -436,54 +502,111 @@ export class ReservasComponent implements OnInit {
     this.api.getDisponibilidadCancha(this.fechaSeleccionada, ESPACIO).subscribe({
       next: (data) => {
         this.slots = data;
+        // Quitar de la selección horarios que ya no están disponibles
+        const disponibles = new Set(
+          this.slots.filter((s) => s.estado === 'disponible').map((s) => s.horaInicio),
+        );
+        this.slotsSeleccionadosKeys = new Set(
+          [...this.slotsSeleccionadosKeys].filter((k) => disponibles.has(k)),
+        );
         this.cargandoSlots = false;
       },
       error: () => {
         this.cargandoSlots = false;
         this.slots = [];
+        this.slotsSeleccionadosKeys = new Set();
       }
     });
   }
 
-  /** Crea una reserva de cancha para el slot y taller seleccionados. */
-  reservarSlot(slot: SlotCancha) {
+  onFechaChange() {
+    this.limpiarSeleccion();
+    this.cargarDisponibilidad();
+  }
+
+  estaSeleccionado(slot: SlotCancha): boolean {
+    return this.slotsSeleccionadosKeys.has(slot.horaInicio);
+  }
+
+  /** Marca o desmarca un horario disponible (sin confirmar aún). */
+  toggleSlot(slot: SlotCancha) {
+    if (slot.estado !== 'disponible' || this.reservando) return;
+    this.errorReserva = '';
+    const next = new Set(this.slotsSeleccionadosKeys);
+    if (next.has(slot.horaInicio)) next.delete(slot.horaInicio);
+    else next.add(slot.horaInicio);
+    this.slotsSeleccionadosKeys = next;
+  }
+
+  limpiarSeleccion() {
+    this.slotsSeleccionadosKeys = new Set();
+    this.errorReserva = '';
+  }
+
+  resumenSeleccion(): string {
+    return this.slotsSeleccionados
+      .slice()
+      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))
+      .map((s) => `${s.horaInicio}–${s.horaFin}`)
+      .join(', ');
+  }
+
+  /** Confirma y crea una reserva por cada horario seleccionado. */
+  confirmarReservas() {
+    const seleccion = this.slotsSeleccionados;
+    if (!seleccion.length) return;
+
     const tallerId = this.tallerReservaId;
     if (!tallerId) {
       this.errorReserva = 'Debe seleccionar un taller para reservar.';
       return;
     }
-    if (!confirm(`¿Reservar la cancha el ${this.fechaSeleccionada} de ${slot.horaInicio} a ${slot.horaFin}?`)) {
+
+    const resumen = this.resumenSeleccion();
+    const n = seleccion.length;
+    if (!confirm(
+      `¿Confirmar ${n === 1 ? 'la reserva' : `las ${n} reservas`} del ${this.fechaSeleccionada}?\n\n${resumen}`,
+    )) {
       return;
     }
 
     this.reservando = true;
     this.errorReserva = '';
-    const data: any = {
-      espacio: ESPACIO,
-      fecha: this.fechaSeleccionada,
-      horaInicio: slot.horaInicio,
-      horaFin: slot.horaFin,
-      tallerId,
-    };
-    if (this.auth.isProfesor() && this.auth.currentUserId()) {
-      data.profesorId = this.auth.currentUserId();
-    }
 
-    this.api.createReserva(data).subscribe({
+    const peticiones = seleccion.map((slot) => {
+      const data: any = {
+        espacio: ESPACIO,
+        fecha: this.fechaSeleccionada,
+        horaInicio: slot.horaInicio,
+        horaFin: slot.horaFin,
+        tallerId,
+      };
+      if (this.auth.isProfesor() && this.auth.currentUserId()) {
+        data.profesorId = this.auth.currentUserId();
+      }
+      return this.api.createReserva(data);
+    });
+
+    forkJoin(peticiones).subscribe({
       next: () => {
         this.reservando = false;
+        this.limpiarSeleccion();
         this.loadReservas();
         this.cargarDisponibilidad();
         this.refrescarSemana();
+        alert(n === 1 ? 'Reserva creada correctamente.' : `${n} reservas creadas correctamente.`);
       },
       error: (e) => {
         this.reservando = false;
-        this.errorReserva = e?.error?.message || 'No se pudo crear la reserva.';
+        this.errorReserva = e?.error?.message || 'No se pudo crear alguna de las reservas.';
+        this.loadReservas();
         this.cargarDisponibilidad();
+        this.refrescarSemana();
       }
     });
   }
 
+  /** Recarga el listado de reservas existentes desde la API. */
   loadReservas() {
     this.api.getReservas().subscribe({
       next: (data) => this.reservas = data,

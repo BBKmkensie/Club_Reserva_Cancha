@@ -1,6 +1,12 @@
 /**
- * Reportes de asistencia y gestión de alertas por ausencias.
- * Permite revisar estadísticas, contactar apoderados y configurar umbrales por taller.
+ * =============================================================================
+ * app/pages/reportes-asistencia/reportes-asistencia.component.ts — Reportes asistencia
+ * =============================================================================
+ * Estadísticas de asistencia, alertas por ausencias recurrentes y contacto apoderados.
+ * Rol: coordinación o profesor — canVerReportesAsistencia().
+ * Endpoints ApiService: getTalleres, getReporteAsistencia, getAlertasGestion,
+ * actualizarUmbralAusencias, contactarApoderado, resolverAlerta
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -8,10 +14,8 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
+import { descargarPdfReporteAsistencia } from '../../shared/utils/reporte-pdf.util';
 
-/**
- * Panel de reportes de asistencia, alertas por ausencias y contacto con apoderados.
- */
 @Component({
   selector: 'app-reportes-asistencia',
   standalone: true,
@@ -124,14 +128,39 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
           </div>
         </div>
 
-        <div class="bg-surface rounded-xl shadow p-6">
-          <div class="flex justify-between items-center mb-4">
+        <div class="bg-surface rounded-xl shadow p-4 sm:p-6">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
             <h2 class="text-xl font-bold text-ink">Reporte final por alumno</h2>
             <button (click)="exportar()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm">
-              Generar reporte final
+              Descargar PDF
             </button>
           </div>
-          <div class="overflow-x-auto">
+
+          <div class="md:hidden space-y-3">
+            @for (e of reporte.estadisticasAlumnos; track e.alumnoId) {
+              <article class="border border-line rounded-lg p-4 text-sm space-y-2"
+                       [class.bg-red-50]="e.alertaAusencia"
+                       [class.border-red-200]="e.alertaAusencia">
+                <div class="flex justify-between gap-2">
+                  <p class="font-semibold text-ink break-words">{{ priv.nombre(e.nombre) }}</p>
+                  @if (e.alertaAusencia) {
+                    <span class="text-red-700 text-xs font-bold shrink-0">Alerta</span>
+                  }
+                </div>
+                <p class="text-ink-muted break-words">Apoderado: {{ e.apoderadoNombre ?? '—' }}</p>
+                @if (e.apoderadoTelefono) {
+                  <p class="text-ink-muted break-all">Tel: {{ e.apoderadoTelefono }}</p>
+                }
+                <div class="flex flex-wrap gap-2 pt-1">
+                  <span class="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs">Presente {{ e.presentes }}</span>
+                  <span class="px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs">Ausente {{ e.ausentes }}</span>
+                  <span class="px-2 py-1 rounded-full bg-muted text-ink text-xs font-bold">{{ e.porcentajeAsistencia }}%</span>
+                </div>
+              </article>
+            }
+          </div>
+
+          <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-sm border border-line">
               <thead class="bg-muted">
                 <tr>
@@ -163,15 +192,24 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
   `,
 })
 export class ReportesAsistenciaComponent implements OnInit {
+  /** Cliente HTTP: reportes, alertas y umbral. */
   private api = inject(ApiService);
+  /** Profesor (taller fijo) vs coordinación (elige taller). */
   auth = inject(AuthRoleService);
+  /** Enmascara datos sensibles del alumno en la tabla. */
   priv = inject(AlumnoPrivacidadService);
 
+  /** Listado de talleres (solo coordinación). */
   talleres: any[] = [];
+  /** Taller del filtro / del profesor logueado. */
   tallerIdSeleccionado: number | null = null;
+  /** Payload del reporte estadístico por alumno. */
   reporte: any = null;
+  /** Alertas de ausencia pendientes de gestionar. */
   alertasGestion: any[] = [];
+  /** Umbral editable de ausencias que dispara alerta. */
   umbralEdit = 3;
+  /** Notas temporales por alertaId al contactar/resolver. */
   notasAlerta: Record<number, string> = {};
 
   /** Preselecciona el taller del profesor o carga listado para coordinación. */
@@ -249,28 +287,24 @@ export class ReportesAsistenciaComponent implements OnInit {
     });
   }
 
-  /** Genera y descarga el reporte final de asistencia en formato texto. */
+  /** Genera y descarga el reporte final de asistencia en PDF con tablas. */
   exportar() {
     if (!this.reporte) return;
-    const lineas = [
-      `REPORTE FINAL DE ASISTENCIA - ${this.reporte.taller.tipo}`,
-      `Umbral ausencias: ${this.reporte.resumen.umbralAusencias}`,
-      `Sesiones: ${this.reporte.resumen.totalSesiones}`,
-      `Alertas activas: ${this.reporte.resumen.alertasPendientes}`,
-      '',
-      'Alumno\tRUT\tApoderado\tTeléfono\tPresentes\tAusentes\t% Asistencia\tAlerta',
-      ...this.reporte.estadisticasAlumnos.map((e: any) => {
-        const nombre = this.priv.nombre(e.nombre);
-        const rut = this.priv.rut(e.rut);
-        return `${nombre}\t${rut}\t${e.apoderadoNombre ?? ''}\t${e.apoderadoTelefono ?? ''}\t${e.presentes}\t${e.ausentes}\t${e.porcentajeAsistencia}%\t${e.alertaAusencia ? 'SI' : 'NO'}`;
-      }),
-    ];
-    const blob = new Blob([lineas.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte-final-${this.reporte.taller.tipo}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    descargarPdfReporteAsistencia({
+      tallerTipo: this.reporte.taller.tipo,
+      umbralAusencias: this.reporte.resumen.umbralAusencias,
+      totalSesiones: this.reporte.resumen.totalSesiones,
+      alertasPendientes: this.reporte.resumen.alertasPendientes,
+      filas: this.reporte.estadisticasAlumnos.map((e: any) => ({
+        nombre: this.priv.nombre(e.nombre),
+        rut: this.priv.rut(e.rut),
+        apoderadoNombre: e.apoderadoNombre ?? '',
+        apoderadoTelefono: e.apoderadoTelefono ?? '',
+        presentes: e.presentes,
+        ausentes: e.ausentes,
+        porcentajeAsistencia: e.porcentajeAsistencia,
+        alertaAusencia: !!e.alertaAusencia,
+      })),
+    });
   }
 }

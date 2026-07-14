@@ -1,7 +1,18 @@
 /**
- * Controlador REST del módulo de asistencia.
- * Expone endpoints para sesiones, registros, reportes y gestión de alertas por ausencias.
+ * =============================================================================
+ * asistencia/asistencia.controller.ts — ENDPOINTS DE ASISTENCIA
+ * =============================================================================
+ * Prefijo: /asistencia
+ *
+ * Flujo típico del profesor:
+ *   1. POST  /asistencia/sesion/abrir
+ *   2. PATCH /asistencia/sesion/:id/registros  (marcar ausentes/tardes)
+ *   3. PATCH /asistencia/sesion/:id/cerrar     (dispara alertas + mails)
+ *
+ * También: historial, reporte, alertas de ausencias y umbral del taller.
+ * =============================================================================
  */
+// Decoradores HTTP de Nest + ParseIntPipe (string → number) + Query (?tallerId=)
 import {
   Controller,
   Get,
@@ -13,7 +24,9 @@ import {
   Query,
   BadRequestException,
 } from '@nestjs/common';
+// Lógica de negocio (abrir/cerrar sesión, alertas, reportes)
 import { AsistenciaService } from './asistencia.service';
+// DTOs: validan el body JSON con class-validator + ValidationPipe global
 import { AbrirSesionDto } from '../dto/abrir-sesion.dto';
 import { ActualizarAsistenciaDto } from '../dto/actualizar-asistencia.dto';
 import { CerrarSesionDto } from '../dto/cerrar-sesion.dto';
@@ -23,6 +36,7 @@ import { ActualizarUmbralDto } from '../dto/actualizar-umbral.dto';
 /** Endpoints HTTP para el flujo de asistencia en talleres. */
 @Controller('asistencia')
 export class AsistenciaController {
+  /** Nest inyecta AsistenciaService (registrado en AsistenciaModule). */
   constructor(private readonly asistenciaService: AsistenciaService) {}
 
   /** POST /asistencia/sesion/abrir — Inicia una nueva sesión de asistencia. */
@@ -31,23 +45,25 @@ export class AsistenciaController {
     return this.asistenciaService.abrirSesion(dto);
   }
 
-  /** GET /asistencia/sesion/activa/:tallerId — Sesión abierta del día para el taller. */
+  /** GET /asistencia/sesion/activa/:tallerId — Sesión ABIERTA del día para el taller. */
   @Get('sesion/activa/:tallerId')
   sesionActiva(@Param('tallerId', ParseIntPipe) tallerId: number) {
     return this.asistenciaService.sesionActiva(tallerId);
   }
 
+  /** GET /asistencia/sesion/:id — detalle con registros. */
   @Get('sesion/:id')
   obtenerSesion(@Param('id', ParseIntPipe) id: number) {
     return this.asistenciaService.obtenerSesion(id);
   }
 
+  /** GET /asistencia/sesiones/:tallerId — historial del taller. */
   @Get('sesiones/:tallerId')
   historial(@Param('tallerId', ParseIntPipe) tallerId: number) {
     return this.asistenciaService.historialSesiones(tallerId);
   }
 
-  /** PATCH /asistencia/sesion/:id/registros — Guarda estados de asistencia por alumno. */
+  /** PATCH /asistencia/sesion/:id/registros — Guarda estados PRESENTE/AUSENTE/TARDE. */
   @Patch('sesion/:id/registros')
   actualizarAsistencia(
     @Param('id', ParseIntPipe) id: number,
@@ -65,17 +81,19 @@ export class AsistenciaController {
     return this.asistenciaService.cerrarSesion(id, dto);
   }
 
-  /** GET /asistencia/reporte/:tallerId — Reporte de asistencia del taller. */
+  /** GET /asistencia/reporte/:tallerId — estadísticas + alertas del taller. */
   @Get('reporte/:tallerId')
   getReporte(@Param('tallerId', ParseIntPipe) tallerId: number) {
     return this.asistenciaService.getReporte(tallerId);
   }
 
+  /** GET /asistencia/alertas — alertas de todos los talleres. */
   @Get('alertas')
   getAlertasGlobales() {
     return this.asistenciaService.getAlertasGlobales();
   }
 
+  /** GET /asistencia/alertas/gestion?tallerId= — bandeja de gestión (opc. filtrada). */
   @Get('alertas/gestion')
   getAlertasGestion(@Query('tallerId') tallerId?: string) {
     const id = tallerId ? parseInt(tallerId, 10) : undefined;
@@ -93,6 +111,7 @@ export class AsistenciaController {
     return this.asistenciaService.contactarApoderado(id, dto);
   }
 
+  /** PATCH /asistencia/alertas/:id/resolver — cierra la alerta. */
   @Patch('alertas/:id/resolver')
   resolverAlerta(
     @Param('id', ParseIntPipe) id: number,
@@ -101,6 +120,10 @@ export class AsistenciaController {
     return this.asistenciaService.resolverAlerta(id, dto);
   }
 
+  /**
+   * PATCH /asistencia/umbral/:tallerId
+   * Body acepta umbralAusencias o umbral (alias del DTO).
+   */
   @Patch('umbral/:tallerId')
   actualizarUmbral(
     @Param('tallerId', ParseIntPipe) tallerId: number,

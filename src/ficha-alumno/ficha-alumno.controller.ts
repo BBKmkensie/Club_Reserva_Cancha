@@ -1,7 +1,20 @@
 /**
- * Controlador REST de fichas de alumnos.
- * Expone listado por taller, consulta individual y actualización de medidas.
+ * =============================================================================
+ * ficha-alumno/ficha-alumno.controller.ts — ENDPOINTS DE FICHAS
+ * =============================================================================
+ * Prefijo: /ficha-alumno
+ *
+ *   GET /ficha-alumno/taller/:tallerId  → listado (filtros por rol)
+ *   GET /ficha-alumno/:alumnoId/:tallerId → una ficha
+ *   PUT /ficha-alumno/:alumnoId/:tallerId → crear/actualizar medidas
+ *
+ * Query flags en el listado:
+ *   soloInscritos=true  → solo ACEPTADOS
+ *   esCoordinacion=true → directiva ve todos
+ *   profesorId=         → valida que el profe sea del taller
+ * =============================================================================
  */
+// Put = upsert HTTP; Query = flags ?soloInscritos=&esCoordinacion=&profesorId=
 import {
   Controller,
   Get,
@@ -17,6 +30,7 @@ import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
 /** Endpoints HTTP para gestionar fichas de alumnos por taller. */
 @Controller('ficha-alumno')
 export class FichaAlumnoController {
+  /** Nest inyecta FichaAlumnoService. */
   constructor(private readonly fichaService: FichaAlumnoService) {}
 
   /** GET /ficha-alumno/taller/:tallerId — Lista fichas según rol y filtros de query. */
@@ -27,6 +41,7 @@ export class FichaAlumnoController {
     @Query('esCoordinacion') esCoordinacion?: string,
     @Query('profesorId') profesorId?: string,
   ) {
+    // Query strings llegan como string → comparamos con 'true'
     return this.fichaService.listarPorTaller(tallerId, {
       soloInscritos: soloInscritos === 'true',
       esCoordinacion: esCoordinacion === 'true',
@@ -34,6 +49,7 @@ export class FichaAlumnoController {
     });
   }
 
+  /** GET /ficha-alumno/:alumnoId/:tallerId */
   @Get(':alumnoId/:tallerId')
   obtener(
     @Param('alumnoId', ParseIntPipe) alumnoId: number,

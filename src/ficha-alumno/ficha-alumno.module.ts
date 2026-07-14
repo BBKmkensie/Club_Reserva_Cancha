@@ -1,8 +1,14 @@
 /**
- * Módulo NestJS de fichas de alumnos.
- * Registra entidades, servicio y controlador para medidas por taller.
+ * =============================================================================
+ * ficha-alumno/ficha-alumno.module.ts — MÓDULO DE FICHAS ANTROPOMÉTRICAS
+ * =============================================================================
+ * Cada alumno puede tener una ficha por taller (altura, peso, % grasa, sedentario).
+ * Usado por profesores y coordinación para seguimiento deportivo/médico.
+ * =============================================================================
  */
+// Module = contenedor Nest de este dominio
 import { Module } from '@nestjs/common';
+// forFeature = repositorios disponibles para inyección en FichaAlumnoService
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FichaAlumnoTaller } from '../entities/ficha-alumno-taller.entity';
 import { Alumno } from '../entities/alumno.entity';

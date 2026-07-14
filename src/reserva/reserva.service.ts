@@ -1,6 +1,20 @@
 /**
- * Servicio de reservas de cancha.
- * Calcula disponibilidad por franjas, valida solapamientos y persiste reservas.
+ * =============================================================================
+ * reserva/reserva.service.ts — LÓGICA DE NEGOCIO DE RESERVAS DE CANCHA
+ * =============================================================================
+ * Responsabilidades:
+ *   1. Calcular disponibilidad diaria/semanal (slots vs reservas)
+ *   2. Validar nuevas reservas (duración, rango, franja activa, solapes)
+ *   3. CRUD de la entidad Reserva
+ *
+ * Estados de un slot:
+ *   - 'disponible'   → franja activa sin reserva
+ *   - 'ocupada'      → hay una reserva que solapa ese horario
+ *   - 'no_habilitada'→ (conceptualmente) franja inactiva; aquí no se listan
+ *
+ * Flujo create:
+ *   Controller → validarReserva() → create + save → captura error 23505 (unique)
+ * =============================================================================
  */
 import {
   Injectable,
@@ -8,7 +22,9 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
+// @InjectRepository = pide el Repository de una entidad registrada en ReservaModule.
 import { InjectRepository } from '@nestjs/typeorm';
+// Repository: find / findOne / create / save / remove — API TypeORM sobre la tabla.
 import { Repository } from 'typeorm';
 import { Reserva } from '../entities/reserva.entity';
 import { FranjaCancha } from '../entities/franja-cancha.entity';
@@ -30,15 +46,17 @@ import {
   sumarDias,
 } from './cancha.constants';
 
+/** Posibles estados visuales de un bloque horario en la grilla. */
 export type EstadoSlotCancha = 'disponible' | 'ocupada' | 'no_habilitada';
 
-/** Representación de un bloque horario con su estado de ocupación. */
+/** Representación de un bloque horario con su estado de ocupación (respuesta API). */
 export interface SlotDisponibilidadCancha {
   horaInicio: string;
   horaFin: string;
   espacio: string;
   estado: EstadoSlotCancha;
   duracionMinutos: number;
+  /** true si es la franja 13:00–14:00 abierta a todos los talleres */
   paraTodos: boolean;
   reservaId?: number;
   tallerId?: number;
@@ -46,7 +64,7 @@ export interface SlotDisponibilidadCancha {
   profesorNombre?: string;
 }
 
-/** Lógica de negocio para reservar espacios deportivos por fecha y hora. */
+/** @Injectable() = Nest puede inyectar este service en el controller y otros módulos. */
 @Injectable()
 export class ReservaService {
   constructor(
@@ -57,7 +75,12 @@ export class ReservaService {
     private franjaCanchaService: FranjaCanchaService,
   ) {}
 
-  /** Slots de un día: cruza franjas activas con reservas existentes. */
+  /**
+   * Slots de un día: cruza franjas activas con reservas existentes.
+   * 1) Asegura grilla base de franjas
+   * 2) find({ where }) carga franjas del día + reservas de esa fecha
+   * 3) Por cada franja activa, busca si hay reserva que solape → ocupada/disponible
+   */
   async obtenerDisponibilidad(
     fecha: string,
     espacio = CANCHA_ESPACIO_DEFAULT,
@@ -65,11 +88,13 @@ export class ReservaService {
     await this.franjaCanchaService.asegurarFranjasBase(espacio);
 
     const diaSemana = diaSemanaDesdeFecha(fecha);
+    // find({ where, order }) → SELECT … WHERE espacio=? AND dia_semana=? ORDER BY …
     const franjas = await this.franjaRepository.find({
       where: { espacio, diaSemana },
       order: { horaInicio: 'ASC' },
     });
 
+    // relations: trae taller y profesor (JOIN) para mostrar nombres en la grilla
     const reservas = await this.reservaRepository.find({
       where: { espacio, fecha: fechaLocal(fecha) as any },
       relations: ['taller', 'profesor'],
@@ -86,6 +111,7 @@ export class ReservaService {
         horaAMinutos(horaFin) - horaAMinutos(horaInicio),
       );
 
+      // ¿Alguna reserva existente solapa este intervalo?
       const reserva = reservas.find((r) =>
         horariosSolapan(
           horaInicio,
@@ -130,6 +156,7 @@ export class ReservaService {
   ): Promise<{ fecha: string; diaSemana: number; slots: SlotDisponibilidadCancha[] }[]> {
     const lunes = lunesDeSemana(fechaInicio);
     const dias: { fecha: string; diaSemana: number; slots: SlotDisponibilidadCancha[] }[] = [];
+    // i=0 lunes … i=6 domingo
     for (let i = 0; i < 7; i++) {
       const fecha = sumarDias(lunes, i);
       dias.push({
@@ -141,7 +168,10 @@ export class ReservaService {
     return dias;
   }
 
-  /** Valida duración, rango horario, franja habilitada y ausencia de solapamientos. */
+  /**
+   * Valida duración, rango horario, franja habilitada y ausencia de solapamientos.
+   * @param excluirReservaId — al actualizar, ignoramos la propia reserva en el check de solape
+   */
   private async validarReserva(
     dto: CreateReservaDto,
     excluirReservaId?: number,
@@ -162,6 +192,7 @@ export class ReservaService {
       throw new BadRequestException('La hora de fin debe ser posterior a la de inicio');
     }
 
+    // Las reservas solo en múltiplos de 30 min
     if (duracionReserva % CANCHA_DURACION_SLOT_MIN !== 0) {
       throw new BadRequestException(
         `Las reservas deben ser en bloques de ${CANCHA_DURACION_SLOT_MIN} minutos`,
@@ -176,6 +207,7 @@ export class ReservaService {
 
     const fechaIso = parseFechaIso(dto.fecha);
     const diaSemana = diaSemanaDesdeFecha(fechaIso);
+    // PostgreSQL time a veces guarda "09:00:00" y a veces "09:00" → probamos ambos
     const franja =
       (await this.franjaRepository.findOne({
         where: { espacio, diaSemana, horaInicio: `${horaInicio}:00` as any },
@@ -193,6 +225,7 @@ export class ReservaService {
     const franjaFin = normalizarHora(franja.horaFin);
     const franjaDuracion = horaAMinutos(franjaFin) - horaAMinutos(normalizarHora(franja.horaInicio));
 
+    // Debe reservar exactamente la duración del bloque que definió la directiva
     if (duracionReserva !== franjaDuracion) {
       const etiquetaDuracion =
         franjaDuracion % 60 === 0
@@ -206,6 +239,7 @@ export class ReservaService {
       );
     }
 
+    // QueryBuilder: busca reservas del mismo espacio/fecha cuyo intervalo se solape
     const solapadas = await this.reservaRepository
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.taller', 'taller')
@@ -225,12 +259,14 @@ export class ReservaService {
     }
   }
 
+  /** Crea una reserva tras validar; captura violación de unique index (código PG 23505). */
   async create(createReservaDto: CreateReservaDto): Promise<Reserva> {
     await this.validarReserva(createReservaDto);
 
     const horaInicio = normalizarHora(createReservaDto.horaInicio);
     const horaFin = normalizarHora(createReservaDto.horaFin);
 
+    // create() arma la entidad en memoria; save() hace el INSERT
     const reserva = this.reservaRepository.create({
       espacio: createReservaDto.espacio || CANCHA_ESPACIO_DEFAULT,
       fecha: fechaLocal(createReservaDto.fecha),
@@ -244,6 +280,7 @@ export class ReservaService {
     try {
       return await this.reservaRepository.save(reserva);
     } catch (err: any) {
+      // 23505 = unique_violation en PostgreSQL (carrera entre dos reservas iguales)
       if (err?.code === '23505') {
         throw new ConflictException(
           `La cancha ya está ocupada de ${horaInicio} a ${horaFin} en esa fecha`,
@@ -253,6 +290,7 @@ export class ReservaService {
     }
   }
 
+  /** Lista todas las reservas con relaciones taller/admin/profesor. */
   async findAll(): Promise<Reserva[]> {
     return await this.reservaRepository.find({
       relations: ['taller', 'admin', 'profesor'],
@@ -260,6 +298,7 @@ export class ReservaService {
     });
   }
 
+  /** Busca por id o lanza NotFoundException (404). */
   async findOne(id: number): Promise<Reserva> {
     const reserva = await this.reservaRepository.findOne({
       where: { id },
@@ -271,6 +310,7 @@ export class ReservaService {
     return reserva;
   }
 
+  /** Filtra reservas pertenecientes a un taller. */
   async findByTaller(tallerId: number): Promise<Reserva[]> {
     return await this.reservaRepository.find({
       where: { tallerId },
@@ -279,6 +319,7 @@ export class ReservaService {
     });
   }
 
+  /** Filtra reservas de una fecha concreta. */
   async findByFecha(fecha: string): Promise<Reserva[]> {
     return await this.reservaRepository.find({
       where: { fecha: fechaLocal(fecha) as any },
@@ -287,6 +328,10 @@ export class ReservaService {
     });
   }
 
+  /**
+   * Actualiza una reserva: fusiona campos actuales + DTO parcial,
+   * revalida (excluyendo el propio id) y guarda.
+   */
   async update(id: number, updateReservaDto: Partial<CreateReservaDto>): Promise<Reserva> {
     const reserva = await this.findOne(id);
     const merged: CreateReservaDto = {
@@ -320,6 +365,7 @@ export class ReservaService {
     return await this.reservaRepository.save(reserva);
   }
 
+  /** Elimina la reserva de la base de datos. */
   async remove(id: number): Promise<void> {
     const reserva = await this.findOne(id);
     await this.reservaRepository.remove(reserva);

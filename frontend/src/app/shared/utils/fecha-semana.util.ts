@@ -1,6 +1,21 @@
-/** Utilidades de fechas para calendario de cancha (semana Lunes–Domingo) */
+/**
+ * =============================================================================
+ * app/shared/utils/fecha-semana.util.ts — Utilidades de fechas y calendario
+ * =============================================================================
+ * Funciones para manejar fechas ISO, semanas (lunes–domingo), grillas mensuales
+ * y etiquetas legibles. Se usa en fecha-picker, cancha-semana-vista y filtros
+ * de fechas en toda la app.
+ *
+ * Exporta: parseFechaIso(), lunesDeSemana(), sumarDias(), esHoy(),
+ *          diaSemanaDesdeFecha(), etiquetaDiaCorto(), celdasDelMes(),
+ *          constantes DIAS_CORTO, DIAS_LARGO, MESES.
+ * =============================================================================
+ */
 
-/** Convierte Date o ISO a cadena YYYY-MM-DD */
+/**
+ * Convierte un objeto Date o una cadena ISO a formato YYYY-MM-DD.
+ * Ignora la parte horaria si la cadena incluye «T».
+ */
 export function parseFechaIso(fecha: string | Date): string {
   if (fecha instanceof Date) {
     const y = fecha.getFullYear();
@@ -11,7 +26,10 @@ export function parseFechaIso(fecha: string | Date): string {
   return fecha.split('T')[0];
 }
 
-/** Fecha del lunes de la semana que contiene la fecha dada (o la semana actual) */
+/**
+ * Devuelve la fecha del lunes de la semana que contiene la fecha dada.
+ * Si no se pasa fecha, usa la semana actual.
+ */
 export function lunesDeSemana(fecha?: string | Date): string {
   const base = fecha
     ? new Date(`${parseFechaIso(fecha)}T12:00:00`)
@@ -22,33 +40,48 @@ export function lunesDeSemana(fecha?: string | Date): string {
   return parseFechaIso(base);
 }
 
-/** Suma días a una fecha ISO y devuelve YYYY-MM-DD */
+/**
+ * Suma (o resta) días a una fecha ISO y devuelve el resultado en YYYY-MM-DD.
+ */
 export function sumarDias(fecha: string, dias: number): string {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   d.setDate(d.getDate() + dias);
   return parseFechaIso(d);
 }
 
-/** Indica si la fecha coincide con el día de hoy */
+/**
+ * Indica si la fecha dada coincide con el día de hoy.
+ */
 export function esHoy(fecha: string): boolean {
   return fecha === parseFechaIso(new Date());
 }
 
+/** Letras abreviadas de los días (índice 1 = lunes, 7 = domingo). */
 export const DIAS_CORTO = ['', 'L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+/** Nombres completos de los días de la semana (índice 1 = lunes). */
 export const DIAS_LARGO = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+/** Nombres de los meses en español (índice 0 = enero). */
 export const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
-/** Día de la semana 1–7 (lunes=1, domingo=7) a partir de una fecha */
+/**
+ * Calcula el día de la semana como número 1–7 (lunes = 1, domingo = 7)
+ * a partir de una fecha ISO.
+ */
 export function diaSemanaDesdeFecha(fecha: string): number {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   const js = d.getDay();
   return js === 0 ? 7 : js;
 }
 
-/** Etiqueta corta del día para el calendario (ej. "L, Ene. 15. 2026") */
+/**
+ * Genera una etiqueta corta legible para el calendario.
+ * Formato: «L, Ene. 15. 2026».
+ */
 export function etiquetaDiaCorto(fecha: string): string {
   const d = new Date(`${parseFechaIso(fecha)}T12:00:00`);
   const dia = DIAS_CORTO[diaSemanaDesdeFecha(fecha)];
@@ -56,14 +89,17 @@ export function etiquetaDiaCorto(fecha: string): string {
   return `${dia}, ${mes}. ${d.getDate()}. ${d.getFullYear()}`;
 }
 
-/** Celda de la grilla mensual del calendario */
+/** Representa una celda de la grilla mensual del calendario. */
 export interface CeldaMes {
   fecha: string;
   num: number;
   mesActual: boolean;
 }
 
-/** Grilla de 6 semanas para un mes (empieza en lunes) */
+/**
+ * Genera la grilla de 6 semanas (42 celdas) para un mes dado.
+ * La semana empieza en lunes; incluye días del mes anterior y siguiente.
+ */
 export function celdasDelMes(anio: number, mes: number): CeldaMes[] {
   const primerDia = new Date(anio, mes, 1);
   const inicio = new Date(primerDia);

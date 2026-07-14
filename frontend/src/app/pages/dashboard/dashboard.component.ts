@@ -1,4 +1,18 @@
-
+/**
+ * =============================================================================
+ * app/pages/dashboard/dashboard.component.ts — Panel principal (home)
+ * =============================================================================
+ * Pantalla de inicio tras el login; contenido adaptativo según rol:
+ * - Alumno: catálogo de talleres, mis inscripciones, notificaciones
+ * - Profesor: asignaciones pendientes, resumen de inscripciones de su taller
+ * - Coordinación: estadísticas globales (talleres, alumnos, reservas, salidas)
+ *
+ * Endpoints ApiService:
+ * getCatalogoTalleres, getTalleres, getAlumnos, getProfesores, getReservas,
+ * getSalidas, getInscripcionesTallerPorAlumno, getInscripcionesTallerPorTaller,
+ * getResumenInscripcionesTaller, getAsignacionesPendientes, responderAsignacion
+ * =============================================================================
+ */
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -228,14 +242,12 @@ interface CardTaller extends EstiloTarjetaTaller {}
           </div>
         }
 
-        @if (auth.isLoggedIn() && !auth.isProfesor() && mostrarTarjetaSalidas()) {
+        @if (!auth.isProfesor() && mostrarTarjetaSalidas()) {
         <a [routerLink]="rutaSalidas()"
            class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
           <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
           <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Salidas</h2>
-          <p class="text-purple-100 text-sm mb-4">
-            {{ auth.canInscribirseSalidas() ? 'Salidas de tus talleres inscritos' : 'Gestiona las salidas programadas' }}
-          </p>
+          <p class="text-purple-100 text-sm mb-4">{{ textoTarjetaSalidas() }}</p>
           <div class="text-purple-200">
             <div class="text-2xl font-bold">{{ stats.salidas }}</div>
             <div class="text-sm">Salidas programadas</div>
@@ -247,14 +259,12 @@ interface CardTaller extends EstiloTarjetaTaller {}
 
       @if (mostrarSeccionMisTalleres() || mostrarSeccionOtrosTalleres()) {
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
-          @if (auth.isLoggedIn() && !auth.isProfesor() && mostrarTarjetaSalidas()) {
+          @if (!auth.isProfesor() && mostrarTarjetaSalidas()) {
           <a [routerLink]="rutaSalidas()"
              class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
             <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
             <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Salidas</h2>
-            <p class="text-purple-100 text-sm mb-4">
-              {{ auth.canInscribirseSalidas() ? 'Salidas de tus talleres inscritos' : 'Gestiona las salidas programadas' }}
-            </p>
+            <p class="text-purple-100 text-sm mb-4">{{ textoTarjetaSalidas() }}</p>
             <div class="text-purple-200">
               <div class="text-2xl font-bold">{{ stats.salidas }}</div>
               <div class="text-sm">Salidas programadas</div>
@@ -332,53 +342,53 @@ interface CardTaller extends EstiloTarjetaTaller {}
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  
+  /** Cliente HTTP para stats, catálogo e inscripciones. */
   private apiService = inject(ApiService);
-  
+  /** Navegación al detalle de taller u otras rutas. */
   private router = inject(Router);
-  
+  /** Polling de notificaciones del alumno. */
   private notificacionPoll = inject(NotificacionPollService);
-  
+  /** Rol actual: decide qué bloques del dashboard se muestran. */
   auth = inject(AuthRoleService);
-  
+  /** Suscripción a cambios del poll; se libera en ngOnDestroy. */
   private pollSub?: Subscription;
 
-  
+  /** Contadores globales (coordinación) o parciales (alumno). */
   stats = { talleres: 0, alumnos: 0, profesores: 0, reservas: 0, salidas: 0 };
 
-  
+  /** Talleres publicados / catálogo según rol. */
   talleres: any[] = [];
   alumnos: any[] = [];
-  
+  /** Conteo de inscritos aceptados por tallerId (tarjetas). */
   inscripcionesPorTaller = new Map<number, number>();
-  
+  /** Id del alumno logueado (null si no es alumno). */
   alumnoId: number | null = null;
-  
+  /** Taller asignado al profesor logueado. */
   tallerIdProfesor: number | null = null;
-  
+  /** Resumen de cupos/pendientes del panel profesor. */
   resumenProfesor: any = null;
-  
+  /** Lista de notificaciones del alumno en el home. */
   notificaciones: any[] = [];
   notificacionesNoLeidas = 0;
-  
+  /** Actividades ya publicadas en catálogo (vista alumno). */
   actividadesPublicadas: any[] = [];
-  
+  /** Catálogo completo antes de filtrar por categoría. */
   catalogoCompleto: any[] = [];
-  
+  /** Inscripciones del alumno (pendientes/aceptadas/rechazadas). */
   misInscripciones: any[] = [];
-  
+  /** Toggle UI: mostrar talleres fuera de «mis» categorías. */
   mostrarOtrosTalleres = false;
-  
+  /** Asignaciones de actividad que el profesor debe aceptar/rechazar. */
   asignacionesPendientes: any[] = [];
-  
+  /** Filtro de categoría del catálogo ('todas' | id de categoría). */
   categoriaFiltro: CategoriaTallerId = 'todas';
 
-  
+  /** Colores/icono de la tarjeta según el tipo de taller. */
   estiloTarjeta(tipo: string): CardTaller {
     return estiloTarjetaTaller(tipo);
   }
 
-  
+  /** Carga catálogo, inscripciones, notificaciones y datos según el rol del usuario. */
   ngOnInit() {
     this.alumnoId = this.auth.currentUserId();
     this.tallerIdProfesor = this.auth.currentTallerId();
@@ -406,7 +416,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  
+  /** Marca una notificación individual como leída vía el servicio de polling. */
   marcarLeida(n: any): void {
     if (!this.alumnoId || n.leida) return;
     this.notificacionPoll.marcarLeida(n.id);
@@ -563,7 +573,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.alumnos.filter((a) => Number(a?.tallerId) === tallerId).length;
   }
 
-  
+  /** Obtiene talleres publicados, estadísticas globales e inscripciones del alumno. */
   loadData() {
     const asList = (data: unknown): any[] => (Array.isArray(data) ? data : []);
 
@@ -585,11 +595,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
     });
 
-    if (!this.auth.isLoggedIn()) return;
+    // Visitante: solo conteo de salidas publicadas (catálogo ya se carga arriba)
+    if (!this.auth.isLoggedIn()) {
+      this.apiService.getSalidasPublicadas().subscribe({
+        next: (data) => (this.stats.salidas = asList(data).length),
+        error: () => (this.stats.salidas = 0),
+      });
+      return;
+    }
 
     if (this.auth.isProfesor()) return;
 
-    
+    // Alumno: solo conteo de salidas de sus talleres (sin stats globales)
     if (this.auth.canInscribirseSalidas() && this.alumnoId) {
       this.apiService.getSalidasPublicadas(undefined, this.alumnoId).subscribe({
         next: (data) => (this.stats.salidas = asList(data).length),
@@ -620,12 +637,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  
+  /** Visitante → login; alumnos → Mis salidas; coordinación → historial. */
   rutaSalidas(): string {
+    if (!this.auth.isLoggedIn()) return '/login';
     return this.auth.canInscribirseSalidas() ? '/mis-salidas' : '/salidas';
   }
 
+  textoTarjetaSalidas(): string {
+    if (!this.auth.isLoggedIn()) return 'Consulta las salidas programadas';
+    if (this.auth.canInscribirseSalidas()) return 'Salidas de tus talleres inscritos';
+    return 'Gestiona las salidas programadas';
+  }
+
   mostrarTarjetaSalidas(): boolean {
+    if (!this.auth.isLoggedIn()) return true;
     if (this.auth.canInscribirseSalidas()) {
       const aceptadas = this.misInscripciones.some(
         (i) => String(i.estado ?? '').toUpperCase() === 'ACEPTADO',
@@ -683,12 +708,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  
+  /** Navega al detalle de un taller por su identificador. */
   navegarATallerPorId(id: number) {
     this.router.navigate(['/taller', id]);
   }
 
-  
+  /** Acepta o rechaza una asignación de actividad pendiente del profesor. */
   responderAsignacion(asignacionId: number, acepta: boolean) {
     const profesorId = this.auth.currentUserId();
     if (!profesorId) return;

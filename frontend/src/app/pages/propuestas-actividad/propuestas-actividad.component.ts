@@ -1,6 +1,11 @@
 /**
- * Bandeja de propuestas de inscripción para la directiva.
- * Revisa solicitudes de apoderados sobre actividades del catálogo y actividades libres fuera de catálogo.
+ * =============================================================================
+ * app/pages/propuestas-actividad/propuestas-actividad.component.ts — Bandeja propuestas
+ * =============================================================================
+ * La directiva revisa propuestas de apoderados: inscripción en catálogo o actividad libre.
+ * Rol: coordinación — canGestionarPropuestas().
+ * Endpoints ApiService: getPropuestasPendientes, responderPropuestaInscripcion
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -10,9 +15,6 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
-/**
- * Bandeja directiva: acepta o rechaza propuestas de apoderados (catálogo y actividad libre).
- */
 @Component({
   selector: 'app-propuestas-actividad',
   standalone: true,
@@ -22,7 +24,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
       <div class="bg-surface rounded-xl shadow-lg p-6">
         <h1 class="text-3xl font-bold text-ink mb-2">Bandeja de propuestas</h1>
         <p class="text-ink-muted text-sm">
-          La directiva revisa propuestas de apoderados (actividad y horario) y decide si el estudiante puede inscribirse.
+          La directiva revisa propuestas de apoderados y alumnos (actividad y horario) y decide cómo continuar.
         </p>
       </div>
 
@@ -46,6 +48,13 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                     @if (p.esActividadLibre) {
                       <span class="text-xs bg-violet-100 text-violet-800 px-2 py-0.5 rounded">Fuera de catálogo</span>
                     }
+                    <span class="text-xs px-2 py-0.5 rounded"
+                          [class.bg-sky-100]="p.origen === 'ALUMNO'"
+                          [class.text-sky-800]="p.origen === 'ALUMNO'"
+                          [class.bg-amber-100]="p.origen !== 'ALUMNO'"
+                          [class.text-amber-900]="p.origen !== 'ALUMNO'">
+                      {{ p.origen === 'ALUMNO' ? 'Propuesto por alumno' : 'Propuesto por apoderado' }}
+                    </span>
                   </div>
                   @if (p.actividadDescripcion) {
                     <p class="text-sm text-ink-muted mt-1">{{ p.actividadDescripcion }}</p>
@@ -53,7 +62,7 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                   <p class="text-sm text-ink-muted">
                     Estudiante: <strong>{{ priv.nombre(p.alumnoNombre) }}</strong> ({{ priv.rut(p.alumnoRut) }})
                   </p>
-                  @if (p.apoderadoNombre) {
+                  @if (p.origen !== 'ALUMNO' && p.apoderadoNombre) {
                     <p class="text-sm text-ink-muted">Apoderado: {{ p.apoderadoNombre }}</p>
                   }
                   @if (p.horarioPropuesto) {
@@ -106,7 +115,9 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                 }.
               }
             </p>
-            <label class="block text-sm font-medium text-ink mb-1">Mensaje para el apoderado (opcional)</label>
+            <label class="block text-sm font-medium text-ink mb-1">
+              Mensaje {{ modal.propuesta.origen === 'ALUMNO' ? 'para el alumno' : 'para el apoderado' }} (opcional)
+            </label>
             <textarea [(ngModel)]="mensajeDirectiva" rows="2"
                       class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-4"></textarea>
             <div class="flex justify-end gap-2">
@@ -162,20 +173,33 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
   `,
 })
 export class PropuestasActividadComponent implements OnInit {
+  /** Cliente HTTP: bandeja y respuesta de propuestas. */
   private api = inject(ApiService);
+  /** Lee ?id= para destacar una propuesta desde notificación. */
   private route = inject(ActivatedRoute);
+  /** Solo directiva/super admin gestionan propuestas. */
   auth = inject(AuthRoleService);
+  /** Enmascara datos del apoderado/alumno en la tarjeta. */
   priv = inject(AlumnoPrivacidadService);
 
+  /** Propuestas pendientes de la bandeja. */
   propuestas: any[] = [];
+  /** true mientras se carga la lista. */
   cargando = true;
+  /** Id a resaltar (viene de query param). */
   destacarId: number | null = null;
 
+  /** Modal abierto: aceptar o rechazar una propuesta (null = cerrado). */
   modal: { tipo: 'aceptar' | 'rechazar'; propuesta: any } | null = null;
+  /** Motivo obligatorio al rechazar. */
   motivoRechazo = '';
+  /** Mensaje opcional de la directiva al apoderado. */
   mensajeDirectiva = '';
+  /** Horario alternativo elegido del catálogo (rechazo). */
   horarioSugeridoId: number | null = null;
+  /** Texto libre de horario sugerido si no hay id. */
   horarioSugeridoTexto = '';
+  /** Opciones de horario del taller propuesto para sugerir alternativa. */
   horariosAlternativos: { id: number; etiqueta: string }[] = [];
 
   /** Lee el id de query param para destacar una propuesta y carga la bandeja. */

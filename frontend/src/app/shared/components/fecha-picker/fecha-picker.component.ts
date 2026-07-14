@@ -1,6 +1,14 @@
 /**
- * Selector de fecha con calendario desplegable.
- * Implementa ControlValueAccessor; emite fechas en formato ISO (YYYY-MM-DD).
+ * =============================================================================
+ * app/shared/components/fecha-picker/fecha-picker.component.ts — Selector de fecha
+ * =============================================================================
+ * Campo con calendario desplegable mensual. Implementa ControlValueAccessor para
+ * integrarse con formularios reactivos o template-driven. Emite fechas en formato
+ * ISO (YYYY-MM-DD). Se usa en reservas, asistencia y filtros de fechas.
+ *
+ * Inputs: anchoCompleto (boolean).
+ * Métodos clave: toggle(), elegir(), irHoy(), mesAnterior(), mesSiguiente().
+ * =============================================================================
  */
 import { Component, ElementRef, HostListener, Input, forwardRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -14,9 +22,6 @@ import {
   parseFechaIso,
 } from '../../utils/fecha-semana.util';
 
-/**
- * FechaPicker: campo con panel de calendario mensual para elegir una fecha.
- */
 @Component({
   selector: 'app-fecha-picker',
   standalone: true,
@@ -146,10 +151,8 @@ import {
     }
   `],
 })
-/**
- * Control de fecha reutilizable; sincroniza el valor con formularios Angular vía CVA.
- */
 export class FechaPickerComponent implements ControlValueAccessor {
+  /** Si es true, el picker ocupa todo el ancho del contenedor padre. */
   @Input() anchoCompleto = false;
 
   private host = inject(ElementRef<HTMLElement>);
@@ -159,19 +162,27 @@ export class FechaPickerComponent implements ControlValueAccessor {
   readonly etiquetaDiaCorto = etiquetaDiaCorto;
   readonly letrasSemana = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
+  /** Fecha ISO seleccionada (YYYY-MM-DD) o '' si aún no hay valor. */
   valor = '';
+  /** Mes mostrado en la grilla (0 = enero). */
   mesVisible = new Date().getMonth();
+  /** Año mostrado en la grilla. */
   anioVisible = new Date().getFullYear();
+  /** 42 celdas (6 semanas) del mes visible. */
   celdas: CeldaMes[] = [];
+  /** true = panel del calendario abierto. */
   abierto = false;
 
+  /** Callback CVA: notifica al FormControl padre el YYYY-MM-DD elegido. */
   private onChange: (value: string) => void = () => {};
+  /** Callback CVA: marca el control como «touched». */
   private onTouched: () => void = () => {};
 
   constructor() {
     this.actualizarGrilla();
   }
 
+  /** Cierra el panel del calendario si el usuario hace clic fuera del componente. */
   @HostListener('document:click', ['$event'])
   cerrarSiClickFuera(event: MouseEvent): void {
     if (!this.abierto) return;
@@ -180,6 +191,7 @@ export class FechaPickerComponent implements ControlValueAccessor {
     }
   }
 
+  /** Recibe el valor inicial desde el formulario padre (interfaz CVA). */
   writeValue(value: string | null): void {
     if (!value) {
       this.valor = '';
@@ -190,17 +202,22 @@ export class FechaPickerComponent implements ControlValueAccessor {
     this.actualizarGrilla();
   }
 
+  /** Registra el callback que notifica cambios al formulario padre (interfaz CVA). */
   registerOnChange(fn: (value: string) => void): void {
     this.onChange = fn;
   }
 
+  /** Registra el callback que marca el control como tocado (interfaz CVA). */
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
 
   setDisabledState(_isDisabled: boolean): void {}
 
-  /** Abre o cierra el panel del calendario. */
+  /**
+   * Abre o cierra el panel del calendario. Al abrir, centra el mes en la fecha
+   * seleccionada o en el día actual si no hay valor.
+   */
   toggle(event: MouseEvent): void {
     event.stopPropagation();
     this.abierto = !this.abierto;
@@ -216,7 +233,9 @@ export class FechaPickerComponent implements ControlValueAccessor {
     }
   }
 
-  /** Confirma la fecha seleccionada y notifica al formulario padre. */
+  /**
+   * Confirma la fecha seleccionada, notifica al formulario padre y cierra el panel.
+   */
   elegir(fecha: string): void {
     this.valor = fecha;
     this.sincronizarMesConValor();
@@ -225,11 +244,16 @@ export class FechaPickerComponent implements ControlValueAccessor {
     this.abierto = false;
   }
 
-  /** Selecciona el día de hoy y cierra el panel. */
+  /**
+   * Selecciona el día de hoy y cierra el panel del calendario.
+   */
   irHoy(): void {
     this.elegir(parseFechaIso(new Date()));
   }
 
+  /**
+   * Retrocede un mes en la grilla del calendario.
+   */
   mesAnterior(): void {
     if (this.mesVisible === 0) {
       this.mesVisible = 11;
@@ -240,6 +264,9 @@ export class FechaPickerComponent implements ControlValueAccessor {
     this.actualizarGrilla();
   }
 
+  /**
+   * Avanza un mes en la grilla del calendario.
+   */
   mesSiguiente(): void {
     if (this.mesVisible === 11) {
       this.mesVisible = 0;
@@ -250,6 +277,7 @@ export class FechaPickerComponent implements ControlValueAccessor {
     this.actualizarGrilla();
   }
 
+  /** Ajusta mesVisible/anioVisible para que la grilla muestre el mes de `valor`. */
   private sincronizarMesConValor(): void {
     if (!this.valor) return;
     const d = new Date(`${this.valor}T12:00:00`);
@@ -257,6 +285,7 @@ export class FechaPickerComponent implements ControlValueAccessor {
     this.anioVisible = d.getFullYear();
   }
 
+  /** Regenera las 42 celdas del mes/año visibles. */
   private actualizarGrilla(): void {
     this.celdas = celdasDelMes(this.anioVisible, this.mesVisible);
   }

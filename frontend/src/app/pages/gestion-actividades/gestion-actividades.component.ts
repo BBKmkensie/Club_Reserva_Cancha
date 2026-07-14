@@ -1,6 +1,14 @@
 /**
- * Flujo del coordinador para crear y publicar actividades extracurriculares (BPMN 3).
- * Cubre período académico, asignación de docentes, horarios y publicación del catálogo.
+ * =============================================================================
+ * app/pages/gestion-actividades/gestion-actividades.component.ts — Gestión actividades
+ * =============================================================================
+ * Flujo BPMN del coordinador: período académico, crear actividad, asignar docente,
+ * definir horarios, publicar catálogo y cerrar actividades.
+ * Rol: coordinación — canAccessTalleresCRUD() / isCoordinacion().
+ * Endpoints ApiService: getProfesores, getPeriodoActivo, configurarPeriodo, getTalleres,
+ * createTaller, asignarDocenteActividad, definirHorarioActividad, publicarActividad,
+ * cerrarActividad, getReporteActividad
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -20,7 +28,7 @@ import {
   ModoHorarioTaller,
 } from '../../shared/utils/horario-taller.util';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
-import { descargarTextoReporte, textoReporteActividad } from '../../shared/utils/reporte-actividad.util';
+import { descargarPdfReporteActividad } from '../../shared/utils/reporte-pdf.util';
 
 const DIAS = [
   { v: 1, l: 'Lunes' },
@@ -313,23 +321,37 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
   `,
 })
 export class GestionActividadesComponent implements OnInit {
+  /** Cliente HTTP: ciclo de vida de actividades y período. */
   private api = inject(ApiService);
+  /** Permisos de coordinación/gestión de actividades. */
   auth = inject(AuthRoleService);
+  /** Enmascara nombres en reportes PDF. */
   priv = inject(AlumnoPrivacidadService);
   private fb = inject(FormBuilder);
 
+  /** Actividades (talleres en flujo de gestión) de la lista. */
   actividades: Taller[] = [];
+  /** Docentes disponibles para asignar. */
   profesores: any[] = [];
+  /** Borrador UI: profesor elegido por actividadId. */
   profesorPorActividad: Record<number, number | null> = {};
+  /** Borrador UI: modo de horario (curso/sección) por actividad. */
   modoHorarioDraft: Record<number, ModoHorarioTaller> = {};
+  /** Borrador de horarios por curso antes de guardar. */
   horariosCursoDraft: Record<number, Record<string, { diaSemana: number; horaInicio: string; horaFin: string }>> = {};
+  /** Borrador de horarios por sección antes de guardar. */
   horariosSeccionDraft: Record<number, Record<string, { diaSemana: number; horaInicio: string; horaFin: string }>> = {};
+  /** Borrador de fechas de inscripción al publicar. */
   publicarDraft: Record<number, { apertura: string; cierre: string }> = {};
+  /** Etiquetas de días para los selects de horario. */
   dias = DIAS;
   cursos = CURSOS_TALLER;
   secciones = SECCIONES_TALLER_DEFAULT;
+  /** true = modal de nueva actividad visible. */
   showModal = false;
+  /** Formulario de creación de actividad. */
   form: FormGroup;
+  /** Período académico activo (fechas globales de inscripción). */
   periodoActivo: any = null;
   periodoForm = { nombre: 'Período actual', apertura: '', cierre: '' };
 
@@ -534,12 +556,11 @@ export class GestionActividadesComponent implements OnInit {
     });
   }
 
-  /** Descarga el reporte final de inscripciones de la actividad en texto plano. */
+  /** Descarga el reporte final de la actividad en PDF con tablas. */
   descargarReporte(tallerId: number) {
     this.api.getReporteActividad(tallerId).subscribe({
       next: (r) => {
-        const txt = textoReporteActividad(r, 'REPORTE FINAL', (al) => this.priv.alumno(al));
-        descargarTextoReporte(txt, `reporte-${r.actividad.tipo}.txt`);
+        descargarPdfReporteActividad(r, 'REPORTE FINAL', (al) => this.priv.alumno(al));
       },
       error: (e) => alert(e?.error?.message || 'No se pudo generar el reporte'),
     });

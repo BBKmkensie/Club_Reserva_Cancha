@@ -1,16 +1,19 @@
 /**
- * Vista de consulta del historial de salidas programadas.
- * Muestra destino, profesor responsable, estado y resultado al cierre.
+ * =============================================================================
+ * app/pages/salidas/salidas.component.ts — Historial de salidas (solo lectura)
+ * =============================================================================
+ * Consulta del historial de salidas pedagógicas con estado y resultado.
+ * Rol: coordinación / gestión. Los alumnos se redirigen a /mis-salidas.
+ * Endpoints ApiService: getSalidas
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 
-/**
- * Vista de solo lectura del historial de salidas con estado y resultado.
- */
 @Component({
   selector: 'app-salidas',
   standalone: true,
@@ -63,17 +66,30 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
   `,
 })
 export class SalidasComponent implements OnInit {
+  /** Cliente HTTP para listar salidas. */
   private api = inject(ApiService);
+  /** Redirige alumnos a /mis-salidas (esta vista es de gestión). */
+  private router = inject(Router);
+  /** Permisos y tipo de usuario (alumno vs coordinación). */
   auth = inject(AuthRoleService);
 
+  /** Listado completo de salidas pedagógicas desde la API. */
   salidas: Salida[] = [];
 
-  /** Carga el listado de salidas al iniciar la página. */
+  /**
+   * Si el usuario es alumno (o solo se inscribe a salidas), lo manda a Mis salidas.
+   * Si es gestión/coordinación, carga el historial completo.
+   */
   ngOnInit() {
+    // Alumnos usan Mis salidas (filtrado por talleres inscritos)
+    if (this.auth.isAlumno() || this.auth.canInscribirseSalidas()) {
+      this.router.navigate(['/mis-salidas']);
+      return;
+    }
     this.cargar();
   }
 
-  /** Obtiene todas las salidas registradas desde la API. */
+  /** Historial completo para coordinación / roles de gestión. */
   cargar() {
     this.api.getSalidas().subscribe({
       next: (d) => (this.salidas = d),
@@ -81,6 +97,8 @@ export class SalidasComponent implements OnInit {
     });
   }
 
+  /** Texto del flujo pedagógico (p. ej. pendiente profesor / directiva). */
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }
+  /** Etiqueta corta del estado (PUBLICADA, EN_CURSO, CERRADA…). */
   estadoLabel(s: Salida) { return etiquetaEstadoSalida(s); }
 }

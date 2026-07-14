@@ -1,6 +1,14 @@
 /**
- * Barra lateral de navegación (móvil y escritorio).
- * Enlaces del menú, accesos rápidos por rol y cierre de sesión.
+ * =============================================================================
+ * app/shared/components/sidebar/sidebar.component.ts — Menú lateral de navegación
+ * =============================================================================
+ * Barra lateral con enlaces principales, accesos rápidos contextuales y datos
+ * de sesión. En móvil se despliega como panel deslizante; en escritorio queda
+ * fijo a la izquierda. Se usa junto al navbar en el layout principal.
+ *
+ * Métodos clave: ngOnInit(), ngOnDestroy(), tieneAccesosRapidos(), cerrarSesion().
+ * Inputs/Outputs: ninguno (lee permisos desde AuthRoleService).
+ * =============================================================================
  */
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -13,9 +21,6 @@ import { ApiService } from '../../../services/api.service';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { Router } from '@angular/router';
 
-/**
- * Sidebar adaptativo: menú principal, accesos rápidos contextuales y datos de sesión.
- */
 @Component({
   selector: 'app-sidebar',
   standalone: true,
@@ -123,19 +128,26 @@ import { Router } from '@angular/router';
   `,
   styles: [],
 })
-/**
- * Controla la visibilidad del menú lateral y los accesos rápidos según inscripciones del alumno.
- */
 export class SidebarComponent implements OnInit, OnDestroy {
+  /** Rol y permisos para mostrar accesos rápidos y datos de sesión. */
   auth = inject(AuthRoleService);
+  /** Estado abierto/cerrado del panel móvil (compartido con el navbar). */
   sidebarService = inject(SidebarService);
+  /** Consulta si el alumno tiene inscripciones aceptadas (enlace Mis salidas). */
   private api = inject(ApiService);
+  /** Redirección al login al cerrar sesión. */
   private router = inject(Router);
+  /** Espejo local de sidebarService.isOpen$ para el template. */
   isOpen = false;
+  /** true si el alumno tiene al menos una inscripción ACEPTADO → muestra Mis salidas. */
   puedeVerMisSalidas = false;
+  /** Suscripción al observable de apertura; se libera en ngOnDestroy. */
   private subscription?: Subscription;
 
-  /** Suscribe al estado del sidebar y evalúa visibilidad de «Mis salidas». */
+  /**
+   * Suscribe al estado de apertura del sidebar (SidebarService) y consulta
+   * al backend si el alumno tiene inscripciones aceptadas para mostrar «Mis salidas».
+   */
   ngOnInit() {
     this.subscription = this.sidebarService.isOpen$.subscribe(isOpen => {
       this.isOpen = isOpen;
@@ -143,7 +155,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.actualizarMisSalidas();
   }
 
-  /** Indica si debe mostrarse la sección de accesos rápidos (alumno o gestión de salidas). */
+  /**
+   * Indica si debe mostrarse la sección de accesos rápidos.
+   * Visible para alumnos (inscripción a talleres) o roles que gestionan salidas.
+   */
   tieneAccesosRapidos(): boolean {
     return this.auth.canInscribirseTalleres() || this.auth.canGestionarSalidas();
   }
@@ -156,25 +171,29 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
     const alumnoId = this.auth.currentUserId();
     if (!alumnoId) {
-      this.puedeVerMisSalidas = !!this.auth.currentTallerId();
+      this.puedeVerMisSalidas = false;
       return;
     }
     this.api.getInscripcionesTallerPorAlumno(alumnoId).subscribe({
       next: (inscs) => {
-        const aceptadas = (inscs ?? []).some((i: { estado: string }) => i.estado === 'ACEPTADO');
-        this.puedeVerMisSalidas = aceptadas || !!this.auth.currentTallerId();
+        this.puedeVerMisSalidas = (inscs ?? []).some(
+          (i: { estado: string }) => String(i.estado).toUpperCase() === 'ACEPTADO',
+        );
       },
       error: () => {
-        this.puedeVerMisSalidas = !!this.auth.currentTallerId();
+        this.puedeVerMisSalidas = false;
       },
     });
   }
 
+  /** Libera la suscripción al observable del sidebar al destruir el componente. */
   ngOnDestroy() {
     this.subscription?.unsubscribe();
   }
 
-  /** Limpia la sesión, cierra el menú móvil y redirige al login. */
+  /**
+   * Cierra la sesión del usuario, oculta el menú móvil y redirige al login.
+   */
   cerrarSesion(): void {
     this.auth.clear();
     this.sidebarService.close();

@@ -11,8 +11,8 @@ export class RegistroAsistenciaItemDto {
   @IsInt()
   alumnoId: number;
 
-  @IsIn(['PRESENTE', 'AUSENTE', 'TARDE'])
-  estado: 'PRESENTE' | 'AUSENTE' | 'TARDE';
+  @IsIn(['PRESENTE', 'AUSENTE'])
+  estado: 'PRESENTE' | 'AUSENTE';
 
   @IsString()
   @IsOptional()

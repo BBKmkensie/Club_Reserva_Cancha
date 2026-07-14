@@ -1,6 +1,14 @@
 /**
- * Tabla y listado responsivo de horarios de un taller.
- * Adapta columnas según el modo (por curso, sección o horario único).
+ * =============================================================================
+ * app/shared/components/horarios-taller/horarios-taller.component.ts — Tabla de horarios
+ * =============================================================================
+ * Presenta los bloques horarios de un taller en formato de tarjetas (móvil) o
+ * tabla (escritorio). Adapta columnas según el modo: por curso, por sección o
+ * horario semanal único. Se usa en detalle de taller y gestión de actividades.
+ *
+ * Inputs: taller (requerido), mostrarTitulo (boolean).
+ * Métodos clave: etiqueta(), diaLabel(), trackHorario().
+ * =============================================================================
  */
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -17,9 +25,6 @@ import {
   DIAS_SEMANA,
 } from '../../utils/horario-taller.util';
 
-/**
- * HorariosTaller: presenta los bloques horarios de un taller en móvil y escritorio.
- */
 @Component({
   selector: 'app-horarios-taller',
   standalone: true,
@@ -81,49 +86,63 @@ import {
     }
   `,
 })
-/**
- * Deriva filas, títulos y etiquetas de grupo a partir de la configuración del taller.
- */
 export class HorariosTallerComponent {
+  /** Taller cuyos horarios se van a mostrar (obligatorio). */
   @Input({ required: true }) taller!: TallerConHorarios;
+
+  /** Si es false, oculta el título encima de la tabla o lista. */
   @Input() mostrarTitulo = true;
 
+  /** Filas de horario ordenadas según el modo del taller (curso, sección o semanal). */
   get filas(): TallerHorarioItem[] {
     return horariosOrdenados(this.taller);
   }
 
+  /** Modo de agrupación de horarios: POR_CURSO o POR_SECCION. */
   get modo(): ModoHorarioTaller {
     return this.taller.modoHorario ?? 'POR_CURSO';
   }
 
+  /** Indica si se debe mostrar la columna de curso/sección (false en horario semanal). */
   get mostrarGrupo(): boolean {
     return !horariosSinGrupo(this.taller);
   }
 
+  /** Título dinámico de la sección según el tipo de horario del taller. */
   get titulo(): string {
     return tituloTablaHorarios(this.taller);
   }
 
+  /** Encabezado de la columna de agrupación: «Curso» o «Sección». */
   get etiquetaColumna(): string {
     return this.modo === 'POR_SECCION' ? 'Sección' : 'Curso';
   }
 
+  /** Mensaje de aviso cuando el taller aún no tiene horarios configurados. */
   get textoFallback(): string {
     return textoHorarioTaller(this.taller);
   }
 
-  /** Etiqueta de curso o sección según el modo de horario del taller. */
+  /**
+   * Etiqueta legible del grupo (curso o sección) para un bloque horario.
+   */
   etiqueta(h: TallerHorarioItem): string {
     return etiquetaGrupoHorario(h, this.modo);
   }
 
-  /** Nombre del día de la semana para un índice numérico. */
+  /**
+   * Nombre del día de la semana a partir de su índice numérico (1 = lunes).
+   */
   diaLabel(dia: number): string {
     return DIAS_SEMANA[dia] ?? `Día ${dia}`;
   }
 
+  /** Referencia a la utilidad de formateo de hora para usar en la plantilla. */
   fmtHora = fmtHora;
 
+  /**
+   * Clave única para el track de @for en la plantilla (evita re-render innecesario).
+   */
   trackHorario(h: TallerHorarioItem): string {
     return `${h.curso ?? ''}-${h.seccion ?? ''}-${h.diaSemana}-${h.horaInicio}`;
   }

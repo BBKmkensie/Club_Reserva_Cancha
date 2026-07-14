@@ -1,9 +1,27 @@
 /**
- * Servicio de inscripciones a talleres.
- * Valida cupos y conflictos de horario, gestiona solicitudes, propuestas de directiva
- * y notificaciones a alumnos, profesores y apoderados.
+ * =============================================================================
+ * inscripcion-taller/inscripcion-taller.service.ts — LÓGICA DE INSCRIPCIONES
+ * =============================================================================
+ * Archivo largo (~1000 líneas). Comentarios de bloque en métodos públicos.
+ *
+ * Flujo principal (alumno):
+ *   validar() → solicitar() [PENDIENTE] → responder() [ACEPTADO|RECHAZADO]
+ *   retirarse() cancela pendiente o deshace aceptación
+ *
+ * Flujo propuestas (apoderado → directiva):
+ *   proponerDirectiva() / proponerActividadLibre()
+ *   → getPropuestasPendientes()
+ *   → responderPropuesta() (si acepta, crea InscripcionTaller PENDIENTE)
+ *
+ * Validaciones clave en validar():
+ *   período académico abierto, cupos, conflicto de horario, advertencias
+ *
+ * Estados InscripcionTaller: PENDIENTE | ACEPTADO | RECHAZADO
+ * Estados Propuesta: PENDIENTE | ACEPTADA | RECHAZADA
+ * =============================================================================
  */
 import {
+  OnModuleInit,
   Injectable,
   ConflictException,
   NotFoundException,
@@ -21,11 +39,15 @@ import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
 import { ProponerInscripcionDirectivaDto } from '../dto/proponer-inscripcion-directiva.dto';
 import { ProponerActividadLibreDto } from '../dto/proponer-actividad-libre.dto';
 import { ResponderPropuestaInscripcionDto } from '../dto/responder-propuesta-inscripcion.dto';
-import { PropuestaInscripcionTaller } from '../entities/propuesta-inscripcion-taller.entity';
+import {
+  PropuestaInscripcionTaller,
+  OrigenPropuestaInscripcion,
+} from '../entities/propuesta-inscripcion-taller.entity';
 import { TallerHorario } from '../entities/taller-horario.entity';
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { MailService } from '../mail/mail.service';
+import { requiereFichaFisica } from '../common/taller-categoria.util';
 import {
   opcionesHorarioTaller,
   textoHorarioBloque,
@@ -50,7 +72,11 @@ export interface ValidacionInscripcion {
 
 /** Lógica de negocio para solicitudes e inscripciones de alumnos en talleres. */
 @Injectable()
-export class InscripcionTallerService {
+export class InscripcionTallerService implements OnModuleInit {
+  /**
+   * Inyección de repositorios TypeORM + servicios de notificación/periodo/mail.
+   * DataSource sirve para transacciones (varios save atómicos).
+   */
   constructor(
     @InjectRepository(InscripcionTaller)
     private repo: Repository<InscripcionTaller>,
@@ -70,15 +96,29 @@ export class InscripcionTallerService {
     private dataSource: DataSource,
   ) {}
 
+  /** Asegura la columna origen (alumno|apoderado) sin migraciones formales. */
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.dataSource.query(`
+        ALTER TABLE propuestas_inscripcion_taller
+        ADD COLUMN IF NOT EXISTS origen varchar(20) NOT NULL DEFAULT 'APODERADO'
+      `);
+    } catch {
+      // Si la BD no soporta IF NOT EXISTS o la tabla aún no existe, se ignora.
+    }
+  }
+
   /**
    * Evalúa si un alumno puede inscribirse: período, cupos, conflicto horario y advertencias.
    * Opcionalmente notifica bloqueos (conflicto o sin cupo).
+   * TypeORM: findOne({ where, relations }) carga el taller con profesores.
    */
   async validar(
     alumnoId: number,
     tallerId: number,
     notificar = false,
   ): Promise<ValidacionInscripcion> {
+    // findOne + relations = SELECT con JOIN a profesores
     const taller = await this.tallerRepo.findOne({
       where: { id: tallerId },
       relations: ['profesores'],
@@ -87,6 +127,7 @@ export class InscripcionTallerService {
       throw new NotFoundException('Taller no encontrado');
     }
 
+    // Solo se puede pedir inscripción a talleres PUBLICADOS
     if (taller.estado !== 'PUBLICADO') {
       return this.conAdvertencias(
         {
@@ -105,6 +146,7 @@ export class InscripcionTallerService {
 
     const hoy = new Date().toISOString().split('T')[0];
     const periodo = await this.periodoService.getActivo();
+    // Si el período académico está cerrado → no se puede inscribir
     const msgPeriodo = this.periodoService.mensajePeriodoCerrado(periodo, hoy);
     if (msgPeriodo) {
       return this.conAdvertencias(
@@ -127,6 +169,7 @@ export class InscripcionTallerService {
     const cierre = taller.fechaCierreInscripcion
       ? new Date(taller.fechaCierreInscripcion).toISOString().split('T')[0]
       : null;
+    // Ventana de inscripción del taller (fechas propias, además del período)
     if (apertura && hoy < apertura) {
       return this.conAdvertencias(
         {
@@ -158,6 +201,7 @@ export class InscripcionTallerService {
       );
     }
 
+    // ¿Ya hay fila alumno+taller? (PENDIENTE / ACEPTADO / RECHAZADO)
     const existente = await this.repo.findOne({
       where: { alumnoId, tallerId },
     });
@@ -317,7 +361,10 @@ export class InscripcionTallerService {
     }
   }
 
-  /** Registra solicitud PENDIENTE con ficha antropométrica del alumno. */
+  /**
+   * Registra solicitud PENDIENTE; ficha antropométrica solo obligatoria en deportes.
+   * TypeORM: si ya existía RECHAZADO → save(UPDATE); si no → create()+save(INSERT).
+   */
   async solicitar(dto: CreateInscripcionTallerDto): Promise<InscripcionTaller> {
     const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
     if (!alumno) {
@@ -326,6 +373,7 @@ export class InscripcionTallerService {
 
     const validacion = await this.validar(dto.alumnoId, dto.tallerId);
     const taller = await this.tallerRepo.findOne({ where: { id: dto.tallerId } });
+    // Si validar() dijo que no puede → ConflictException (409)
     if (!validacion.puedeInscribirse) {
       await this.notificarBloqueoInscripcion(
         dto.alumnoId,
@@ -335,17 +383,39 @@ export class InscripcionTallerService {
       throw new ConflictException(validacion.motivo ?? 'No puedes inscribirte en este taller');
     }
 
+    const pideFicha = requiereFichaFisica(taller?.tipo ?? '');
+    if (pideFicha) {
+      if (
+        dto.ficha == null ||
+        dto.ficha.altura == null ||
+        dto.ficha.peso == null ||
+        dto.ficha.porcentajeGrasa == null
+      ) {
+        throw new BadRequestException(
+          'Este taller deportivo requiere altura, peso y % de grasa corporal',
+        );
+      }
+    }
+
     const existente = await this.repo.findOne({
       where: { alumnoId: dto.alumnoId, tallerId: dto.tallerId },
     });
     let guardada: InscripcionTaller;
-    const datosFicha = {
-      altura: dto.ficha.altura,
-      peso: dto.ficha.peso,
-      porcentajeGrasa: dto.ficha.porcentajeGrasa,
-      sedentario: dto.ficha.sedentario,
-    };
+    const datosFicha = pideFicha && dto.ficha
+      ? {
+          altura: dto.ficha.altura,
+          peso: dto.ficha.peso,
+          porcentajeGrasa: dto.ficha.porcentajeGrasa,
+          sedentario: dto.ficha.sedentario ?? false,
+        }
+      : {
+          altura: null,
+          peso: null,
+          porcentajeGrasa: null,
+          sedentario: null,
+        };
 
+    // Reabrir solicitud rechazada vs crear fila nueva
     if (existente?.estado === 'RECHAZADO') {
       existente.estado = 'PENDIENTE';
       Object.assign(existente, datosFicha);
@@ -368,6 +438,10 @@ export class InscripcionTallerService {
     return guardada;
   }
 
+  /**
+   * Lista inscripciones de un taller (con alumno y taller).
+   * find({ where, relations, order }) = SELECT + JOINs.
+   */
   async findByTaller(tallerId: number): Promise<InscripcionTaller[]> {
     return await this.repo.find({
       where: { tallerId },
@@ -376,6 +450,7 @@ export class InscripcionTallerService {
     });
   }
 
+  /** Cupos y conteos por estado (PENDIENTE/ACEPTADO/RECHAZADO) del taller. */
   async getResumen(tallerId: number) {
     const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
     if (!taller) {
@@ -410,6 +485,7 @@ export class InscripcionTallerService {
     };
   }
 
+  /** Inscripciones del alumno (historial). */
   async findByAlumno(alumnoId: number): Promise<InscripcionTaller[]> {
     return await this.repo.find({
       where: { alumnoId },
@@ -418,6 +494,7 @@ export class InscripcionTallerService {
     });
   }
 
+  /** Actualiza altura/peso/%grasa/sedentario en la fila de inscripción. */
   async actualizarFicha(id: number, dto: ActualizarFichaAlumnoDto): Promise<InscripcionTaller> {
     const inscripcion = await this.repo.findOne({
       where: { id },
@@ -438,18 +515,21 @@ export class InscripcionTallerService {
     id: number,
     dto: ResponderInscripcionTallerDto,
   ): Promise<InscripcionTaller> {
+    // Bifurca: rechazo simple vs aceptación con transacción + lock de cupos
     if (dto.estado === 'RECHAZADO') {
       return this.responderRechazo(id);
     }
     return this.responderAceptacionTransaccional(id);
   }
 
+  /** save() pone estado RECHAZADO y notifica al alumno. */
   private async responderRechazo(id: number): Promise<InscripcionTaller> {
     const inscripcion = await this.repo.findOne({
       where: { id },
       relations: ['alumno', 'taller'],
     });
     if (!inscripcion) throw new NotFoundException('Solicitud no encontrada');
+    // Solo se responde una vez
     if (inscripcion.estado !== 'PENDIENTE') {
       throw new BadRequestException('Esta solicitud ya fue respondida');
     }
@@ -524,13 +604,17 @@ export class InscripcionTallerService {
     return guardada;
   }
 
-  /** El alumno cancela solicitud pendiente o se retira si ya estaba aceptado. */
+  /**
+   * El alumno cancela solicitud pendiente o se retira si ya estaba aceptado.
+   * Validaciones: dueño de la fila, no RECHAZADO; luego remove() o cambia estado.
+   */
   async retirarse(inscripcionId: number, alumnoId: number): Promise<{ ok: true }> {
     const inscripcion = await this.repo.findOne({
       where: { id: inscripcionId },
       relations: ['alumno', 'taller', 'taller.profesores'],
     });
     if (!inscripcion) throw new NotFoundException('Inscripción no encontrada');
+    // Seguridad: solo el dueño puede retirar
     if (inscripcion.alumnoId !== alumnoId) {
       throw new BadRequestException('No puedes retirar una inscripción de otro alumno');
     }
@@ -706,6 +790,7 @@ export class InscripcionTallerService {
           tallerHorarioId,
           horarioPropuestoTexto,
           mensajeApoderado: dto.mensajeApoderado?.trim() || null,
+          origen: 'APODERADO' as OrigenPropuestaInscripcion,
         })
       : this.propuestaRepo.create({
           alumnoId: dto.alumnoId,
@@ -714,6 +799,7 @@ export class InscripcionTallerService {
           tallerHorarioId,
           horarioPropuestoTexto,
           mensajeApoderado: dto.mensajeApoderado?.trim() || null,
+          origen: 'APODERADO',
         });
     const guardada = await this.propuestaRepo.save(propuesta);
 
@@ -726,13 +812,21 @@ export class InscripcionTallerService {
       tallerNombre: taller.tipo,
       horarioPropuesto: horarioPropuestoTexto,
       mensajeApoderado: dto.mensajeApoderado?.trim() || null,
+      origen: 'APODERADO',
     });
 
     return guardada;
   }
 
-  /** Apoderado propone una actividad que no está en el catálogo de talleres. */
-  async proponerActividadLibre(alumnoId: number, dto: ProponerActividadLibreDto) {
+  /**
+   * Propone una actividad NUEVA (fuera del catálogo).
+   * Puede venir del apoderado o del propio alumno; llega a la bandeja de la directiva.
+   */
+  async proponerActividadLibre(
+    alumnoId: number,
+    dto: ProponerActividadLibreDto,
+    origen: OrigenPropuestaInscripcion = 'APODERADO',
+  ) {
     const alumno = await this.alumnoRepo.findOne({ where: { id: alumnoId } });
     if (!alumno) throw new NotFoundException('Alumno no encontrado');
 
@@ -756,13 +850,15 @@ export class InscripcionTallerService {
         estado: 'PENDIENTE',
         horarioPropuestoTexto: horario,
         mensajeApoderado: dto.mensajeApoderado?.trim() || null,
+        origen,
       }),
     );
 
-    const apoderadoNombre = alumno.apoderadoNombre ?? 'Apoderado';
+    const solicitanteNombre =
+      origen === 'ALUMNO' ? alumno.nombre : (alumno.apoderadoNombre ?? 'Apoderado');
     await this.notificacionService.notificarCoordinadoresPropuestaApoderado({
       propuestaId: propuesta.id,
-      apoderadoNombre,
+      apoderadoNombre: solicitanteNombre,
       alumnoNombre: alumno.nombre,
       alumnoRut: alumno.rut,
       tallerNombre: nombre,
@@ -770,6 +866,7 @@ export class InscripcionTallerService {
       mensajeApoderado: dto.mensajeApoderado?.trim() || null,
       actividadDescripcion: descripcion,
       esActividadLibre: true,
+      origen,
     });
 
     return propuesta;
@@ -824,6 +921,7 @@ export class InscripcionTallerService {
     };
   }
 
+  /** Bandeja de propuestas PENDIENTE para la directiva. */
   async getPropuestasPendientes() {
     const propuestas = await this.propuestaRepo.find({
       where: { estado: 'PENDIENTE' },
@@ -839,6 +937,7 @@ export class InscripcionTallerService {
       tallerNombre: this.nombreActividadPropuesta(p),
       esActividadLibre: !p.tallerId,
       actividadDescripcion: p.actividadLibreDescripcion,
+      origen: p.origen ?? 'APODERADO',
       apoderadoNombre: p.alumno?.apoderadoNombre,
       apoderadoEmail: p.alumno?.apoderadoEmail,
       horarioPropuesto:
@@ -852,6 +951,7 @@ export class InscripcionTallerService {
     }));
   }
 
+  /** Historial de propuestas del alumno (portal apoderado o del propio estudiante). */
   async getPropuestasPorAlumno(alumnoId: number) {
     const propuestas = await this.propuestaRepo.find({
       where: { alumnoId },
@@ -864,6 +964,7 @@ export class InscripcionTallerService {
       tallerNombre: this.nombreActividadPropuesta(p),
       esActividadLibre: !p.tallerId,
       actividadDescripcion: p.actividadLibreDescripcion,
+      origen: p.origen ?? 'APODERADO',
       estado: p.estado,
       horarioPropuesto:
         p.horarioPropuestoTexto ?? textoHorarioPorId(p.tallerHorario),

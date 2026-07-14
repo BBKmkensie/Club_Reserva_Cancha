@@ -1,15 +1,29 @@
 /**
- * Servicio de asistencia a talleres.
- * Gestiona sesiones (abrir/cerrar), registros por alumno, alertas por ausencias
- * recurrentes, notificaciones a apoderados y reportes de asistencia.
+ * =============================================================================
+ * asistencia/asistencia.service.ts — LÓGICA DE ASISTENCIA A TALLERES
+ * =============================================================================
+ * Flujo principal:
+ *   abrirSesion() → actualizarAsistencia() → cerrarSesion()
+ *     → evaluarAusenciasRecurrentes()  (si supera umbral → AlertaAusencia)
+ *     → notificarApoderadosSesionCerrada() (email por cada alumno)
+ *
+ * Estados de sesión: ABIERTA | CERRADA
+ * Estados de registro: PRESENTE | AUSENTE | TARDE
+ * Estados de alerta: PENDIENTE → APODERADO_CONTACTADO → RESUELTO
+ *
+ * Archivo largo: comentarios de bloque en métodos públicos importantes.
+ * =============================================================================
  */
+// Excepciones HTTP: 404, 400, 409 (conflicto de sesión ya abierta)
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+// InjectRepository = pide el Repository<Entidad> registrado en el módulo
 import { InjectRepository } from '@nestjs/typeorm';
+// Repository = API TypeORM (find, findOne, save, create); In = WHERE campo IN (...)
 import { Repository, In } from 'typeorm';
 import { SesionAsistencia } from '../entities/sesion-asistencia.entity';
 import { RegistroAsistencia } from '../entities/registro-asistencia.entity';
@@ -22,19 +36,24 @@ import { AbrirSesionDto } from '../dto/abrir-sesion.dto';
 import { ActualizarAsistenciaDto } from '../dto/actualizar-asistencia.dto';
 import { CerrarSesionDto } from '../dto/cerrar-sesion.dto';
 import { GestionarAlertaDto } from '../dto/gestionar-alerta.dto';
+// Notificaciones in-app + correo al apoderado
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { MailService } from '../mail/mail.service';
 
-/** Lógica de negocio para el control de asistencia en talleres. */
+/**
+ * @Injectable() = Nest inyecta repositorios TypeORM + NotificacionService + MailService.
+ * MailService viene de MailModule (@Global).
+ * Cada @InjectRepository(X) requiere TypeOrmModule.forFeature([X]) en AsistenciaModule.
+ */
 @Injectable()
 export class AsistenciaService {
   constructor(
     @InjectRepository(SesionAsistencia)
-    private sesionRepo: Repository<SesionAsistencia>,
+    private sesionRepo: Repository<SesionAsistencia>, // tabla sesiones_asistencia
     @InjectRepository(RegistroAsistencia)
-    private registroRepo: Repository<RegistroAsistencia>,
+    private registroRepo: Repository<RegistroAsistencia>, // tabla registros_asistencia
     @InjectRepository(InscripcionTaller)
-    private inscripcionRepo: Repository<InscripcionTaller>,
+    private inscripcionRepo: Repository<InscripcionTaller>, // alumnos ACEPTADOS del taller
     @InjectRepository(Taller)
     private tallerRepo: Repository<Taller>,
     @InjectRepository(Alumno)
@@ -43,8 +62,8 @@ export class AsistenciaService {
     private profesorRepo: Repository<Profesor>,
     @InjectRepository(AlertaAusencia)
     private alertaRepo: Repository<AlertaAusencia>,
-    private notificacionService: NotificacionService,
-    private mailService: MailService,
+    private notificacionService: NotificacionService, // avisos in-app + SSE
+    private mailService: MailService, // correos al apoderado
   ) {}
 
   /**
@@ -135,10 +154,12 @@ export class AsistenciaService {
       throw new BadRequestException('La sesión está cerrada y no se puede editar');
     }
 
-    const estadosValidos = ['PRESENTE', 'AUSENTE', 'TARDE'];
+    const estadosValidos = ['PRESENTE', 'AUSENTE'];
     for (const item of dto.registros) {
       if (!estadosValidos.includes(item.estado)) {
-        throw new BadRequestException(`Estado inválido para alumno ${item.alumnoId}`);
+        throw new BadRequestException(
+          `Estado inválido para alumno ${item.alumnoId}. Use PRESENTE o AUSENTE.`,
+        );
       }
       const registro = await this.registroRepo.findOne({
         where: { sesionId, alumnoId: item.alumnoId },

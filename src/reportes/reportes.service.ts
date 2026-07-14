@@ -1,9 +1,21 @@
 /**
- * Servicio de reportes consolidados.
- * Cruza datos de alumnos, inscripciones, apoderados, profesores y administración.
+ * =============================================================================
+ * reportes/reportes.service.ts — ARMA EL REPORTE DE PERSONAS E INSCRIPCIONES
+ * =============================================================================
+ * Cruza tablas Alumno, InscripcionTaller, Admin y Profesor en un solo JSON.
+ *
+ * Secciones del resultado:
+ *   alumnosSinTaller  → sin inscripción PENDIENTE/ACEPTADO
+ *   alumnosInscritos  → con inscripción activa (incluye nombre de taller)
+ *   apoderados        → datos del apoderado embebidos en cada Alumno
+ *   directiva         → Admin con rol 'directiva'
+ *   admins            → Admin con rol 'super_admin'
+ *   profesores        → con taller asignado
+ * =============================================================================
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+// In = filtrar inscripciones PENDIENTE o ACEPTADO
 import { In, Repository } from 'typeorm';
 import { Alumno } from '../entities/alumno.entity';
 import { Admin } from '../entities/admin.entity';
@@ -62,6 +74,7 @@ export class ReportesService {
    */
   async getPersonasInscripciones(): Promise<ReportePersonasInscripciones> {
     const alumnos = await this.alumnoRepo.find({ order: { nombre: 'ASC' } });
+    // Solo inscripciones “vivas” (pendientes o aceptadas)
     const inscripciones = await this.inscripcionRepo.find({
       where: { estado: In(['PENDIENTE', 'ACEPTADO']) },
       relations: ['alumno', 'taller'],
@@ -93,6 +106,7 @@ export class ReportesService {
       estado: i.estado,
     }));
 
+    // Apoderado vive en columnas del alumno (no es tabla aparte)
     const apoderados = alumnos
       .filter((a) => a.apoderadoNombre?.trim())
       .map((a) => ({

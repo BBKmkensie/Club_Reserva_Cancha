@@ -1,7 +1,17 @@
 /**
- * Servicio de fichas médicas/deportivas por alumno y taller.
- * Permite listar, consultar y actualizar medidas antropométricas según rol (directiva/profesor).
+ * =============================================================================
+ * ficha-alumno/ficha-alumno.service.ts — LÓGICA DE FICHAS POR TALLER
+ * =============================================================================
+ * La ficha (FichaAlumnoTaller) guarda medidas por par alumno+taller.
+ * Si aún no hay ficha, se pueden mostrar valores “heredados” de la
+ * InscripcionTaller (altura/peso capturados al inscribirse).
+ *
+ * Permisos en listarPorTaller:
+ *   - Profesor (con profesorId): solo inscritos ACEPTADOS de SU taller
+ *   - Coordinación (esCoordinacion): todos o solo inscritos según flag
+ * =============================================================================
  */
+// ForbiddenException = 403 si el profesor pide fichas de otro taller
 import {
   Injectable,
   NotFoundException,
@@ -53,6 +63,7 @@ export class FichaAlumnoService {
   ): Promise<FichaAlumnoListItem[]> {
     const { soloInscritos = false, esCoordinacion = false, profesorId } = opts;
 
+    // Profesor: debe pertenecer al taller pedido
     if (!esCoordinacion && profesorId) {
       const profesor = await this.profesorRepo.findOne({ where: { id: profesorId } });
       if (!profesor || profesor.tallerId !== tallerId) {
@@ -68,12 +79,13 @@ export class FichaAlumnoService {
     return this.listarTodosAlumnosConFicha(tallerId);
   }
 
-  /** Todos los estudiantes del sistema con su ficha en el taller seleccionado */
+  /** Todos los estudiantes del sistema con su ficha en el taller seleccionado. */
   private async listarTodosAlumnosConFicha(tallerId: number): Promise<FichaAlumnoListItem[]> {
     const alumnos = await this.alumnoRepo.find({ order: { nombre: 'ASC' } });
     const fichas = await this.fichaRepo.find({ where: { tallerId }, relations: ['alumno'] });
     const inscripciones = await this.inscripcionRepo.find({ where: { tallerId } });
 
+    // Mapas para lookup O(1) al armar cada fila
     const fichaMap = new Map(fichas.map((f) => [f.alumnoId, f]));
     const inscMap = new Map(inscripciones.map((i) => [i.alumnoId, i]));
 
@@ -84,7 +96,7 @@ export class FichaAlumnoService {
     });
   }
 
-  /** Solo alumnos con inscripción ACEPTADA en el taller */
+  /** Solo alumnos con inscripción ACEPTADA en el taller. */
   private async listarInscritosAceptados(tallerId: number): Promise<FichaAlumnoListItem[]> {
     const inscripciones = await this.inscripcionRepo.find({
       where: { tallerId, estado: 'ACEPTADO' },
@@ -103,6 +115,10 @@ export class FichaAlumnoService {
       });
   }
 
+  /**
+   * Une alumno + ficha + inscripción en un DTO de respuesta.
+   * Prioridad de medidas: ficha > inscripción > null.
+   */
   private toItem(
     alumno: Alumno,
     tallerId: number,
@@ -133,12 +149,13 @@ export class FichaAlumnoService {
     return this.toItem(alumno, tallerId, ficha ?? undefined, inscripcion ?? undefined);
   }
 
-  /** Crea o actualiza la ficha antropométrica de un alumno en el taller indicado. */
+  /** Crea o actualiza la ficha antropométrica (upsert manual). */
   async guardar(alumnoId: number, tallerId: number, dto: ActualizarFichaAlumnoDto): Promise<FichaAlumnoTaller> {
     let ficha = await this.fichaRepo.findOne({ where: { alumnoId, tallerId } });
     if (!ficha) {
       ficha = this.fichaRepo.create({ alumnoId, tallerId });
     }
+    // Solo sobrescribe campos enviados (parcial)
     if (dto.altura != null) ficha.altura = dto.altura;
     if (dto.peso != null) ficha.peso = dto.peso;
     if (dto.porcentajeGrasa != null) ficha.porcentajeGrasa = dto.porcentajeGrasa;

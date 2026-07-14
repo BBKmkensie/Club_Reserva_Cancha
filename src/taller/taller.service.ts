@@ -1,8 +1,32 @@
 /**
- * Servicio de talleres (actividades extracurriculares).
- * Gestiona el ciclo de vida: creación, asignación de docente, horarios,
- * publicación en catálogo, cierre de período, reportes y estadísticas semestrales.
+ * =============================================================================
+ * taller/taller.service.ts — LÓGICA COMPLETA DEL CICLO DE VIDA DEL TALLER
+ * =============================================================================
+ * Este es el service MÁS grande del backend. Orquesta:
+ *
+ *   1) CRUD básico (create, findAll, findOne, update, remove)
+ *   2) Catálogo público (findCatalogo) — solo PUBLICADOS con inscripción abierta
+ *   3) Asignación docente (asignarDocente → responderAsignacion)
+ *      BORRADOR → ESPERA_DOCENTE → (acepta) → ESPERA_HORARIO
+ *   4) Horarios (definirHorario / definirHorarios / getHorarios)
+ *   5) Publicación y cierre (publicar → PUBLICADO, cerrarPeriodo → CERRADO)
+ *   6) Presentación (descripción / foto del profesor)
+ *   7) Reportes y estadísticas de semestre
+ *
+ * Tablas que toca (vía repositorios inyectados):
+ *   talleres, profesores, asignaciones_docente, inscripcion_taller,
+ *   sesiones_asistencia, reservas, taller_horario
+ *
+ * Servicios externos:
+ *   NotificacionService → avisa al profesor cuando lo asignan
+ *   PeriodoService      → períodos académicos para rankings
+ *
+ * Cómo leer este archivo:
+ *   - Métodos públicos ≈ lo que llama el controller
+ *   - Métodos private al final = helpers (fechas, filtros, cálculos)
+ * =============================================================================
  */
+// Injectable / excepciones HTTP de Nest (404, 400, 409, 403).
 import {
   Injectable,
   NotFoundException,
@@ -10,7 +34,10 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
+// @InjectRepository = pide el Repository TypeORM de una entidad registrada en el módulo.
 import { InjectRepository } from '@nestjs/typeorm';
+// Repository = API TypeORM (find, findOne, create, save, remove);
+// In / Not = operadores para where: { id: In([1,2]), estado: Not('CERRADO') }.
 import { Repository, In, Not } from 'typeorm';
 import { Taller } from '../entities/taller.entity';
 import { Profesor } from '../entities/profesor.entity';
@@ -32,9 +59,13 @@ import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { PeriodoAcademico } from '../entities/periodo-academico.entity';
 
-/** Lógica de negocio para actividades, docentes y horarios de talleres. */
+/** @Injectable() = Nest puede inyectar este service en TallerController y otros módulos. */
 @Injectable()
 export class TallerService {
+  /**
+   * Inyecta un Repository por cada tabla que este service consulta/modifica,
+   * más NotificacionService y PeriodoService (módulos importados en TallerModule).
+   */
   constructor(
     @InjectRepository(Taller)
     private tallerRepository: Repository<Taller>,
@@ -54,8 +85,16 @@ export class TallerService {
     private periodoService: PeriodoService,
   ) {}
 
-  /** Crea una actividad en estado BORRADOR. */
+  // ---------------------------------------------------------------------------
+  // CRUD BÁSICO
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Crea una actividad en estado BORRADOR (aún no visible en catálogo).
+   * TypeORM: create() arma el objeto en memoria; save() lo INSERTA en PostgreSQL.
+   */
   async create(createTallerDto: CreateTallerDto): Promise<Taller> {
+    // create() NO escribe en BD: solo construye la entidad
     const taller = this.tallerRepository.create({
       tipo: createTallerDto.tipo,
       descripcion: createTallerDto.descripcion,
@@ -67,9 +106,14 @@ export class TallerService {
       adminId: createTallerDto.adminId,
       estado: 'BORRADOR',
     });
+    // save() = INSERT (o UPDATE si ya tiene id)
     return await this.tallerRepository.save(taller);
   }
 
+  /**
+   * Lista todos los talleres con profesores y horarios (más nuevos primero).
+   * find({ relations, order }) = SELECT * + JOINs de las relaciones pedidas.
+   */
   async findAll(): Promise<Taller[]> {
     return await this.tallerRepository.find({
       relations: ['profesores', 'horarios'],
@@ -77,9 +121,14 @@ export class TallerService {
     });
   }
 
-  /** Catálogo público: talleres PUBLICADOS con inscripciones abiertas hoy. */
+  /**
+   * Catálogo público (alumnos/apoderados):
+   * 1) find({ where }) → talleres con estado PUBLICADO
+   * 2) Filtra en memoria los que tienen ventana de inscripción abierta HOY
+   */
   async findCatalogo(): Promise<Taller[]> {
     const hoy = new Date().toISOString().split('T')[0];
+    // where: { estado: 'PUBLICADO' } → WHERE estado = 'PUBLICADO'
     const talleres = await this.tallerRepository.find({
       where: { estado: 'PUBLICADO' },
       relations: ['horarios', 'profesores'],
@@ -88,6 +137,10 @@ export class TallerService {
     return talleres.filter((t) => this.inscripcionesAbiertas(t, hoy));
   }
 
+  /**
+   * Detalle completo: findOne({ where: { id } }) + relations.
+   * Si no hay fila → NotFoundException (404).
+   */
   async findOne(id: number): Promise<Taller> {
     const taller = await this.tallerRepository.findOne({
       where: { id },
@@ -99,8 +152,10 @@ export class TallerService {
     return taller;
   }
 
+  /** Edición parcial. Bloqueada si el taller ya está CERRADO. */
   async update(id: number, updateTallerDto: Partial<CreateTallerDto>): Promise<Taller> {
     const taller = await this.findOne(id);
+    // Validación de negocio: un taller CERRADO es inmutable
     if (taller.estado === 'CERRADO') {
       throw new BadRequestException('No se puede editar una actividad cerrada');
     }
@@ -108,10 +163,17 @@ export class TallerService {
     if (updateTallerDto.fechaInicio) {
       taller.fechaInicio = new Date(updateTallerDto.fechaInicio);
     }
+    // save() sobre entidad con id → UPDATE
     return await this.tallerRepository.save(taller);
   }
 
-  /** Actualiza descripción del taller y/o foto del profesor (directiva o docente asignado). */
+  /**
+   * Actualiza presentación (descripción del taller y/o foto del profesor).
+   * Permisos:
+   *   - esDirectiva=true → puede editar
+   *   - si no, profesorId debe ser el docente cuyo tallerId coincide
+   * ForbiddenException (403) si intenta editar sin permiso.
+   */
   async actualizarPresentacion(
     tallerId: number,
     dto: ActualizarPresentacionTallerDto,
@@ -171,12 +233,22 @@ export class TallerService {
     };
   }
 
+  /** Elimina el taller: findOne + remove() = DELETE en PostgreSQL. */
   async remove(id: number): Promise<void> {
     const taller = await this.findOne(id);
     await this.tallerRepository.remove(taller);
   }
 
-  /** Asigna un docente y pasa la actividad a ESPERA_DOCENTE. */
+  // ---------------------------------------------------------------------------
+  // ASIGNACIÓN DE DOCENTE (flujo BORRADOR ↔ ESPERA_DOCENTE)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Directiva propone un profesor para el taller.
+   * Requisitos: estado BORRADOR o ESPERA_DOCENTE; no debe haber otra PENDIENTE.
+   * Efecto: crea AsignacionDocente PENDIENTE, estado taller → ESPERA_DOCENTE,
+   * y notifica al profesor.
+   */
   async asignarDocente(tallerId: number, dto: AsignarDocenteDto): Promise<AsignacionDocente> {
     const taller = await this.findOne(tallerId);
     if (!['BORRADOR', 'ESPERA_DOCENTE'].includes(taller.estado)) {
@@ -222,7 +294,11 @@ export class TallerService {
     }) as AsignacionDocente;
   }
 
-  /** El docente acepta o rechaza la asignación; actualiza el estado del taller. */
+  /**
+   * El docente acepta o rechaza la asignación pendiente.
+   *   acepta=true  → ACEPTADA, taller → ESPERA_HORARIO, vincula profesor.tallerId
+   *   acepta=false → RECHAZADA, taller vuelve a BORRADOR, avisa a coordinadores
+   */
   async responderAsignacion(
     asignacionId: number,
     profesorId: number,
@@ -270,7 +346,15 @@ export class TallerService {
     return await this.asignacionRepository.save(asignacion);
   }
 
-  /** Acepta horario simple o múltiple según el DTO recibido. */
+  // ---------------------------------------------------------------------------
+  // HORARIOS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Punto de entrada de horarios:
+   *   - Si el DTO trae array `horarios` → definirHorarios (completo)
+   *   - Si es horario simple → lo expande a un bloque por cada curso del colegio
+   */
   async definirHorario(
     tallerId: number,
     dto: DefinirHorarioDto | DefinirHorariosTallerDto,
@@ -290,7 +374,11 @@ export class TallerService {
     });
   }
 
-  /** Reemplaza los horarios del taller validando conflictos del docente aceptado. */
+  /**
+   * Reemplaza TODOS los horarios del taller (borra viejos e inserta nuevos).
+   * Solo en ESPERA_HORARIO, con docente ACEPTADO.
+   * Valida: horaInicio < horaFin, curso/sección según modo, sin conflicto del docente.
+   */
   async definirHorarios(tallerId: number, dto: DefinirHorariosTallerDto): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'ESPERA_HORARIO') {
@@ -352,6 +440,7 @@ export class TallerService {
     return await this.tallerRepository.save(taller);
   }
 
+  /** Lista filas de `taller_horario` ordenadas por curso/sección/día. */
   async getHorarios(tallerId: number): Promise<TallerHorario[]> {
     await this.findOne(tallerId);
     return this.tallerHorarioRepository.find({
@@ -366,7 +455,15 @@ export class TallerService {
     return taller.diaSemana != null && !!taller.horaInicio && !!taller.horaFin;
   }
 
-  /** Publica la actividad en el catálogo con fechas opcionales de inscripción. */
+  // ---------------------------------------------------------------------------
+  // PUBLICAR / CERRAR / REPORTES
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Publica en el catálogo (estado PUBLICADO).
+   * Requiere ESPERA_HORARIO + horario definido.
+   * Guarda fechas de apertura/cierre de inscripción y publicadoAt.
+   */
   async publicar(tallerId: number, dto: PublicarActividadDto): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'ESPERA_HORARIO') {
@@ -395,7 +492,10 @@ export class TallerService {
     return await this.tallerRepository.save(taller);
   }
 
-  /** Cierra una actividad publicada; ya no acepta nuevas inscripciones. */
+  /**
+   * Cierra una actividad publicada → estado CERRADO.
+   * Ya no acepta nuevas inscripciones (cerradoAt = ahora).
+   */
   async cerrarPeriodo(tallerId: number): Promise<Taller> {
     const taller = await this.findOne(tallerId);
     if (taller.estado !== 'PUBLICADO') {
@@ -406,7 +506,7 @@ export class TallerService {
     return await this.tallerRepository.save(taller);
   }
 
-  /** Asignaciones pendientes de respuesta para un docente. */
+  /** Lista asignaciones PENDIENTES que un profesor debe aceptar/rechazar. */
   async getAsignacionesPendientes(profesorId: number): Promise<AsignacionDocente[]> {
     return await this.asignacionRepository.find({
       where: { profesorId, estado: 'PENDIENTE' },

@@ -1,9 +1,22 @@
 /**
- * Servicio de seed para talleres.
- * Carga catálogo oficial, asigna profesores y sincroniza horarios institucionales.
+ * =============================================================================
+ * taller/taller-seed.service.ts — CARGA INICIAL DE TALLERES / HORARIOS
+ * =============================================================================
+ * NO es un endpoint HTTP. Lo usan scripts npm, por ejemplo:
+ *   npm run seed:catalogo-talleres
+ *   npm run seed:horarios-talleres
+ *
+ * Lee datos de:
+ *   common/catalogo-talleres.pool.ts   → lista oficial de talleres
+ *   common/horarios-oficiales.pool.ts  → bloques día/hora por taller
+ *
+ * Y los inserta/actualiza en PostgreSQL (talleres, profesores, taller_horario).
+ * =============================================================================
  */
+// Injectable = Nest puede inyectar este service; InjectRepository = repositorio TypeORM.
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+// Repository.find / save = consultas e inserts TypeORM sobre la tabla.
 import { Repository } from 'typeorm';
 import { Taller } from '../entities/taller.entity';
 import { Profesor } from '../entities/profesor.entity';
@@ -16,7 +29,7 @@ import {
 import { HORARIOS_OFICIALES_TALLERES } from '../common/horarios-oficiales.pool';
 import { hashPassword } from '../common/password.util';
 
-/** Resultado del seed del catálogo de talleres y asignación de profesores. */
+/** Contadores que devuelve el seed del catálogo. */
 export interface SeedCatalogoTalleresResult {
   creados: number;
   actualizados: number;
@@ -29,14 +42,14 @@ export interface SeedCatalogoTalleresResult {
   }>;
 }
 
-/** Resultado de la carga de horarios oficiales por taller. */
+/** Contadores que devuelve el seed de horarios oficiales. */
 export interface SeedHorariosOficialesResult {
   actualizados: string[];
   bloquesCargados: number;
   noEncontrados: string[];
 }
 
-/** Carga y sincroniza talleres, profesores y bloques horarios del catálogo institucional. */
+/** @Injectable() = lo registra Nest como provider (lo usan scripts npm de seed). */
 @Injectable()
 export class TallerSeedService {
   constructor(
@@ -48,8 +61,12 @@ export class TallerSeedService {
     private horarioRepo: Repository<TallerHorario>,
   ) {}
 
-  /** Crea o actualiza talleres del catálogo y asigna profesores cuando corresponde. */
+  /**
+   * Inserta/actualiza el catálogo oficial de talleres y asigna profesores.
+   * Fuente: CATALOGO_TALLERES_SEED. find() carga existentes; save() crea o actualiza.
+   */
   async seedCatalogoTalleres(): Promise<SeedCatalogoTalleresResult> {
+    // find() sin where → SELECT * (con relación profesores)
     const existentes = await this.tallerRepo.find({ relations: ['profesores'] });
     const porNombre = new Map<string, Taller>();
     for (const t of existentes) {
@@ -138,6 +155,11 @@ export class TallerSeedService {
   }
 
   /** Sincroniza bloques horarios oficiales y limpia horarios de talleres fuera del catálogo. */
+  /**
+   * Sincroniza bloques horarios oficiales por taller.
+   * Fuente: HORARIOS_OFICIALES_TALLERES en common/horarios-oficiales.pool.ts
+   * Borra horarios previos del taller y carga los nuevos.
+   */
   async seedHorariosOficiales(): Promise<SeedHorariosOficialesResult> {
     const talleres = await this.tallerRepo.find();
     const porNombre = new Map<string, Taller>();

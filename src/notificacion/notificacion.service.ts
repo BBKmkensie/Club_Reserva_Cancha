@@ -1,9 +1,19 @@
 /**
- * Servicio de notificaciones del sistema.
- * Persiste avisos para alumnos, profesores y administradores; envía correo y emite eventos SSE.
+ * =============================================================================
+ * notificacion/notificacion.service.ts — CREAR / LISTAR / MARCAR LEÍDAS
+ * =============================================================================
+ * Flujo al crear (crear / crearParaProfesor / crearParaAdmin):
+ *   1. Guarda fila en tabla notificaciones
+ *   2. Envía email (si el destinatario tiene correo)
+ *   3. Emite evento SSE para actualizar la UI al instante
+ *
+ * Tipos frecuentes: inscripcion_taller, ausencia_recurrente, propuesta_actividad
+ * Coordinadores = Admin con rol super_admin o directiva.
+ * =============================================================================
  */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+// In = WHERE rol IN ('super_admin', 'directiva')
 import { In, Repository } from 'typeorm';
 import { Notificacion } from '../entities/notificacion.entity';
 import { Alumno } from '../entities/alumno.entity';
@@ -98,7 +108,7 @@ export class NotificacionService {
     return guardada;
   }
 
-  /** Notifica a coordinadores sobre propuesta de apoderado con correo detallado. */
+  /** Notifica a coordinadores sobre propuesta de apoderado o alumno. */
   async notificarCoordinadoresPropuestaApoderado(params: {
     propuestaId: number;
     apoderadoNombre: string;
@@ -109,14 +119,17 @@ export class NotificacionService {
     mensajeApoderado?: string | null;
     actividadDescripcion?: string | null;
     esActividadLibre?: boolean;
+    origen?: 'APODERADO' | 'ALUMNO';
   }): Promise<void> {
+    const esAlumno = params.origen === 'ALUMNO';
     const titulo = params.esActividadLibre
       ? 'Nueva propuesta de actividad (fuera de catálogo)'
       : 'Nueva propuesta de actividad';
     const horarioTxt = params.horarioPropuesto ? ` Horario: ${params.horarioPropuesto}.` : '';
     const tipoTxt = params.esActividadLibre ? ' una actividad nueva ' : ' ';
-    const mensaje =
-      `${params.apoderadoNombre} propuso${tipoTxt}"${params.tallerNombre}" para ${params.alumnoNombre}.${horarioTxt} Revisa la bandeja de propuestas.`;
+    const mensaje = esAlumno
+      ? `El alumno ${params.alumnoNombre} propuso${tipoTxt}"${params.tallerNombre}".${horarioTxt} Revisa la bandeja de propuestas.`
+      : `${params.apoderadoNombre} propuso${tipoTxt}"${params.tallerNombre}" para ${params.alumnoNombre}.${horarioTxt} Revisa la bandeja de propuestas.`;
 
     const coordinadores = await this.adminRepo.find({
       where: { rol: In(['super_admin', 'directiva']) },
@@ -142,6 +155,7 @@ export class NotificacionService {
           propuestaId: params.propuestaId,
           actividadDescripcion: params.actividadDescripcion,
           esActividadLibre: params.esActividadLibre,
+          origen: params.origen ?? 'APODERADO',
         });
       }
     }
@@ -171,6 +185,7 @@ export class NotificacionService {
     }
   }
 
+  /** Lista notificaciones del alumno, más recientes primero. */
   async findByAlumno(alumnoId: number): Promise<Notificacion[]> {
     return await this.repo.find({
       where: { alumnoId },
@@ -178,6 +193,7 @@ export class NotificacionService {
     });
   }
 
+  /** Lista notificaciones del profesor. */
   async findByProfesor(profesorId: number): Promise<Notificacion[]> {
     return await this.repo.find({
       where: { profesorId },
@@ -185,6 +201,7 @@ export class NotificacionService {
     });
   }
 
+  /** Lista notificaciones del admin. */
   async findByAdmin(adminId: number): Promise<Notificacion[]> {
     return await this.repo.find({
       where: { adminId },
@@ -192,14 +209,17 @@ export class NotificacionService {
     });
   }
 
+  /** Cuenta no leídas del alumno (badge del frontend). */
   async contarNoLeidas(alumnoId: number): Promise<number> {
     return await this.repo.count({ where: { alumnoId, leida: false } });
   }
 
+  /** Cuenta no leídas del profesor. */
   async contarNoLeidasProfesor(profesorId: number): Promise<number> {
     return await this.repo.count({ where: { profesorId, leida: false } });
   }
 
+  /** Cuenta no leídas del admin. */
   async contarNoLeidasAdmin(adminId: number): Promise<number> {
     return await this.repo.count({ where: { adminId, leida: false } });
   }
@@ -214,10 +234,12 @@ export class NotificacionService {
     return await this.repo.save(notificacion);
   }
 
+  /** Marca todas las del alumno como leídas (update masivo TypeORM). */
   async marcarTodasLeidas(alumnoId: number): Promise<void> {
     await this.repo.update({ alumnoId, leida: false }, { leida: true });
   }
 
+  /** Marca una notificación del admin como leída. */
   async marcarLeidaAdmin(id: number, adminId: number): Promise<Notificacion> {
     const notificacion = await this.repo.findOne({ where: { id, adminId } });
     if (!notificacion) {
@@ -227,10 +249,12 @@ export class NotificacionService {
     return await this.repo.save(notificacion);
   }
 
+  /** Marca todas las del admin como leídas. */
   async marcarTodasLeidasAdmin(adminId: number): Promise<void> {
     await this.repo.update({ adminId, leida: false }, { leida: true });
   }
 
+  /** Marca una notificación del profesor como leída. */
   async marcarLeidaProfesor(id: number, profesorId: number): Promise<Notificacion> {
     const notificacion = await this.repo.findOne({ where: { id, profesorId } });
     if (!notificacion) {
@@ -240,22 +264,26 @@ export class NotificacionService {
     return await this.repo.save(notificacion);
   }
 
+  /** Marca todas las del profesor como leídas. */
   async marcarTodasLeidasProfesor(profesorId: number): Promise<void> {
     await this.repo.update({ profesorId, leida: false }, { leida: true });
   }
 
+  /** Elimina una notificación verificando que pertenezca al alumno. */
   async eliminarAlumno(id: number, alumnoId: number): Promise<void> {
     const notificacion = await this.repo.findOne({ where: { id, alumnoId } });
     if (!notificacion) throw new NotFoundException('Notificación no encontrada');
     await this.repo.remove(notificacion);
   }
 
+  /** Elimina una notificación del profesor. */
   async eliminarProfesor(id: number, profesorId: number): Promise<void> {
     const notificacion = await this.repo.findOne({ where: { id, profesorId } });
     if (!notificacion) throw new NotFoundException('Notificación no encontrada');
     await this.repo.remove(notificacion);
   }
 
+  /** Elimina una notificación del admin. */
   async eliminarAdmin(id: number, adminId: number): Promise<void> {
     const notificacion = await this.repo.findOne({ where: { id, adminId } });
     if (!notificacion) throw new NotFoundException('Notificación no encontrada');

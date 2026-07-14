@@ -1,6 +1,14 @@
 /**
- * Gráficos y resúmenes de fichas físicas de alumnos inscritos en un taller.
- * Muestra promedios, barras por alumno y distribución de sedentarismo.
+ * =============================================================================
+ * app/shared/components/ficha-grafico-taller/ficha-grafico-taller.component.ts — Gráficos de ficha física
+ * =============================================================================
+ * Visualización estadística de datos antropométricos del grupo inscrito en un
+ * taller: promedios, barras por alumno y distribución de sedentarismo.
+ * Se usa en fichas-alumnos y detalle de taller.
+ *
+ * Inputs: inscripciones (datos con ficha), enmascararNombres (boolean).
+ * Métodos clave: fmt(), pct(), colorGrasa(), conicSedentario().
+ * =============================================================================
  */
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -22,9 +30,6 @@ interface BarraAlumno {
   anchoPct: number;
 }
 
-/**
- * FichaGraficoTaller: visualización estadística de datos antropométricos del grupo.
- */
 @Component({
   selector: 'app-ficha-grafico-taller',
   standalone: true,
@@ -134,21 +139,24 @@ interface BarraAlumno {
     }
   `,
 })
-/**
- * Calcula promedios y series para gráficos de barras y torta a partir de inscripciones con ficha.
- */
 export class FichaGraficoTallerComponent {
+  /** Inscripciones con datos de ficha física del taller a visualizar. */
   @Input() inscripciones: InscripcionConFicha[] = [];
+
+  /** Si es true, enmascara los nombres de alumnos por privacidad. */
   @Input() enmascararNombres = false;
 
+  /** Tope de la escala del gráfico de % grasa (60%). */
   private readonly escalaGrasaMax = 60;
 
+  /** Indica si al menos una inscripción tiene algún dato de ficha registrado. */
   get tieneDatos(): boolean {
     return this.inscripciones.some(
       (i) => i.altura != null || i.peso != null || i.porcentajeGrasa != null || i.sedentario != null,
     );
   }
 
+  /** Promedios de altura (cm), peso (kg) y % grasa del grupo. */
   get promedios(): { altura: number | null; peso: number | null; grasa: number | null } {
     const alturas = this.numeros('altura');
     const pesos = this.numeros('peso');
@@ -160,6 +168,7 @@ export class FichaGraficoTallerComponent {
     };
   }
 
+  /** Tope de la escala del gráfico de peso (redondeado al siguiente múltiplo de 10). */
   get maxPesoEscala(): number {
     const pesos = this.numeros('peso');
     if (!pesos.length) return 100;
@@ -167,6 +176,7 @@ export class FichaGraficoTallerComponent {
     return Math.ceil(max / 10) * 10 || 100;
   }
 
+  /** Series de barras horizontales de % grasa, ordenadas de mayor a menor. */
   get barrasGrasa(): BarraAlumno[] {
     return this.inscripciones
       .filter((i) => i.porcentajeGrasa != null)
@@ -174,6 +184,7 @@ export class FichaGraficoTallerComponent {
       .sort((a, b) => b.valor - a.valor);
   }
 
+  /** Series de barras horizontales de peso, ordenadas de mayor a menor. */
   get barrasPeso(): BarraAlumno[] {
     const max = this.maxPesoEscala;
     return this.inscripciones
@@ -182,6 +193,7 @@ export class FichaGraficoTallerComponent {
       .sort((a, b) => b.valor - a.valor);
   }
 
+  /** Conteo de alumnos activos, sedentarios y total con dato de estilo de vida. */
   get sedentarioStats(): { activos: number; sedentarios: number; total: number } {
     const conDato = this.inscripciones.filter((i) => i.sedentario != null);
     const sedentarios = conDato.filter((i) => i.sedentario === true).length;
@@ -192,25 +204,38 @@ export class FichaGraficoTallerComponent {
     };
   }
 
-  /** Formatea un número para mostrar en tarjetas y leyendas (entero o un decimal). */
+  /**
+   * Formatea un número para mostrar en tarjetas y leyendas.
+   * Enteros sin decimales; decimales con un dígito. Null → «—».
+   */
   fmt(n: number | null): string {
     if (n == null) return '—';
     return Number.isInteger(n) ? String(n) : n.toFixed(1);
   }
 
+  /**
+   * Calcula el porcentaje de una parte respecto al total y lo devuelve como
+   * cadena redondeada (sin decimales).
+   */
   pct(parte: number, total: number): string {
     if (!total) return '0';
     return Math.round((parte / total) * 100).toString();
   }
 
-  /** Devuelve la clase de color según el rango saludable de % grasa corporal. */
+  /**
+   * Devuelve la clase de color Tailwind según el rango saludable de % grasa:
+   * verde (<15%), ámbar (15–25%), rojo (>25%).
+   */
   colorGrasa(valor: number): string {
     if (valor < 15) return 'bg-emerald-500';
     if (valor <= 25) return 'bg-amber-500';
     return 'bg-rose-500';
   }
 
-  /** Genera el degradado cónico para el gráfico circular de sedentarismo. */
+  /**
+   * Genera el valor CSS conic-gradient para el gráfico circular de sedentarismo.
+   * Verde = activos, rosa = sedentarios.
+   */
   conicSedentario(): string {
     const { activos, sedentarios, total } = this.sedentarioStats;
     if (!total) return '#e5e7eb';
@@ -218,6 +243,7 @@ export class FichaGraficoTallerComponent {
     return `conic-gradient(#10b981 0% ${pctActivos}%, #fb7185 ${pctActivos}% 100%)`;
   }
 
+  /** Extrae valores numéricos válidos de un campo de ficha en todas las inscripciones. */
   private numeros(campo: 'altura' | 'peso' | 'porcentajeGrasa'): number[] {
     return this.inscripciones
       .map((i) => i[campo])
@@ -225,10 +251,12 @@ export class FichaGraficoTallerComponent {
       .map(Number);
   }
 
+  /** Promedio aritmético de un arreglo de números. */
   private prom(vals: number[]): number {
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   }
 
+  /** Convierte una inscripción en barra (etiqueta, valor, ancho %) para el gráfico. */
   private toBarra(
     insc: InscripcionConFicha,
     campo: 'porcentajeGrasa' | 'peso',

@@ -1,6 +1,15 @@
 /**
- * Vista detallada de un taller: presentación, inscripción, gestión de solicitudes y alumnos.
- * Accesible según rol (alumno, profesor del taller o coordinación).
+ * =============================================================================
+ * app/pages/taller-detail/taller-detail.component.ts — Detalle de taller
+ * =============================================================================
+ * Vista completa de un taller: presentación, horarios, inscripciones, alumnos,
+ * reservas de cancha y edición según permisos del rol.
+ * Rol: alumno, profesor del taller o coordinación (contenido adaptativo).
+ * Endpoints ApiService: getTaller, getProfesor, getAlumnos, getReservas,
+ * getInscripcionesTallerPorTaller, getInscripcionesTallerPorAlumno,
+ * validarInscripcionTaller, solicitarInscripcionTaller, responderInscripcionTaller,
+ * actualizarPresentacionTaller, createReserva, guardarFichaAlumnoTaller
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -21,10 +30,8 @@ import {
 } from '../../shared/components/advertencias-inscripcion/advertencias-inscripcion.component';
 import { ValidacionInscripcionTaller } from '../../models/inscripcion-taller.model';
 import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/horario-taller.util';
+import { requiereFichaFisica } from '../../shared/utils/taller-categoria.util';
 
-/**
- * Detalle de taller: descripción, horarios, inscripciones, fichas y edición de presentación.
- */
 @Component({
   selector: 'app-taller-detail',
   standalone: true,
@@ -167,29 +174,43 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
 
       <!-- Alumnos inscritos (aceptados) -->
       <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
-        <button (click)="toggleAlumnos()" type="button"
-                class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
-          <h2 class="text-xl sm:text-2xl font-semibold text-ink">Alumnos inscritos</h2>
-          <svg class="w-6 h-6 text-ink-muted transition-transform flex-shrink-0"
-               [class.rotate-180]="alumnosExpanded"
-               fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div *ngIf="alumnosExpanded" class="mt-4 pt-4 border-t border-line">
-          <ul class="space-y-2">
-            @for (insc of listaInscritosAceptados; track insc.id) {
-              <li class="py-2 px-3 bg-page rounded-lg text-ink">
-                <span class="font-medium">{{ priv.alumno(insc.alumno).nombre }} {{ priv.alumno(insc.alumno).rut }}</span>
-                <p class="text-xs text-ink-muted mt-1">{{ textoFicha(insc) }}</p>
-              </li>
-            }
-          </ul>
-          <p *ngIf="listaInscritosAceptados.length === 0" class="text-ink-muted py-4 text-center">No hay alumnos inscritos en este taller</p>
-        </div>
+        @if (puedeVerDetalleInscritos()) {
+          <button (click)="toggleAlumnos()" type="button"
+                  class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
+            <h2 class="text-xl sm:text-2xl font-semibold text-ink">Alumnos inscritos</h2>
+            <svg class="w-6 h-6 text-ink-muted transition-transform flex-shrink-0"
+                 [class.rotate-180]="alumnosExpanded"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div *ngIf="alumnosExpanded" class="mt-4 pt-4 border-t border-line">
+            <ul class="space-y-2">
+              @for (insc of listaInscritosAceptados; track insc.id) {
+                <li class="py-2 px-3 bg-page rounded-lg text-ink">
+                  <span class="font-medium">{{ priv.alumno(insc.alumno).nombre }} {{ priv.alumno(insc.alumno).rut }}</span>
+                  <p class="text-xs text-ink-muted mt-1">{{ textoFicha(insc) }}</p>
+                </li>
+              }
+            </ul>
+            <p *ngIf="listaInscritosAceptados.length === 0" class="text-ink-muted py-4 text-center">No hay alumnos inscritos en este taller</p>
+          </div>
+        } @else {
+          <h2 class="text-xl sm:text-2xl font-semibold text-ink mb-3">Alumnos inscritos</h2>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl sm:text-4xl font-bold text-primary-600">{{ inscritosAceptadosCount }}</span>
+            <span class="text-ink-secondary">
+              {{ inscritosAceptadosCount === 1 ? 'estudiante inscrito' : 'estudiantes inscritos' }}
+            </span>
+          </div>
+          @if (!auth.isLoggedIn()) {
+            <p class="text-sm text-ink-muted mt-3">Inicia sesión para inscribirte en este taller.</p>
+          }
+        }
       </div>
 
-      <!-- Gráfico ficha física (después de alumnos inscritos) -->
+      <!-- Gráfico ficha física (solo deportes + quien gestiona el taller) -->
+      @if (puedeVerDetalleInscritos() && pideFichaFisica()) {
       <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
         <button (click)="toggleGrafico()" type="button"
                 class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
@@ -204,6 +225,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
           <app-ficha-grafico-taller [inscripciones]="listaInscritosAceptados" [enmascararNombres]="priv.debeEnmascarar()" />
         </div>
       </div>
+      }
     </div>
 
     @if (editandoPresentacion && taller) {
@@ -266,6 +288,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
               <p><strong>Cupos disponibles:</strong> {{ validacion.cuposDisponibles }} de {{ validacion.capacidad }}</p>
             }
           </div>
+          @if (pideFichaFisica()) {
           <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
             <h4 class="font-semibold text-ink mb-2">Ficha del alumno</h4>
             <div class="grid grid-cols-2 gap-3 text-sm">
@@ -293,6 +316,7 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
               </label>
             </div>
           </div>
+          }
           @if (errorInscripcion) {
             <p class="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3 mb-4">{{ errorInscripcion }}</p>
           }
@@ -338,53 +362,76 @@ import { textoHorarioTaller, tituloTablaHorarios } from '../../shared/utils/hora
   styles: []
 })
 export class TallerDetailComponent implements OnInit {
+  /** Lee :id de la ruta. */
   private route = inject(ActivatedRoute);
+  /** Volver al listado / navegar tras acciones. */
   private router = inject(Router);
+  /** Cliente HTTP: taller, inscritos, inscripción, presentación. */
   private apiService = inject(ApiService);
+  /** Permisos de gestión / inscripción / edición de presentación. */
   auth = inject(AuthRoleService);
+  /** Enmascara datos de alumnos en listados. */
   priv = inject(AlumnoPrivacidadService);
 
+  /** Taller cargado por id de ruta. */
   taller: Taller | null = null;
+  /** Docente principal del taller (si hay). */
   profesor: Profesor | null = null;
+  /** Alumnos asociados (vista legacy / gestión). */
   alumnos: Alumno[] = [];
+  /** Reservas de cancha ligadas al taller. */
   reservas: Reserva[] = [];
+  /** Inscripciones al taller (todos los estados). */
   inscripcionesTaller: any[] = [];
+  /** Conteo de aceptados (capacidad). */
+  inscritosAceptadosCount = 0;
+  /** Fecha para consultar horarios de cancha (si aplica). */
   fechaSeleccionada: string = '';
   horariosDisponibles: Array<{ horaInicio: string; horaFin: string; espacio: string }> = [];
   horarioSeleccionado: { horaInicio: string; horaFin: string; espacio: string } | null = null;
+  /** Acordeones UI: secciones expandibles. */
   alumnosExpanded: boolean = true;
   graficoExpanded: boolean = true;
   horariosExpanded: boolean = true;
+  /** Alumno logueado (flujo inscripción desde detalle). */
   alumnoId: number | null = null;
   misSolicitudesTaller: any[] = [];
+  /** Modal de inscripción + ficha. */
   mostrarConfirmacion = false;
   validacion: ValidacionInscripcionTaller | null = null;
   errorInscripcion = '';
   confirmando = false;
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
+  /** Modal de retiro de inscripción. */
   mostrarConfirmacionRetiro = false;
   retirando = false;
   errorRetiro = '';
+  /** Edición de descripción / foto del taller. */
   editandoPresentacion = false;
   guardandoPresentacion = false;
   errorPresentacion = '';
   presentacionForm = { descripcion: '', fotoPath: '' };
   presentacionInicial = { descripcion: '', fotoPath: '' };
 
+  /** Helper: aviso si el taller no tiene profesor. */
   readonly tallerSinProfesor = tallerSinProfesor;
 
+  /** Texto de descripción o placeholder si el taller aún no tiene una. */
   get descripcionTexto(): string {
     return this.taller?.descripcion || 'Descripción del taller de ' + (this.taller?.tipo || '') + ', lo que hacen, sus objetivos, una pequeña descripción.';
   }
 
+  /** Inscripciones en estado ACEPTADO. */
   get listaInscritosAceptados(): any[] {
     return this.inscripcionesTaller.filter((i: any) => i.estado === 'ACEPTADO');
   }
 
+  /** Inscripciones en estado PENDIENTE. */
   get solicitudesPendientes(): any[] {
     return this.inscripcionesTaller.filter((i: any) => i.estado === 'PENDIENTE');
   }
 
+  /** true si coordinación o el profesor dueño de este taller. */
   puedeGestionarEsteTaller(): boolean {
     if (!this.taller) return false;
     if (this.auth.isCoordinacion()) return true;
@@ -392,10 +439,17 @@ export class TallerDetailComponent implements OnInit {
     return miTallerId != null && miTallerId === this.taller.id;
   }
 
+  /** Listado con nombres, fichas y gráfico solo para quien gestiona inscripciones del taller. */
+  puedeVerDetalleInscritos(): boolean {
+    return this.auth.canGestionarInscripcionesTaller() && this.puedeGestionarEsteTaller();
+  }
+
+  /** true si el rol puede editar descripción/foto de este taller. */
   puedeEditarPresentacion(): boolean {
     return this.taller != null && this.auth.canEditarPresentacionTaller(this.taller.id);
   }
 
+  /** Abre el formulario de edición de presentación con valores actuales. */
   abrirEditarPresentacion() {
     if (!this.taller) return;
     this.presentacionForm = {
@@ -532,10 +586,14 @@ export class TallerDetailComponent implements OnInit {
         } else {
           this.cargarProfesor();
         }
-        if (data.alumnos && Array.isArray(data.alumnos)) {
-          this.alumnos = data.alumnos;
+        if (this.puedeVerDetalleInscritos()) {
+          if (data.alumnos && Array.isArray(data.alumnos)) {
+            this.alumnos = data.alumnos;
+          } else {
+            this.cargarAlumnos();
+          }
         } else {
-          this.cargarAlumnos();
+          this.alumnos = [];
         }
         this.cargarReservas();
         this.cargarInscripcionesTaller(id);
@@ -563,6 +621,7 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
+  /** Obtiene el profesor asignado al taller si no vino en la respuesta de getTaller. */
   cargarProfesor() {
     if (!this.taller) return;
     
@@ -575,6 +634,7 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
+  /** Carga la lista de alumnos inscritos o asociados al taller. */
   cargarAlumnos() {
     if (!this.taller) return;
     
@@ -585,6 +645,7 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
+  /** Obtiene las reservas de cancha del taller para el calendario embebido. */
   cargarReservas() {
     if (!this.taller) return;
     
@@ -595,17 +656,34 @@ export class TallerDetailComponent implements OnInit {
     });
   }
 
+  /** Carga inscripciones completas (gestión) o solo el conteo público (visitantes/alumnos). */
   cargarInscripcionesTaller(tallerId: number) {
-    this.apiService.getInscripcionesTallerPorTaller(tallerId).subscribe({
+    if (this.puedeVerDetalleInscritos()) {
+      this.apiService.getInscripcionesTallerPorTaller(tallerId).subscribe({
+        next: (data) => {
+          this.inscripcionesTaller = data;
+          this.inscritosAceptadosCount = this.listaInscritosAceptados.length;
+        },
+        error: () => {
+          this.inscripcionesTaller = [];
+          this.inscritosAceptadosCount = 0;
+        },
+      });
+      return;
+    }
+
+    this.inscripcionesTaller = [];
+    this.apiService.getResumenInscripcionesTaller(tallerId).subscribe({
       next: (data) => {
-        this.inscripcionesTaller = data;
+        this.inscritosAceptadosCount = data?.resumen?.aceptados ?? 0;
       },
       error: () => {
-        this.inscripcionesTaller = [];
-      }
+        this.inscritosAceptadosCount = 0;
+      },
     });
   }
 
+  /** Recupera las solicitudes de inscripción del alumno logueado para este taller. */
   cargarMisSolicitudesTaller() {
     if (!this.alumnoId) return;
     this.apiService.getInscripcionesTallerPorAlumno(this.alumnoId).subscribe({
@@ -628,6 +706,7 @@ export class TallerDetailComponent implements OnInit {
   }
 
   textoFicha(s: any): string {
+    if (!this.pideFichaFisica()) return '';
     if (s.altura == null && s.peso == null) return 'Sin ficha';
     const sed = s.sedentario === true ? 'sedentario' : s.sedentario === false ? 'activo' : '—';
     return `${s.altura ?? '—'} cm · ${s.peso ?? '—'} kg · ${s.porcentajeGrasa ?? '—'}% grasa · ${sed}`;
@@ -638,7 +717,12 @@ export class TallerDetailComponent implements OnInit {
     return `${d.nombre} (${d.rut})`;
   }
 
+  pideFichaFisica(): boolean {
+    return requiereFichaFisica(this.taller?.tipo ?? '');
+  }
+
   fichaValida(): boolean {
+    if (!this.pideFichaFisica()) return true;
     const { altura, peso, porcentajeGrasa } = this.fichaForm;
     return altura != null && altura >= 50 && altura <= 250
       && peso != null && peso >= 20 && peso <= 300
@@ -671,16 +755,19 @@ export class TallerDetailComponent implements OnInit {
     this.confirmando = false;
   }
 
-  /** Envía la solicitud de inscripción con ficha física desde el detalle del taller. */
+  /** Envía la solicitud de inscripción; ficha solo en talleres deportivos. */
   confirmarInscripcion() {
     if (!this.taller || !this.alumnoId || !this.validacion?.puedeInscribirse || !this.fichaValida()) return;
     this.confirmando = true;
-    this.apiService.solicitarInscripcionTaller(this.alumnoId, this.taller.id, {
-      altura: Number(this.fichaForm.altura),
-      peso: Number(this.fichaForm.peso),
-      porcentajeGrasa: Number(this.fichaForm.porcentajeGrasa),
-      sedentario: this.fichaForm.sedentario,
-    }).subscribe({
+    const ficha = this.pideFichaFisica()
+      ? {
+          altura: Number(this.fichaForm.altura),
+          peso: Number(this.fichaForm.peso),
+          porcentajeGrasa: Number(this.fichaForm.porcentajeGrasa),
+          sedentario: this.fichaForm.sedentario,
+        }
+      : null;
+    this.apiService.solicitarInscripcionTaller(this.alumnoId, this.taller.id, ficha).subscribe({
       next: () => {
         this.confirmando = false;
         this.cerrarConfirmacion();
@@ -741,6 +828,7 @@ export class TallerDetailComponent implements OnInit {
     this.horarioSeleccionado = horario;
   }
 
+  /** Crea una reserva de cancha con el horario y fecha seleccionados en el detalle. */
   crearReserva() {
     if (!this.horarioSeleccionado || !this.taller || !this.fechaSeleccionada) return;
 

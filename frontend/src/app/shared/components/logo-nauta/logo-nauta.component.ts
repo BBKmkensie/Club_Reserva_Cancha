@@ -1,12 +1,17 @@
 /**
- * Logo institucional «nauta» con variantes para navbar y pantalla de login.
- * Opcionalmente enlaza a una ruta interna.
+ * =============================================================================
+ * app/shared/components/logo-nauta/logo-nauta.component.ts — Logo institucional
+ * =============================================================================
+ * Muestra la imagen de marca «nauta» con tamaños responsivos según el contexto.
+ * Se usa en el navbar (compacto) y en la pantalla de login (más grande).
+ *
+ * Inputs: variant ('navbar' | 'login'), linkTo (ruta interna o null),
+ *         ariaLabel (texto accesible).
+ * Getters públicos: wrapperClass, imgClass.
+ * =============================================================================
  */
 import { Component, Input } from '@angular/core';import { RouterLink } from '@angular/router';
 
-/**
- * LogoNauta: imagen de marca con tamaños responsivos según el contexto de uso.
- */
 @Component({
   selector: 'app-logo-nauta',
   standalone: true,
@@ -90,14 +95,20 @@ import { Component, Input } from '@angular/core';import { RouterLink } from '@an
     }
   `],
 })
-/**
- * Renderiza el logo con clases y enlace adaptados a la variante navbar o login.
- */
 export class LogoNautaComponent {
+  /** Contexto visual: navbar (compacto) o login (centrado y amplio). */
   @Input() variant: 'navbar' | 'login' = 'navbar';
+
+  /** Ruta interna al hacer clic; null desactiva el enlace. */
   @Input() linkTo: string | null = '/dashboard';
+
+  /** Texto accesible para lectores de pantalla. */
   @Input() ariaLabel = 'nauta — inicio';
 
+  /**
+   * Clases CSS del contenedor según la variante activa.
+   * Navbar: alineación horizontal con truncado; login: centrado a ancho completo.
+   */
   get wrapperClass(): string {
     if (this.variant === 'login') {
       return 'flex justify-center w-full px-1 sm:px-2';
@@ -105,6 +116,10 @@ export class LogoNautaComponent {
     return 'flex items-center min-w-0 flex-1 overflow-hidden';
   }
 
+  /**
+   * Clases CSS de la imagen según la variante activa.
+   * Aplica logo-navbar o logo-login definidos en los estilos del componente.
+   */
   get imgClass(): string {
     const base = 'w-auto object-contain rounded-sm block';
     return this.variant === 'login'

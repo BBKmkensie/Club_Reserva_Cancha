@@ -1,17 +1,20 @@
 /**
- * Administración del registro de profesores y su asignación a talleres.
- * Permite crear, editar y eliminar docentes del sistema.
+ * =============================================================================
+ * app/pages/profesores/profesores.component.ts — CRUD de profesores
+ * =============================================================================
+ * Registro y mantenimiento de docentes vinculados a talleres.
+ * Rol: coordinación — canVerProfesores().
+ * Endpoints ApiService: getProfesores, getTalleres, createProfesor, updateProfesor, deleteProfesor
+ * =============================================================================
  */
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Profesor, CreateProfesorDto } from '../../models/profesor.model';
 import { Taller } from '../../models/taller.model';
 
-/**
- * CRUD de profesores con asignación obligatoria a un taller.
- */
 @Component({
   selector: 'app-profesores',
   standalone: true,
@@ -20,10 +23,12 @@ import { Taller } from '../../models/taller.model';
     <div class="space-y-6">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-ink">Profesores</h1>
-        <button (click)="openModal()" 
-                class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
-          + Nuevo Profesor
-        </button>
+        @if (puedeCrearProfesor()) {
+          <button type="button" (click)="openModal()"
+                  class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
+            + Nuevo Profesor
+          </button>
+        }
       </div>
 
       <!-- Modal -->
@@ -86,10 +91,12 @@ import { Taller } from '../../models/taller.model';
               <h3 class="text-xl font-semibold text-ink">{{ profesor.nombre }}</h3>
               <p class="text-sm text-ink-muted">{{ profesor.rut }}</p>
             </div>
-            <div class="flex space-x-2">
-              <button (click)="editProfesor(profesor)" class="text-primary-600 hover:text-primary-700">✏️</button>
-              <button (click)="deleteProfesor(profesor.id)" class="text-red-600 hover:text-red-700">🗑️</button>
-            </div>
+            @if (puedeCrearProfesor()) {
+              <div class="flex space-x-2">
+                <button type="button" (click)="editProfesor(profesor)" class="text-primary-600 hover:text-primary-700">✏️</button>
+                <button type="button" (click)="deleteProfesor(profesor.id)" class="text-red-600 hover:text-red-700">🗑️</button>
+              </div>
+            }
           </div>
           <div class="space-y-2 text-sm">
             <div><span class="font-medium">Email:</span> {{ profesor.email }}</div>
@@ -106,10 +113,17 @@ import { Taller } from '../../models/taller.model';
   styles: []
 })
 export class ProfesoresComponent implements OnInit {
+  /** Permisos de gestión de profesores. */
+  auth = inject(AuthRoleService);
+  /** Listado de docentes. */
   profesores: Profesor[] = [];
+  /** Talleres para el select de asignación. */
   talleres: Taller[] = [];
+  /** true = modal crear/editar visible. */
   showModal = false;
+  /** Profesor en edición; null = modo crear. */
   editingProfesor: Profesor | null = null;
+  /** Formulario reactivo del modal. */
   profesorForm: FormGroup;
 
   constructor(
@@ -131,6 +145,11 @@ export class ProfesoresComponent implements OnInit {
     this.loadTalleres();
   }
 
+  /** Super Admin solo consulta; no crea ni edita profesores. */
+  puedeCrearProfesor(): boolean {
+    return this.auth.currentRole() !== 'super_admin';
+  }
+
   /** Obtiene el listado de profesores desde la API. */
   loadProfesores() {
     this.apiService.getProfesores().subscribe({
@@ -139,24 +158,29 @@ export class ProfesoresComponent implements OnInit {
     });
   }
 
+  /** Obtiene el catálogo de talleres para el selector del formulario. */
   loadTalleres() {
     this.apiService.getTalleres().subscribe({
       next: (data) => this.talleres = data
     });
   }
 
+  /** Abre el modal en modo crear. */
   openModal() {
+    if (!this.puedeCrearProfesor()) return;
     this.editingProfesor = null;
     this.profesorForm.reset();
     this.showModal = true;
   }
 
+  /** Cierra el modal y limpia el estado de edición. */
   closeModal() {
     this.showModal = false;
     this.editingProfesor = null;
     this.profesorForm.reset();
   }
 
+  /** Abre el modal en modo editar con los datos del profesor. */
   editProfesor(profesor: Profesor) {
     this.editingProfesor = profesor;
     this.profesorForm.patchValue({

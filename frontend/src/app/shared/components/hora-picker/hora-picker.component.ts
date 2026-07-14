@@ -1,15 +1,20 @@
 /**
- * Selector de hora con minutos en intervalos de 15.
- * Implementa ControlValueAccessor para integrarse con formularios reactivos o template-driven.
+ * =============================================================================
+ * app/shared/components/hora-picker/hora-picker.component.ts — Selector de hora
+ * =============================================================================
+ * Dos desplegables (hora y minutos en intervalos de 15) que emiten un valor
+ * en formato HH:mm. Implementa ControlValueAccessor para formularios Angular.
+ * Se usa en reservas de cancha y configuración de horarios de talleres.
+ *
+ * Inputs: opcional (permite dejar la hora vacía).
+ * Métodos clave: emitir(), writeValue() (CVA).
+ * =============================================================================
  */
 import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { HORAS_SELECTOR } from '../../utils/cancha.constants';
 
-/**
- * HoraPicker: dos desplegables (hora y minutos) con valor en formato HH:mm.
- */
 @Component({
   selector: 'app-hora-picker',
   standalone: true,
@@ -57,22 +62,31 @@ import { HORAS_SELECTOR } from '../../utils/cancha.constants';
     </div>
   `,
 })
-/**
- * Control de hora reutilizable; sincroniza el valor con el formulario padre vía CVA.
- */
 export class HoraPickerComponent implements ControlValueAccessor {
+  /** Si es true, el selector de hora incluye una opción vacía. */
   @Input() opcional = true;
 
+  /** Hora elegida «HH» (vacía si opcional y sin selección). */
   hora = '';
+  /** Minutos en pasos de 15: 00 / 15 / 30 / 45. */
   minuto = '00';
+  /** true cuando el FormControl padre está deshabilitado. */
   disabled = false;
 
+  /** Lista de horas del día para el primer select. */
   readonly horas = HORAS_SELECTOR;
+  /** Opciones de minutos del segundo select. */
   readonly minutos = ['00', '15', '30', '45'];
 
+  /** Callback CVA: emite «HH:mm» al padre. */
   private onChange: (value: string) => void = () => {};
+  /** Callback CVA: marca el control como tocado. */
   private onTouched: () => void = () => {};
 
+  /**
+   * Recibe el valor inicial desde el formulario padre y lo descompone en hora
+   * y minuto (interfaz ControlValueAccessor).
+   */
   writeValue(value: string | null): void {
     if (!value) {
       this.hora = '';
@@ -86,19 +100,25 @@ export class HoraPickerComponent implements ControlValueAccessor {
     this.minuto = this.minutos.includes(m) ? m : '00';
   }
 
+  /** Registra el callback que notifica cambios al formulario padre (interfaz CVA). */
   registerOnChange(fn: (value: string) => void): void {
     this.onChange = fn;
   }
 
+  /** Registra el callback que marca el control como tocado (interfaz CVA). */
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
 
+  /** Activa o desactiva los desplegables según el estado del formulario (interfaz CVA). */
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
   }
 
-  /** Propaga el valor HH:mm al formulario y marca el control como tocado. */
+  /**
+   * Propaga el valor HH:mm al formulario padre y marca el control como tocado.
+   * Si no hay hora seleccionada, emite cadena vacía.
+   */
   emitir(): void {
     if (!this.hora) {
       this.minuto = '00';

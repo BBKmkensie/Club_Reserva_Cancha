@@ -1,6 +1,12 @@
 /**
- * Comparación estadística de talleres por período académico.
- * Muestra ocupación, ranking de inscripciones y sugerencias para el próximo semestre.
+ * =============================================================================
+ * app/pages/comparacion-semestre/comparacion-semestre.component.ts — Comparación semestral
+ * =============================================================================
+ * Estadísticas comparativas de talleres por período académico: ocupación, ranking
+ * y sugerencias para el próximo semestre.
+ * Rol: coordinación o profesor — canVerComparacionSemestre().
+ * Endpoints ApiService: getPeriodos, getComparacionSemestre
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -8,9 +14,6 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 
-/**
- * Panel de comparación semestral: resumen, ranking y sugerencias por período.
- */
 @Component({
   selector: 'app-comparacion-semestre',
   standalone: true,
@@ -97,13 +100,20 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
   `,
 })
 export class ComparacionSemestreComponent implements OnInit {
+  /** Cliente HTTP: períodos y comparación semestral. */
   private api = inject(ApiService);
+  /** Si es profesor, la API filtra por su taller. */
   auth = inject(AuthRoleService);
 
+  /** Lista de períodos académicos para el select. */
   periodos: any[] = [];
+  /** Período seleccionado (por defecto el activo). */
   periodoId: number | null = null;
+  /** Respuesta: resumen, ranking y sugerencias del semestre. */
   datos: any = null;
+  /** true mientras getComparacionSemestre está en curso. */
   cargando = false;
+  /** Mensaje de error si falla la carga. */
   error = '';
 
   /** Carga períodos académicos y preselecciona el activo antes de consultar estadísticas. */

@@ -1,13 +1,18 @@
 /**
- * Bloque de advertencias mostradas durante el flujo de inscripción a talleres.
+ * =============================================================================
+ * app/shared/components/advertencias-inscripcion/advertencias-inscripcion.component.ts — Avisos de inscripción
+ * =============================================================================
+ * Bloque de alertas visuales mostradas durante el flujo de inscripción a talleres.
  * Lista mensajes de validación o conflictos detectados antes de confirmar.
+ * Se usa en inscripcion-talleres y gestion-inscripciones.
+ *
+ * Inputs: advertencias (arreglo de mensajes de texto).
+ * Función exportada: tallerSinProfesor() — valida si un taller carece de docente.
+ * =============================================================================
  */
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-/**
- * AdvertenciasInscripcion: alertas visuales con los avisos del proceso de inscripción.
- */
 @Component({
   selector: 'app-advertencias-inscripcion',
   standalone: true,
@@ -24,13 +29,18 @@ import { CommonModule } from '@angular/common';
     }
   `,
 })
-/**
- * Renderiza una lista de mensajes de advertencia sin lógica adicional de negocio.
- */
 export class AdvertenciasInscripcionComponent {
+  /**
+   * Lista de mensajes de advertencia a mostrar. Si está vacía o es null,
+   * el componente no renderiza nada.
+   */
   @Input() advertencias: string[] | null | undefined = [];
 }
 
+/**
+ * Indica si un taller no tiene profesores asignados.
+ * Útil para mostrar una advertencia antes de permitir la inscripción.
+ */
 export function tallerSinProfesor(taller: { profesores?: unknown[] | null } | null | undefined): boolean {
   return !taller?.profesores?.length;
 }

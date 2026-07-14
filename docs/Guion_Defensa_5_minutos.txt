@@ -1,0 +1,185 @@
+================================================================================
+  GUION ORAL DE DEFENSA — ~5 MINUTOS
+  Proyecto: Reservas de Cancha / Gestión de Talleres Extracurriculares
+  Uso: leer en voz alta practicar (aprox. 140–160 palabras/minuto)
+================================================================================
+
+INSTRUCCIÓN RÁPIDA
+------------------
+• Tiempo total sugerido: 4:30 – 5:30 (deja margen a preguntas).
+• No leas código en pantalla: nómbralo (“en AuthService…”, “en TallerService…”).
+• Si te cortan: salta a SLIDE 6 (demo/cierre) y ofrece “con gusto detallo después”.
+• Antes de empezar: ten abiertas 2–3 pantallas (login, gestión actividades, asistencia).
+
+
+--------------------------------------------------------------------------------
+SLIDE 1 — PORTADA / QUÉ ES EL SISTEMA          (~35 s)
+--------------------------------------------------------------------------------
+DECIR:
+
+«Buenos días. Presentamos un sistema web para la gestión de talleres
+extracurriculares y la reserva de espacios deportivos.
+
+El problema que aborda es coordinar en un solo lugar: publicación de
+actividades, inscripción de alumnos, control de asistencia, salidas
+pedagógicas y disponibilidad de cancha, con roles diferenciados para
+coordinación, docentes, estudiantes y apoderados.»
+
+NO DIGAS: detalles de librerías todavía.
+
+
+--------------------------------------------------------------------------------
+SLIDE 2 — ARQUITECTURA (3 CAPAS)               (~45 s)
+--------------------------------------------------------------------------------
+DECIR:
+
+«La solución está separada en tres capas.
+
+El frontend es Angular 18 con TypeScript y Tailwind: pantallas, rutas
+y control de acceso en la interfaz.
+
+El backend es NestJS sobre Node.js: una API REST organizada en módulos
+de dominio —auth, talleres, reservas, asistencia, etc.—.
+
+La persistencia es PostgreSQL, conectada mediante TypeORM. Elegimos
+base relacional porque el dominio tiene muchas claves foráneas:
+taller, inscripción, sesión de asistencia, reservas sin solapes.
+
+TypeScript en ambas puntas reduce errores de contrato entre cliente y servidor.»
+
+SEÑALA (si hay diagrama): navegador → API → PostgreSQL.
+
+
+--------------------------------------------------------------------------------
+SLIDE 3 — ROLES Y FLUJO PRINCIPAL              (~50 s)
+--------------------------------------------------------------------------------
+DECIR:
+
+«Hay cinco perfiles: super administrador o directiva, profesor,
+alumno y apoderado.
+
+El flujo núcleo del taller es una máquina de estados:
+borrador, espera de docente, definición de horario, publicado y cerrado.
+Solo cuando está publicado aparece en el catálogo para inscripción.
+
+El alumno solicita inscripción; el docente o la coordinación acepta
+o rechaza. Con inscripción aceptada el profesor puede abrir la sesión
+de asistencia del día, pasar lista y, al cerrar, disparar alertas por
+ausencias recurrentes y aviso al apoderado.
+
+En paralelo, la cancha se reserva por franjas: el sistema valida
+horario habilitado y evita solapamientos.»
+
+SEÑALA: estados del taller en una flecha simple.
+
+
+--------------------------------------------------------------------------------
+SLIDE 4 — SEGURIDAD Y CALIDAD DE DATOS         (~50 s)
+--------------------------------------------------------------------------------
+DECIR:
+
+«La autenticación es unificada con JWT: el login detecta el tipo de
+usuario, verifica la contraseña con PBKDF2 y salt —nunca en texto
+plano— y el frontend adjunta el token Bearer en cada petición.
+
+La validación de entrada es global con DTOs y ValidationPipe:
+solo se aceptan campos declarados; el resto se rechaza.
+
+En base de datos usamos esquema SQL explícito, con synchronize en
+falso, para no alterar tablas al arrancar. Además hay restricciones
+como unique de alumno y taller en inscripciones.
+
+Reconocemos un trabajo pendiente: reforzar el guard JWT de forma
+global en todos los endpoints y endurecer políticas de contraseña
+de cara a un despliegue productivo. Conceptualmente la autenticación
+está; la autorización fina aún se puede unificar más en backend.»
+
+IMPORTANTE: admitir la limitación te hace ver maduro, no débil.
+
+
+--------------------------------------------------------------------------------
+SLIDE 5 — MÓDULOS QUE DEMuestran COMPLEJIDAD   (~45 s)
+--------------------------------------------------------------------------------
+DECIR:
+
+«Más allá del CRUD, el valor está en la orquestación:
+
+— Reservas con disponibilidad semanal y reglas de franja.
+— Asistencia con umbral y notificaciones in-app por SSE, más correo.
+— Portal del apoderado, autenticado sobre datos del alumno, viendo
+  asistencia del hijo y proponiendo inscripciones.
+— Período académico que abre o cierra la ventana global de postulación.
+— Reportes y comparación de semestre para la coordinación.
+
+Cada dominio es un módulo NestJS: controller HTTP, service de negocio
+y entities TypeORM. Eso mantiene separada la presentación de la lógica.»
+
+
+--------------------------------------------------------------------------------
+SLIDE 6 — DEMO RÁPIDA (si hay proyector)       (~40 s)  OPCIONAL
+--------------------------------------------------------------------------------
+HACER (no hables de más):
+
+1) Login como coordinación → Gestión de actividades → mostrar un taller
+   en distintos estados.
+2) Login profesor (o mismo flujo) → Control de asistencia → abrir sesión.
+3) (Si hay tiempo) Reservas → grilla de la semana.
+
+DECIR MIENTRAS:
+
+«Aquí se ve el ciclo en pantalla: de actividad publicada a lista del día.»
+
+
+--------------------------------------------------------------------------------
+SLIDE 7 — CIERRE / APORTES Y FUTURO            (~35 s)
+--------------------------------------------------------------------------------
+DECIR:
+
+«En resumen, entregamos un prototipo funcional de gestión escolar
+extracurricular con arquitectura en capas, reglas de negocio tipadas
+y multi-rol.
+
+Aportes: unificar inscripción, asistencia, cancha y comunicación con
+apoderados.
+
+Trabajo futuro: autorización global por roles en la API, refresh tokens,
+migraciones versionadas, más pruebas automatizadas y hardening de
+credenciales.
+
+Quedamos atentos a sus preguntas. Gracias.»
+
+
+================================================================================
+CRONÓMETRO SUGERIDO
+================================================================================
+  0:00–0:35   Slide 1  Problema / sistema
+  0:35–1:20   Slide 2  Arquitectura
+  1:20–2:10   Slide 3  Roles y flujos
+  2:10–3:00   Slide 4  Seguridad (con limitación)
+  3:00–3:45   Slide 5  Módulos complejos
+  3:45–4:25   Slide 6  Demo (o ampliar slide 5)
+  4:25–5:00   Slide 7  Cierre
+
+
+================================================================================
+FRASES CORTAS SI TE PREGUNTAN EN MEDIO
+================================================================================
+«Eso lo resolvemos en el service, no en el controller.»
+«La integridad fuerte está en PostgreSQL; TypeORM solo mapea.»
+«El frontend oculta menús; el backend debe terminar de imponer roles.»
+«SSE para avisos unidireccionales; el correo es el canal paralelo.»
+
+
+================================================================================
+CHEQUEO ANTES DE ENTRAR A LA SALA
+================================================================================
+[ ] Backend corre (localhost:3000)
+[ ] Frontend corre (localhost:4200) o build servido
+[ ] PostgreSQL arriba + datos seed
+[ ] Credenciales de demo anotadas (admin / profesor / alumno / apoderado)
+[ ] Guion leído 2 veces en voz alta con cronómetro
+
+
+================================================================================
+FIN DEL GUION
+================================================================================

@@ -1,9 +1,18 @@
 /**
- * Configuración del entorno de producción.
- * Expone la URL base de la API y el flag de producción.
+ * =============================================================================
+ * environments/environment.prod.ts — Configuración de producción
+ * =============================================================================
+ * Se usa al ejecutar `ng build --configuration production`.
+ * Angular sustituye environment.ts por este archivo en el build final.
+ *
+ * apiUrl vacío = la API se sirve en el MISMO origen que el frontend
+ * (mismo dominio / reverse proxy), así las peticiones van a /taller, /auth, etc.
+ * =============================================================================
  */
-/** Variables de entorno para builds de producción. */
 export const environment = {
+  // true = build de producción: AOT, tree-shaking, sin asserts de desarrollo.
   production: true,
-  apiUrl: ''
+
+  // '' = mismo origen (ej. https://midominio.cl/taller → el proxy llega al NestJS).
+  apiUrl: '',
 };

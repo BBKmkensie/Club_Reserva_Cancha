@@ -1,6 +1,12 @@
 /**
- * Panel de gestión de inscripciones para profesores y coordinación.
- * Revisa solicitudes pendientes, acepta/rechaza alumnos y edita fichas físicas.
+ * =============================================================================
+ * app/pages/gestion-inscripciones/gestion-inscripciones.component.ts — Gestión inscripciones
+ * =============================================================================
+ * Panel para revisar solicitudes, aceptar/rechazar alumnos y editar fichas físicas.
+ * Rol: profesor de su taller o coordinación — canGestionarInscripcionesTaller().
+ * Endpoints ApiService: getTalleres, getResumenInscripcionesTaller,
+ * responderInscripcionTaller, actualizarFichaInscripcion
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -9,12 +15,10 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
+import { descargarPdfReporteInscripciones } from '../../shared/utils/reporte-pdf.util';
 
 const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-/**
- * Gestión de inscripciones: resumen de capacidad, respuesta a solicitudes y exportación.
- */
 @Component({
   selector: 'app-gestion-inscripciones',
   standalone: true,
@@ -120,7 +124,47 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 
           <!-- Fichas de alumnos por taller -->
           <h3 class="text-lg font-semibold text-ink mb-3">Fichas de alumnos (por taller)</h3>
-          <div class="overflow-x-auto mb-8">
+
+          <div class="md:hidden space-y-3 mb-8">
+            @for (s of resumen.inscripciones; track s.id) {
+              <article class="border border-line rounded-lg p-4 bg-page space-y-2 text-sm">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="font-semibold text-ink break-words">{{ priv.alumno(s.alumno).nombre }}</p>
+                    <p class="text-ink-muted">RUT {{ priv.alumno(s.alumno).rut }}</p>
+                  </div>
+                  <span class="px-2 py-1 rounded-full text-xs font-bold shrink-0"
+                        [class.bg-amber-200]="s.estado === 'PENDIENTE'"
+                        [class.text-amber-800]="s.estado === 'PENDIENTE'"
+                        [class.bg-green-200]="s.estado === 'ACEPTADO'"
+                        [class.text-green-800]="s.estado === 'ACEPTADO'"
+                        [class.bg-red-200]="s.estado === 'RECHAZADO'"
+                        [class.text-red-800]="s.estado === 'RECHAZADO'">
+                    {{ s.estado }}
+                  </span>
+                </div>
+                <dl class="grid grid-cols-2 gap-2 text-sm border-t border-line/60 pt-2">
+                  <div><dt class="text-ink-muted text-xs">Altura</dt><dd>{{ s.altura != null ? s.altura + ' cm' : '—' }}</dd></div>
+                  <div><dt class="text-ink-muted text-xs">Peso</dt><dd>{{ s.peso != null ? s.peso + ' kg' : '—' }}</dd></div>
+                  <div><dt class="text-ink-muted text-xs">% Grasa</dt><dd>{{ s.porcentajeGrasa != null ? s.porcentajeGrasa + '%' : '—' }}</dd></div>
+                  <div>
+                    <dt class="text-ink-muted text-xs">Sedentario</dt>
+                    <dd>
+                      @if (s.sedentario === true) { Sí }
+                      @else if (s.sedentario === false) { No }
+                      @else { — }
+                    </dd>
+                  </div>
+                </dl>
+                <button type="button" (click)="abrirEditarFicha(s)"
+                        class="text-primary-600 hover:underline text-sm font-medium">
+                  Editar ficha
+                </button>
+              </article>
+            }
+          </div>
+
+          <div class="hidden md:block overflow-x-auto mb-8">
             <table class="w-full text-sm border border-line rounded-lg overflow-hidden">
               <thead class="bg-muted">
                 <tr>
@@ -213,17 +257,27 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
   styles: []
 })
 export class GestionInscripcionesComponent implements OnInit {
+  /** Cliente HTTP: resumen, responder inscripción, ficha. */
   private api = inject(ApiService);
+  /** Profesor (su taller) o coordinación (elige taller). */
   auth = inject(AuthRoleService);
+  /** Enmascara nombre/RUT en listados. */
   priv = inject(AlumnoPrivacidadService);
 
+  /** Talleres disponibles en el select (coordinación). */
   talleres: any[] = [];
+  /** Taller cuyo resumen se está gestionando. */
   tallerIdSeleccionado: number | null = null;
+  /** Respuesta API: capacidad, inscripciones, fichas. */
   resumen: any = null;
+  /** Mensaje de error de carga o guardado. */
   error = '';
+  /** Inscripción cuya ficha se edita en el modal (null = cerrado). */
   fichaEditando: any = null;
+  /** Campos del modal de ficha física. */
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
 
+  /** Solicitudes en estado PENDIENTE (filtro del resumen). */
   get pendientes() {
     return this.resumen?.inscripciones?.filter((s: any) => s.estado === 'PENDIENTE') ?? [];
   }
@@ -314,27 +368,29 @@ export class GestionInscripcionesComponent implements OnInit {
     return `${dia} ${String(taller.horaInicio).slice(0, 5)} - ${String(taller.horaFin).slice(0, 5)}`;
   }
 
-  /** Genera y descarga un reporte en texto plano con todas las inscripciones del taller. */
+  /** Genera y descarga un reporte PDF con todas las inscripciones del taller. */
   exportarReporte() {
     if (!this.resumen) return;
-    const lineas = [
-      `REPORTE DE INSCRIPCIONES - ${this.resumen.taller.tipo}`,
-      `Capacidad: ${this.resumen.resumen.capacidad}`,
-      `Aceptados: ${this.resumen.resumen.aceptados} | Pendientes: ${this.resumen.resumen.pendientes} | Rechazados: ${this.resumen.resumen.rechazados}`,
-      `Cupos disponibles: ${this.resumen.resumen.cuposDisponibles}`,
-      '',
-      'Alumno\tRUT\tAltura\tPeso\t%Grasa\tSedentario\tEstado\tFecha',
-      ...this.resumen.inscripciones.map((s: any) => {
+    descargarPdfReporteInscripciones({
+      tallerTipo: this.resumen.taller.tipo,
+      capacidad: this.resumen.resumen.capacidad,
+      aceptados: this.resumen.resumen.aceptados,
+      pendientes: this.resumen.resumen.pendientes,
+      rechazados: this.resumen.resumen.rechazados,
+      cuposDisponibles: this.resumen.resumen.cuposDisponibles,
+      filas: this.resumen.inscripciones.map((s: any) => {
         const a = this.priv.alumno(s.alumno);
-        return `${a.nombre}\t${a.rut}\t${s.altura ?? ''}\t${s.peso ?? ''}\t${s.porcentajeGrasa ?? ''}\t${s.sedentario === true ? 'Sí' : s.sedentario === false ? 'No' : ''}\t${s.estado}\t${s.createdAt ?? ''}`;
-      })
-    ];
-    const blob = new Blob([lineas.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inscripciones-${this.resumen.taller.tipo}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+        return {
+          nombre: a.nombre,
+          rut: a.rut,
+          altura: s.altura != null ? String(s.altura) : '',
+          peso: s.peso != null ? String(s.peso) : '',
+          porcentajeGrasa: s.porcentajeGrasa != null ? String(s.porcentajeGrasa) : '',
+          sedentario: s.sedentario === true ? 'Sí' : s.sedentario === false ? 'No' : '',
+          estado: s.estado,
+          fecha: s.createdAt ? String(s.createdAt).slice(0, 10) : '',
+        };
+      }),
+    });
   }
 }

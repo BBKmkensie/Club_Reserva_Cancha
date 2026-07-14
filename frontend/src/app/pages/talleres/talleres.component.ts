@@ -1,6 +1,11 @@
 /**
- * Catálogo administrativo de talleres con CRUD completo.
- * Lista, crea, edita y elimina talleres; admite filtro por tipo vía query params.
+ * =============================================================================
+ * app/pages/talleres/talleres.component.ts — CRUD de talleres
+ * =============================================================================
+ * Catálogo administrativo con listado, filtro por tipo (query ?tipo=) y modal CRUD.
+ * Rol: coordinación para crear/editar — canAccessTalleresCRUD().
+ * Endpoints ApiService: getTalleres, createTaller, updateTaller, deleteTaller
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -11,9 +16,6 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Taller, CreateTallerDto } from '../../models/taller.model';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
-/**
- * CRUD de talleres: listado en tarjetas, filtro por tipo y modal de creación/edición.
- */
 @Component({
   selector: 'app-talleres',
   standalone: true,
@@ -136,12 +138,19 @@ import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha
   styles: []
 })
 export class TalleresComponent implements OnInit {
+  /** Permisos CRUD de talleres. */
   auth = inject(AuthRoleService);
+  /** Catálogo completo desde la API. */
   talleres: Taller[] = [];
+  /** Subconjunto tras aplicarFiltro() (tipo desde query params). */
   talleresFiltrados: Taller[] = [];
+  /** true = modal crear/editar visible. */
   showModal = false;
+  /** Taller en edición; null = modo crear. */
   editingTaller: Taller | null = null;
+  /** Formulario reactivo del modal. */
   tallerForm: FormGroup;
+  /** Filtro por tipo leído de ?tipo= en la URL (null = todos). */
   tipoFiltro: string | null = null;
 
   constructor(
@@ -179,6 +188,7 @@ export class TalleresComponent implements OnInit {
     });
   }
 
+  /** Aplica el filtro por tipo de taller leído desde query params. */
   aplicarFiltro() {
     if (this.tipoFiltro) {
       this.talleresFiltrados = this.talleres.filter(t => 
@@ -189,18 +199,21 @@ export class TalleresComponent implements OnInit {
     }
   }
 
+  /** Abre el modal en modo crear (capacidad por defecto 20). */
   openModal() {
     this.editingTaller = null;
     this.tallerForm.reset({ capacidad: 20 });
     this.showModal = true;
   }
 
+  /** Cierra el modal y limpia el estado de edición. */
   closeModal() {
     this.showModal = false;
     this.editingTaller = null;
     this.tallerForm.reset();
   }
 
+  /** Abre el modal en modo editar con los datos del taller. */
   editTaller(taller: Taller) {
     this.editingTaller = taller;
     this.tallerForm.patchValue({
@@ -244,6 +257,7 @@ export class TalleresComponent implements OnInit {
     }
   }
 
+  /** Quita el filtro por tipo y limpia los query params de la URL. */
   limpiarFiltro() {
     this.tipoFiltro = null;
     this.router.navigate(['/talleres'], { queryParams: {} });

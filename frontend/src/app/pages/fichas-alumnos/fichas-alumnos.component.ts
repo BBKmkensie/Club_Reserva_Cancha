@@ -1,6 +1,11 @@
 /**
- * Consulta de fichas físicas de alumnos por taller.
- * La directiva puede ver todos los estudiantes o solo inscritos; el profesor ve su taller.
+ * =============================================================================
+ * app/pages/fichas-alumnos/fichas-alumnos.component.ts — Fichas físicas por taller
+ * =============================================================================
+ * Consulta de fichas (altura, peso, grasa, sedentario) de alumnos por taller.
+ * Rol: coordinación (todos o solo inscritos) o profesor (su taller) — canVerFichasAlumnos().
+ * Endpoints ApiService: getTalleres, getFichasAlumnosPorTaller
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -10,9 +15,6 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
 
-/**
- * Consulta de fichas físicas filtradas por taller y modo de vista (directiva/profesor).
- */
 @Component({
   selector: 'app-fichas-alumnos',
   standalone: true,
@@ -102,16 +104,26 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
   `,
 })
 export class FichasAlumnosComponent implements OnInit {
+  /** Cliente HTTP: talleres y fichas por taller. */
   private api = inject(ApiService);
+  /** Permisos: ver todas las fichas (directiva) vs solo el taller del profesor. */
   auth = inject(AuthRoleService);
+  /** Enmascara nombre/RUT según política de privacidad. */
   priv = inject(AlumnoPrivacidadService);
+  /** Lee query param ?tallerId= para preseleccionar taller. */
   private route = inject(ActivatedRoute);
 
+  /** Catálogo de talleres (solo coordinación elige en el select). */
   talleres: any[] = [];
+  /** Filas de ficha física mostradas en la grilla. */
   fichas: any[] = [];
+  /** Taller activo del filtro; null = aún no hay selección. */
   tallerId: number | null = null;
+  /** Filtro coordinación: todos los alumnos del club o solo inscritos aceptados. */
   modoVista: 'todos' | 'inscritos' = 'todos';
+  /** true mientras getFichasAlumnosPorTaller está en curso. */
   cargando = false;
+  /** Mensaje de error si falla la carga. */
   error = '';
 
   /** Inicializa taller desde query param o sesión y carga fichas según permisos. */

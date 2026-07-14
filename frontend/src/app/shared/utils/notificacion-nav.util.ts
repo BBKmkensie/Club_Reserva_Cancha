@@ -1,8 +1,15 @@
 /**
- * Utilidades de navegación a partir de notificaciones del usuario.
- * Mapea tipo/título de notificación a rutas de la aplicación.
+ * =============================================================================
+ * app/shared/utils/notificacion-nav.util.ts — Navegación desde notificaciones
+ * =============================================================================
+ * Mapea el tipo o título de una notificación a la ruta interna de la app.
+ * Se usa en notificaciones-panel para navegar al hacer clic en un aviso.
+ *
+ * Exporta: NotificacionNav, rutaDesdeNotificacion().
+ * =============================================================================
  */
-/** Notificación mínima para resolver la ruta de destino */
+
+/** Estructura mínima de una notificación para resolver su ruta de destino. */
 export interface NotificacionNav {
   id?: number;
   tipo?: string;
@@ -11,7 +18,8 @@ export interface NotificacionNav {
 }
 
 /**
- * Devuelve la ruta de la app asociada a una notificación, o null si no aplica.
+ * Devuelve la ruta de la aplicación asociada a una notificación.
+ * Si el tipo no tiene destino conocido, devuelve null (la notificación no es clicable).
  */
 export function rutaDesdeNotificacion(n: NotificacionNav): string | null {
   const tipo = n.tipo ?? inferirTipo(n.titulo);
@@ -38,7 +46,10 @@ export function rutaDesdeNotificacion(n: NotificacionNav): string | null {
   }
 }
 
-/** Infiere el tipo de notificación a partir del título cuando no viene explícito */
+/**
+ * Infiere el tipo de notificación a partir del título cuando el backend
+ * no envía el campo tipo explícitamente.
+ */
 function inferirTipo(titulo?: string): string | undefined {
   if (!titulo) return undefined;
   const t = titulo.toLowerCase();

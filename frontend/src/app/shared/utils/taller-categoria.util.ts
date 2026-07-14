@@ -1,7 +1,14 @@
-
+/**
+ * =============================================================================
+ * app/shared/utils/taller-categoria.util.ts — Categorías de talleres para filtros
+ * =============================================================================
+ * Agrupa tipos de taller (deportes, religión, artes, etc.) para filtrar el
+ * catálogo en el dashboard sin depender de un campo en base de datos.
+ * =============================================================================
+ */
 import { normalizarTipoTaller } from './taller-tarjeta.util';
 
-
+/** Identificador de categoría de filtro (incluye «todas»). */
 export type CategoriaTallerId =
   | 'todas'
   | 'deportes'
@@ -13,14 +20,14 @@ export type CategoriaTallerId =
   | 'naturaleza'
   | 'otros';
 
-
+/** Opción de chip/filtro en el dashboard (sin la opción «Todas»). */
 export interface CategoriaTallerOption {
   id: Exclude<CategoriaTallerId, 'todas'>;
   label: string;
   icon: string;
 }
 
-
+/** Opciones de filtro visibles en el dashboard (sin «Todas», que se agrega aparte). */
 export const CATEGORIAS_TALLER: CategoriaTallerOption[] = [
   { id: 'deportes', label: 'Deportes', icon: '⚽' },
   { id: 'religion', label: 'Religión', icon: '✝️' },
@@ -33,7 +40,7 @@ export const CATEGORIAS_TALLER: CategoriaTallerOption[] = [
 ];
 
 const MAPA_TIPO_CATEGORIA: Record<string, Exclude<CategoriaTallerId, 'todas'>> = {
-
+  // Deportes
   futbol: 'deportes',
   voley: 'deportes',
   voleibol: 'deportes',
@@ -44,41 +51,44 @@ const MAPA_TIPO_CATEGORIA: Record<string, Exclude<CategoriaTallerId, 'todas'>> =
   defensapersonal: 'deportes',
   atletismo: 'deportes',
   zumba: 'deportes',
-
+  // Religión
   cristiano: 'religion',
-
+  // Artes y cultura
   folclore: 'artes',
   teatro: 'artes',
   musica: 'artes',
   diseno: 'artes',
   tejido: 'artes',
-
+  // Tecnología
   robotica: 'tecnologia',
   videojuego: 'tecnologia',
-
+  // Emprendimiento
   emprendimiento: 'emprendimiento',
   construccion: 'emprendimiento',
-
+  // Educación y juegos
   lectura: 'educacion',
   ludoteca: 'educacion',
   cocina: 'educacion',
-
+  // Naturaleza y tradición
   huerta: 'naturaleza',
   rodeo: 'naturaleza',
 };
 
-
+/** Resuelve la categoría de un taller a partir de su tipo/nombre. */
 export function categoriaDeTaller(tipo: string): Exclude<CategoriaTallerId, 'todas'> {
   const clave = normalizarTipoTaller(tipo);
   return MAPA_TIPO_CATEGORIA[clave] ?? 'otros';
 }
 
-
+/**
+ * La ficha física (altura, peso, % grasa, sedentario) solo aplica a clubes deportivos.
+ * Talleres de artes, religión, tecnología, etc. no la requieren.
+ */
 export function requiereFichaFisica(tipo: string): boolean {
   return categoriaDeTaller(tipo) === 'deportes';
 }
 
-
+/** Filtra una lista de talleres por categoría seleccionada. */
 export function filtrarTalleresPorCategoria<T extends { tipo?: string }>(
   talleres: T[],
   categoria: CategoriaTallerId,
@@ -87,7 +97,7 @@ export function filtrarTalleresPorCategoria<T extends { tipo?: string }>(
   return talleres.filter((t) => categoriaDeTaller(t.tipo ?? '') === categoria);
 }
 
-
+/** Categorías que tienen al menos un taller en la lista dada (para mostrar chips con conteo). */
 export function categoriasDisponiblesParaTalleres<T extends { tipo?: string }>(
   talleres: T[],
 ): CategoriaTallerOption[] {

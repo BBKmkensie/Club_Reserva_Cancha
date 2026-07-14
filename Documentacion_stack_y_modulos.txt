@@ -1,0 +1,516 @@
+================================================================================
+  RESERVAS DE CANCHA — Documentación del stack y módulos
+  Resumen de la explicación del chat (julio 2026)
+================================================================================
+
+Repositorio: https://github.com/BBKmkensie/Reservas_de_Cancha
+
+
+================================================================================
+1. STACK TECNOLÓGICO (resumen)
+================================================================================
+
+  Capa              Tecnología
+  ---------------   -----------------------------------------------
+  Backend           NestJS (TypeScript / Node.js) + TypeORM
+  Frontend          Angular 18 (TypeScript) + Tailwind CSS
+  Base de datos     PostgreSQL
+
+  Lenguaje principal en backend y frontend: TypeScript.
+
+
+================================================================================
+2. BACKEND — NestJS + TypeScript + Node.js + TypeORM
+================================================================================
+
+2.1 Qué es cada cosa
+--------------------
+  • Node.js: entorno que ejecuta JavaScript/TypeScript en el servidor.
+  • TypeScript: lenguaje tipado; se compila a JavaScript antes de correr.
+  • NestJS: framework que organiza el API en módulos, controladores y servicios
+    (estilo similar a Angular).
+  • TypeORM: ORM que traduce clases TypeScript ↔ tablas PostgreSQL, sin escribir
+    SQL a mano en cada operación.
+
+2.2 Cómo está armado en este proyecto
+-------------------------------------
+  El backend vive en la raíz (carpeta src/).
+
+  El módulo raíz (app.module.ts) conecta:
+    1. ConfigModule → lee .env (host, puerto, usuario, JWT, mail).
+    2. TypeOrmModule → conexión type: 'postgres' a la BD proyecto_taller.
+    3. Módulos de dominio: auth, talleres, alumnos, profesores, reservas,
+       salidas, asistencia, apoderados, reportes, etc.
+
+  Patrón típico por dominio:
+
+    Pieza        Rol
+    ----------   --------------------------------------------------
+    Controller   Recibe HTTP (GET, POST…) y expone rutas
+    Service      Lógica de negocio
+    Entity       Mapeo de una tabla (src/entities/)
+    DTO          Validación del body (class-validator)
+    Module       Agrupa controller + service + entidades TypeORM
+
+  Ejemplo de flujo:
+    Cliente pide “crear reserva”
+      → ReservaController
+      → ReservaService
+      → TypeORM guarda en PostgreSQL
+      → respuesta JSON
+
+  También hay:
+    • JWT (@nestjs/jwt + Passport) para login y roles
+      (admin, profesor, alumno, apoderado).
+    • Nodemailer para correos.
+
+  synchronize: false
+    → el esquema NO se inventa al arrancar; las tablas se crean con scripts SQL
+      (create_database.sql, proyecto_taller_fixed.sql).
+
+  API en: http://localhost:3000
+
+
+================================================================================
+3. FRONTEND — Angular 18 + TypeScript + Tailwind CSS
+================================================================================
+
+3.1 Qué es cada cosa
+--------------------
+  • Angular 18: framework SPA (páginas, rutas, servicios HTTP, guards).
+  • TypeScript: mismo lenguaje que el backend; tipa modelos y componentes.
+  • Tailwind CSS: estilos con clases utilitarias (flex, bg-primary-500, etc.)
+    en plantillas HTML.
+
+3.2 Cómo está armado
+--------------------
+  Todo vive en frontend/
+
+    Carpeta          Contenido
+    --------------   -----------------------------------------------
+    pages/           Pantallas (login, dashboard, talleres, reservas…)
+    shared/          Navbar, sidebar, guards, interceptors, utilidades
+    services/        ApiService → llama al backend NestJS
+    models/          Tipos TS (Taller, Alumno, Reserva…)
+    app.routes.ts    Rutas; muchas con authGuard
+
+  Flujo típico:
+    Usuario abre /reservas
+      → Angular carga el componente
+      → el servicio hace HttpClient a localhost:3000
+      → muestra los datos
+
+  Tailwind tiene tema propio (colores primary, palette, modo oscuro con
+  darkMode: 'class').
+
+  UI en: http://localhost:4200
+
+
+================================================================================
+4. BASE DE DATOS — PostgreSQL
+================================================================================
+
+  Motor relacional (tablas, claves foráneas, consultas SQL).
+  Nombre de la BD: proyecto_taller
+
+  NestJS se conecta con el driver pg vía TypeORM.
+
+  Cada entidad en src/entities/ representa una tabla, por ejemplo:
+    • Admin, Alumno, Profesor
+    • Taller, TallerHorario, InscripcionTaller
+    • Reserva, FranjaCancha
+    • Salida, InscripcionSalida
+    • SesionAsistencia, RegistroAsistencia
+    • Notificacion, PeriodoAcademico, etc.
+
+  TypeORM:
+    “buscar alumnos del taller X”
+      → genera SQL
+      → PostgreSQL responde
+      → NestJS lo convierte en objetos
+      → Angular lo consume como JSON
+
+  Credenciales típicas en .env:
+    DB_HOST, DB_PORT (5432), DB_USERNAME, DB_PASSWORD, DB_DATABASE
+
+
+================================================================================
+5. CÓMO CONVERSAN LAS TRES CAPAS
+================================================================================
+
+  Navegador (Angular + Tailwind)
+          │  HTTP / JSON + JWT
+          ▼
+  API NestJS (TypeScript en Node.js)
+          │  TypeORM
+          ▼
+  PostgreSQL (tablas del dominio)
+
+  1. Angular muestra la UI y envía peticiones.
+  2. NestJS valida, aplica reglas de negocio y autenticación.
+  3. TypeORM lee/escribe en PostgreSQL.
+  4. La respuesta vuelve en JSON al frontend.
+
+
+================================================================================
+6. MÓDULO AUTH — De login a JWT
+================================================================================
+
+6.1 Flujo completo
+------------------
+  LoginComponent (Angular)
+    → ApiService.loginUnified()
+    → POST /auth/login
+    → AuthController → AuthService
+    → TypeORM busca en Admin / Profesor / Alumno (PostgreSQL)
+    → JwtService firma el token
+    → Angular guarda sesión + Bearer en cada request
+
+6.2 Archivos paso a paso
+------------------------
+
+  FRONTEND — login.component.ts
+    Formulario con Tailwind (bg-surface, bg-primary-500).
+    Al entrar llama api.loginUnified(usuario, password).
+    Si OK, guarda el token en AuthRoleService y redirige
+    (apoderado → portal; resto → dashboard).
+
+  FRONTEND — api.service.ts
+    POST /auth/login  { usuario, password }
+    Sin “tipo”: el backend detecta solo si es admin, profesor,
+    alumno o apoderado.
+
+  FRONTEND — auth.interceptor.ts
+    En cada petición HTTP agrega Authorization: Bearer <token>.
+    Si recibe 401, limpia sesión y manda a /login.
+
+  BACKEND — auth.module.ts
+    Registra:
+      • TypeORM con entidades Admin, Profesor, Alumno
+      • JWT (secreto y expiración desde .env)
+      • Passport + JwtStrategy
+
+  BACKEND — auth.controller.ts
+    Ruta                    Qué hace
+    ---------------------   ------------------------------------
+    POST /auth/login        Público (@Public()). Valida credenciales
+    GET  /auth/me           Con JWT. Devuelve id, nombre, role, tipo
+
+  BACKEND — auth.service.ts (lógica real)
+    1. Busca el usuario en PostgreSQL según perfil.
+    2. Verifica hash/salt de la contraseña (password.util).
+    3. Si es primer acceso con la clave por defecto, inicializa el hash.
+    4. Construye el payload JWT (sub, role, tipo, tallerId, nombre).
+    5. Devuelve { accessToken, user }.
+
+  BACKEND — jwt.strategy.ts
+    Lee el Bearer, valida firma/expiración y deja el payload en req.user
+    para el resto de rutas.
+
+  POSTGRESQL
+    Tablas: admins, profesores, alumnos
+    (RUT, hashes, apoderado_rut, etc.).
+    Ejemplo: adminRepo.findOne({ where: { email } })
+      → SELECT ... FROM admins WHERE email = ...
+
+
+================================================================================
+7. MÓDULO RESERVAS — De la grilla a la tabla
+================================================================================
+
+7.1 Flujo completo
+------------------
+  ReservasComponent (Angular + Tailwind)
+    → ApiService.getDisponibilidadSemana() / createReserva()
+    → GET/POST /reserva/...
+    → ReservaController → ReservaService
+    → TypeORM: tablas reservas + franjas_cancha
+    → JSON con slots disponible / ocupada / no_habilitada
+
+7.2 Archivos paso a paso
+------------------------
+
+  FRONTEND — reservas.component.ts
+    Página de cancha: elige fecha, ve slots, crea/cancela reservas.
+    Usa CanchaSemanaVistaComponent y constantes de horario compartidas
+    con el backend.
+
+  FRONTEND — api.service.ts
+    Método                    Endpoint
+    -----------------------   ------------------------------------------
+    Listar                    GET /reserva
+    Disponibilidad día        GET /reserva/disponibilidad?fecha=...
+    Disponibilidad semana     GET /reserva/disponibilidad-semana
+    Crear                     POST /reserva
+    Editar / borrar           PATCH / DELETE /reserva/:id
+
+  BACKEND — reserva.controller.ts
+    Solo HTTP: recibe query/body y delega al service.
+    Prefijo reserva → /reserva/disponibilidad-semana, etc.
+
+  BACKEND — reserva.service.ts (negocio)
+    1. Disponibilidad: carga franjas activas + reservas
+       → marca cada slot como disponible u ocupada.
+    2. Crear: validarReserva() comprueba duración, rango horario,
+       franja habilitada y que no haya solapamiento.
+    3. Si todo OK → reservaRepository.save(...) en PostgreSQL.
+
+  BACKEND — reserva.entity.ts → tabla “reservas”
+    Campo TS       Columna SQL      Relación
+    ------------   --------------   ----------------------
+    espacio        espacio          —
+    fecha          fecha            —
+    horaInicio     hora_inicio      —
+    horaFin        hora_fin         —
+    tallerId       taller_id        ManyToOne → Taller
+    profesorId     profesor_id      ManyToOne → Profesor
+    adminId        admin_id         ManyToOne → Admin
+
+  También usa FranjaCancha (horarios que la directiva habilita).
+
+7.3 Resumen por capa
+--------------------
+  Angular     Formulario + grilla visual de slots
+  NestJS      Valida solapes y persiste
+  TypeORM     CRUD en reservas / franjas
+  PostgreSQL  Tablas de cancha
+  Tailwind    Estilos de la pantalla reservas
+
+
+================================================================================
+8. MÓDULO TALLERES — Ciclo de vida
+================================================================================
+
+8.1 Flujo general
+-----------------
+  GestionActividades / Talleres (Angular)
+    → ApiService (getTalleres, crear, asignar, horario, publicar…)
+    → /taller/*
+    → TallerController → TallerService
+    → TypeORM: talleres, asignaciones_docente, taller_horario, …
+    → PostgreSQL
+
+  Ciclo de estados:
+    BORRADOR → ESPERA_DOCENTE → ESPERA_HORARIO → PUBLICADO → CERRADO
+
+8.2 Frontend
+------------
+  gestion-actividades.component.ts
+    Pantalla del coordinador: crear, asignar docente, horarios,
+    publicar y cerrar. Tailwind (bg-surface, bg-primary-600).
+
+  talleres.component.ts
+    CRUD más simple (lista / crea / edita).
+    Solo canAccessTalleresCRUD() ve “Nuevo Taller”.
+    Clic en tarjeta → /taller/:id
+
+  api.service.ts
+    Acción               Endpoint
+    -----------------    ------------------------------------
+    Listar               GET /taller
+    Catálogo público     GET /taller/catalogo
+    Crear                POST /taller
+    Asignar docente      POST /taller/:id/asignar-docente
+    Horario              PATCH /taller/:id/horario
+    Publicar             PATCH /taller/:id/publicar
+    Cerrar               PATCH /taller/:id/cerrar
+    Detalle/editar/borrar GET / PATCH / DELETE /taller/:id
+
+8.3 Backend
+-----------
+  taller.module.ts
+    Entidades: Taller, Profesor, AsignacionDocente, TallerHorario,
+    InscripcionTaller, etc. Importa NotificacionModule y PeriodoModule.
+
+  taller.controller.ts
+    Solo HTTP. Rutas estáticas (catalogo, asignaciones/pendientes)
+    van ANTES de :id (para que Nest no tome “catalogo” como id).
+
+  taller.service.ts
+    Método                 Qué hace
+    --------------------   ------------------------------------------
+    create                 Inserta con estado BORRADOR
+    findCatalogo           Solo PUBLICADO con inscripción abierta
+    asignarDocente         Asignación pendiente → ESPERA_DOCENTE
+                           + notifica al profesor
+    responderAsignacion    Docente acepta → ESPERA_HORARIO
+    definirHorario(s)      Reemplaza filas en taller_horario
+    publicar               Exige horario + docente → PUBLICADO
+    cerrarPeriodo          Solo si publicado → CERRADO
+
+  TypeORM: create() arma el objeto; save() hace INSERT/UPDATE.
+
+8.4 Entidad ↔ BD (taller.entity.ts → tabla talleres)
+----------------------------------------------------
+  Campo TS                         Rol
+  ------------------------------   ----------------------------------
+  tipo, descripcion, capacidad      Datos básicos
+  estado                           Ciclo BORRADOR → … → CERRADO
+  modoHorario                      POR_CURSO o POR_SECCION
+  fechaApertura/CierreInscripcion  Ventana de postulación
+  Relaciones                       profesores, horarios, inscripciones,
+                                   reservas, salidas
+
+  Tablas satélite: asignaciones_docente, taller_horario, inscripcion_taller
+
+8.5 Ejemplo: publicar una actividad
+-----------------------------------
+  1. Coordinador crea taller → POST /taller → BORRADOR en PostgreSQL.
+  2. Asigna profesor → asignación PENDIENTE + notificación.
+  3. Profesor acepta → ESPERA_HORARIO.
+  4. Se definen bloques → filas en taller_horario.
+  5. Publicar → PUBLICADO → aparece en GET /taller/catalogo.
+  6. Cerrar período → CERRADO.
+
+
+================================================================================
+9. MÓDULO ASISTENCIA
+================================================================================
+
+9.1 Flujo
+---------
+  ControlAsistenciaComponent (profesor)
+    → abrirSesion / actualizarAsistencia / cerrarSesion
+    → /asistencia/*
+    → AsistenciaController → AsistenciaService
+    → sesiones_asistencia + registros_asistencia (+ alertas_ausencia)
+
+  Ciclo de sesión: ABIERTA → CERRADA
+  Marcas por alumno: PRESENTE | AUSENTE | TARDE
+
+9.2 Frontend
+------------
+  control-asistencia.component.ts
+    UI del profesor: abre sesión, marca presente/ausente, guarda y cierra.
+    Tailwind (bg-surface, badges verdes/rojos).
+
+  api.service.ts
+    Acción              Endpoint
+    -----------------   ------------------------------------------
+    Abrir sesión        POST /asistencia/sesion/abrir
+    Sesión activa       GET /asistencia/sesion/activa/:tallerId
+    Guardar marcas      PATCH /asistencia/sesion/:id/registros
+    Cerrar              PATCH /asistencia/sesion/:id/cerrar
+    Reporte / alertas   GET /asistencia/reporte/..., alertas/gestion
+
+9.3 Backend
+-----------
+  asistencia.module.ts
+    Entidades de sesión, registros, inscripciones, taller, alertas
+    + NotificacionModule.
+
+  asistencia.service.ts
+    Método                        Qué hace
+    ---------------------------   --------------------------------------
+    abrirSesion                   Sesión ABIERTA; un PRESENTE por cada
+                                  inscripción ACEPTADA
+    actualizarAsistencia          PRESENTE/AUSENTE/TARDE; listaGuardada
+    cerrarSesion                  Exige lista guardada → CERRADA
+                                  → evalúa umbral → mails a apoderados
+    evaluarAusenciasRecurrentes   Si ausencias ≥ umbralAusencias
+                                  → AlertaAusencia + notificación
+
+9.4 PostgreSQL
+--------------
+  Entidad              Tabla                    Rol
+  ------------------   ----------------------   ------------------------
+  SesionAsistencia     sesiones_asistencia      Lista de un taller/fecha
+  RegistroAsistencia   registros_asistencia     Una fila por alumno
+  AlertaAusencia       (alertas)                Ausencias recurrentes
+
+
+================================================================================
+10. MÓDULO PORTAL APODERADO
+================================================================================
+
+10.1 Flujo
+----------
+  Login (tipo apoderado) → JWT con sub = alumnoId
+    → PortalApoderadoComponent
+    → GET /apoderado/resumen (+ propuestas)
+    → JwtAuthGuard → ApoderadoController → ApoderadoService
+    → alumnos, inscripcion_taller, sesiones_asistencia
+
+10.2 Frontend
+-------------
+  portal-apoderado.component.ts
+    Vista solo para apoderados: hijo, talleres, asistencia, catálogo
+    y propuestas a la directiva.
+    Tras login, Angular redirige aquí si tipo === 'apoderado'.
+
+  api.service.ts
+    Acción                  Endpoint
+    ---------------------   ---------------------------------------------
+    Panel principal         GET /apoderado/resumen
+    Proponer inscripción    POST /apoderado/proponer-inscripcion/:tallerId
+    Mis propuestas          GET /apoderado/mis-propuestas
+    Actividad libre         POST /apoderado/proponer-actividad-libre
+
+10.3 Backend
+------------
+  apoderado.controller.ts
+    Toda la clase con @UseGuards(JwtAuthGuard).
+
+  apoderado.service.ts
+    assertApoderado(user)
+      → solo si tipo === 'apoderado'; devuelve user.sub (id del hijo).
+    getResumen(alumnoId)
+      → hijo + talleres ACEPTADOS + conteo presente/ausente
+        (sesiones CERRADAS).
+
+  Las propuestas de inscripción se delegan a InscripcionTallerService.
+
+
+================================================================================
+11. CÓMO SE CONECTAN ASISTENCIA Y PORTAL APODERADO
+================================================================================
+
+  Profesor cierra sesión de asistencia
+          │
+          ├─► PostgreSQL: registros AUSENTE/PRESENTE
+          ├─► Email al apoderado (MailService)
+          └─► Si supera umbral → AlertaAusencia
+
+  Apoderado abre el portal
+          │
+          └─► Lee esas mismas sesiones CERRADAS
+              y ve el resumen de asistencia del hijo
+
+  Capa        Asistencia              Portal apoderado
+  ---------   ---------------------   -------------------------
+  Angular     Pasar lista             Ver hijo, talleres, asistencia
+  NestJS      Abrir/cerrar + alertas  Validar JWT y armar resumen
+  TypeORM     Sesiones + registros    Alumno + inscripciones + sesiones
+  PostgreSQL  Fuente de verdad        Misma data, vista de lectura
+
+
+================================================================================
+12. MAPA RÁPIDO DE MÓDULOS YA EXPLICADOS
+================================================================================
+
+  • Auth
+  • Reservas de cancha
+  • Talleres / Gestión de actividades
+  • Asistencia
+  • Portal apoderado
+
+  Otros módulos del proyecto (no detallados en este chat):
+  inscripciones, salidas, notificaciones, reportes, alumnos, profesores, etc.
+
+
+================================================================================
+13. CÓMO ABRIR ESTE ARCHIVO
+================================================================================
+
+  BLOC DE NOTAS
+    • Abrir Documentacion_stack_y_modulos.txt con el Bloc de notas de Windows.
+
+  MICROSOFT WORD
+    1. Abrir Word.
+    2. Archivo → Abrir → elegir este .txt
+       (o arrastrar el archivo a Word).
+    3. Opcional: Archivo → Guardar como → formato .docx
+
+================================================================================
+Fin del documento
+================================================================================

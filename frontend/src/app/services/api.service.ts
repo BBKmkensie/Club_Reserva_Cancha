@@ -1,105 +1,147 @@
 /**
- * Cliente HTTP centralizado del frontend.
- * Agrupa todas las peticiones REST hacia el backend del sistema de talleres y reservas de cancha.
+ * =============================================================================
+ * app/services/api.service.ts — Cliente HTTP centralizado (REST)
+ * =============================================================================
+ * Servicio inyectable (providedIn: 'root') que encapsula TODAS las peticiones
+ * al backend NestJS. Usa environment.apiUrl como base y HttpClient de Angular.
+ *
+ * Dominios: Auth, Apoderado, Admin, Taller, Alumno, Profesor, Reserva,
+ * Franja-cancha, Salida, Inscripciones, Asistencia, Período, Notificaciones,
+ * Fichas alumno.
+ *
+ * El authInterceptor adjunta el JWT automáticamente; no hace falta pasarlo aquí.
+ * Cada método público indica VERBO + endpoint debajo del comentario.
+ * =============================================================================
  */
+
+// Injectable = servicio disponible en toda la app.
 import { Injectable } from '@angular/core';
+
+// HttpClient = cliente HTTP de Angular (get/post/patch/put/delete).
 import { HttpClient } from '@angular/common/http';
+
+// Observable = la respuesta llega de forma asíncrona (subscribe / async pipe).
 import { Observable } from 'rxjs';
+
+// apiUrl de desarrollo o producción.
 import { environment } from '../../environments/environment';
 
-/** Datos físicos del alumno asociados a una inscripción o ficha de taller */
+/**
+ * Datos físicos del alumno asociados a una inscripción o ficha de taller.
+ * Se envían en solicitarInscripcionTaller / guardarFichaAlumnoTaller.
+ */
 export interface FichaAlumnoPayload {
-  altura: number;
-  peso: number;
-  porcentajeGrasa: number;
-  sedentario: boolean;
+  // Estatura en cm (opcional).
+  altura?: number | null;
+  // Peso en kg (opcional).
+  peso?: number | null;
+  // % de grasa corporal (opcional).
+  porcentajeGrasa?: number | null;
+  // Si el alumno es sedentario (opcional).
+  sedentario?: boolean | null;
 }
 
-/**
- * Servicio inyectable que encapsula la comunicación con la API REST.
- * Expone métodos por dominio: autenticación, talleres, alumnos, reservas, asistencia y notificaciones.
- */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ApiService {
+  // Prefijo de todas las URLs (ej. http://localhost:3000 o '' en prod).
   private apiUrl = environment.apiUrl;
 
+  // Angular inyecta HttpClient (registrado en main.ts con provideHttpClient).
   constructor(private http: HttpClient) {}
 
-  /** Autentica con tipo de usuario explícito (flujo legado). */
+  // =========================================================================
+  // AUTH
+  // =========================================================================
+
+  /** POST /auth/login — login con tipo de usuario explícito (flujo legado). */
   login(tipo: 'admin' | 'directiva' | 'profesor' | 'alumno' | 'apoderado', usuario: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/auth/login`, { tipo, usuario, password });
   }
 
-  /** Autentica con usuario y contraseña; el backend resuelve el tipo de cuenta. */
+  /** POST /auth/login — login unificado; el backend resuelve el tipo de cuenta. */
   loginUnified(usuario: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/auth/login`, { usuario, password });
   }
 
-  /** Obtiene el resumen del portal del apoderado (hijo, asistencia, taller inscrito). */
+  // =========================================================================
+  // APODERADO
+  // =========================================================================
+
+  /** GET /apoderado/resumen — hijo, asistencia y taller del portal apoderado. */
   getApoderadoResumen(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/apoderado/resumen`);
   }
 
-  // Admin
-  /** Lista todos los administradores del sistema */
+  // =========================================================================
+  // ADMIN
+  // =========================================================================
+
+  /** GET /admin — lista todos los administradores. */
   getAdmins(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/admin`);
   }
 
-  /** Obtiene un administrador por ID */
+  /** GET /admin/:id — obtiene un administrador por ID. */
   getAdmin(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/admin/${id}`);
   }
 
-  /** Crea un nuevo administrador */
+  /** POST /admin — crea un nuevo administrador. */
   createAdmin(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/admin`, data);
   }
 
-  /** Elimina un administrador por ID */
+  /** DELETE /admin/:id — elimina un administrador. */
   deleteAdmin(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/admin/${id}`);
   }
 
-  // Taller
-  /** Lista todos los talleres/actividades */
+  // =========================================================================
+  // TALLER / ACTIVIDAD
+  // =========================================================================
+
+  /** GET /taller — lista todos los talleres/actividades. */
   getTalleres(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/taller`);
   }
 
-  /** Catálogo público de tipos de taller disponibles */
+  /** GET /taller/catalogo — catálogo público de tipos de taller. */
   getCatalogoTalleres(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/taller/catalogo`);
   }
 
-  /** Detalle de un ítem del catálogo de talleres */
+  /** GET /taller/catalogo/:id — detalle de un ítem del catálogo. */
   getCatalogoTallerDetalle(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/taller/catalogo/${id}`);
   }
 
-  /** Obtiene un taller por ID */
+  /** GET /taller/:id — detalle de un taller por ID. */
   getTaller(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/taller/${id}`);
   }
 
-  /** Crea un nuevo taller/actividad */
+  /** POST /taller — crea un nuevo taller/actividad. */
   createTaller(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/taller`, data);
   }
 
-  /** Actualiza datos generales de un taller */
+  /** PATCH /taller/:id — actualiza datos generales del taller. */
   updateTaller(id: number, data: any): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/taller/${id}`, data);
   }
 
-  /** Actualiza descripción, foto y profesor visible en la presentación del taller */
+  /**
+   * PATCH /taller/:id/presentacion — descripción, foto y profesor visible.
+   * Query opcionales: esDirectiva, profesorId.
+   */
   actualizarPresentacionTaller(
     tallerId: number,
     data: { descripcion?: string; fotoPath?: string; profesorId?: number },
     opts?: { esDirectiva?: boolean; profesorId?: number },
   ): Observable<any> {
+    // Armamos query string solo con los flags que vengan.
     const params = new URLSearchParams();
     if (opts?.esDirectiva) params.set('esDirectiva', 'true');
     if (opts?.profesorId != null) params.set('profesorId', String(opts.profesorId));
@@ -108,50 +150,53 @@ export class ApiService {
     return this.http.patch<any>(url, data);
   }
 
-  /** Elimina un taller por ID */
+  /** DELETE /taller/:id — elimina un taller. */
   deleteTaller(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/taller/${id}`);
   }
 
-  /** Asigna un profesor como docente de la actividad */
+  /** POST /taller/:id/asignar-docente — asigna profesor a la actividad. */
   asignarDocenteActividad(tallerId: number, profesorId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/taller/${tallerId}/asignar-docente`, { profesorId });
   }
 
-  /** Asignaciones de actividad pendientes de respuesta del profesor */
+  /** GET /taller/asignaciones/pendientes?profesorId= — asignaciones por responder. */
   getAsignacionesPendientes(profesorId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/taller/asignaciones/pendientes?profesorId=${profesorId}`);
   }
 
-  /** Acepta o rechaza una asignación de docente */
+  /** PATCH /taller/asignaciones/:id/responder — acepta o rechaza asignación. */
   responderAsignacion(asignacionId: number, profesorId: number, acepta: boolean, motivo?: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/taller/asignaciones/${asignacionId}/responder`, {
       profesorId, acepta, motivo,
     });
   }
 
-  /** Define o actualiza el horario de una actividad */
+  /** PATCH /taller/:id/horario — define o actualiza el horario de la actividad. */
   definirHorarioActividad(tallerId: number, horario: any): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/taller/${tallerId}/horario`, horario);
   }
 
-  /** Publica la actividad y opcionalmente define fechas de inscripción */
+  /** POST /taller/:id/publicar — publica la actividad (fechas de inscripción opcionales). */
   publicarActividad(tallerId: number, data?: { fechaAperturaInscripcion?: string; fechaCierreInscripcion?: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/taller/${tallerId}/publicar`, data ?? {});
   }
 
-  /** Cierra la actividad (fin del período operativo) */
+  /** POST /taller/:id/cerrar — cierra la actividad (fin del período operativo). */
   cerrarActividad(tallerId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/taller/${tallerId}/cerrar`, {});
   }
 
-  /** Reporte consolidado de una actividad (inscripciones, asistencia, espacios) */
+  /** GET /taller/:id/reporte — reporte consolidado (inscripciones, asistencia…). */
   getReporteActividad(tallerId: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/taller/${tallerId}/reporte`);
   }
 
-  // Alumno
-  /** Lista alumnos, opcionalmente filtrados por taller */
+  // =========================================================================
+  // ALUMNO
+  // =========================================================================
+
+  /** GET /alumno o /alumno?tallerId= — lista alumnos (filtro opcional por taller). */
   getAlumnos(tallerId?: number): Observable<any[]> {
     const url = tallerId
       ? `${this.apiUrl}/alumno?tallerId=${tallerId}`
@@ -159,28 +204,31 @@ export class ApiService {
     return this.http.get<any[]>(url);
   }
 
-  /** Obtiene un alumno por ID */
+  /** GET /alumno/:id — obtiene un alumno por ID. */
   getAlumno(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/alumno/${id}`);
   }
 
-  /** Registra un nuevo alumno */
+  /** POST /alumno — registra un nuevo alumno. */
   createAlumno(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/alumno`, data);
   }
 
-  /** Actualiza datos de un alumno */
+  /** PATCH /alumno/:id — actualiza datos de un alumno. */
   updateAlumno(id: number, data: any): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/alumno/${id}`, data);
   }
 
-  /** Elimina un alumno por ID */
+  /** DELETE /alumno/:id — elimina un alumno. */
   deleteAlumno(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/alumno/${id}`);
   }
 
-  // Profesor
-  /** Lista profesores, opcionalmente filtrados por taller */
+  // =========================================================================
+  // PROFESOR
+  // =========================================================================
+
+  /** GET /profesor o /profesor?tallerId= — lista profesores. */
   getProfesores(tallerId?: number): Observable<any[]> {
     const url = tallerId
       ? `${this.apiUrl}/profesor?tallerId=${tallerId}`
@@ -188,33 +236,36 @@ export class ApiService {
     return this.http.get<any[]>(url);
   }
 
-  /** Obtiene un profesor por ID */
+  /** GET /profesor/:id — obtiene un profesor por ID. */
   getProfesor(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/profesor/${id}`);
   }
 
-  /** Autentica a un profesor (endpoint dedicado) */
+  /** POST /profesor/login — autentica a un profesor (endpoint dedicado). */
   loginProfesor(usuario: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/profesor/login`, { usuario, password });
   }
 
-  /** Crea un nuevo profesor */
+  /** POST /profesor — crea un nuevo profesor. */
   createProfesor(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/profesor`, data);
   }
 
-  /** Actualiza datos de un profesor */
+  /** PATCH /profesor/:id — actualiza datos de un profesor. */
   updateProfesor(id: number, data: any): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/profesor/${id}`, data);
   }
 
-  /** Elimina un profesor por ID */
+  /** DELETE /profesor/:id — elimina un profesor. */
   deleteProfesor(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/profesor/${id}`);
   }
 
-  // Reserva
-  /** Lista reservas de cancha, con filtros opcionales por taller y fecha */
+  // =========================================================================
+  // RESERVA DE CANCHA
+  // =========================================================================
+
+  /** GET /reserva?tallerId=&fecha= — lista reservas (filtros opcionales). */
   getReservas(tallerId?: number, fecha?: string): Observable<any[]> {
     let url = `${this.apiUrl}/reserva`;
     const params: string[] = [];
@@ -224,48 +275,48 @@ export class ApiService {
     return this.http.get<any[]>(url);
   }
 
-  /** Obtiene una reserva por ID */
+  /** GET /reserva/:id — obtiene una reserva por ID. */
   getReserva(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/reserva/${id}`);
   }
 
-  /** Crea una nueva reserva de cancha */
+  /** POST /reserva — crea una nueva reserva de cancha. */
   createReserva(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/reserva`, data);
   }
 
-  /** Actualiza una reserva existente */
+  /** PATCH /reserva/:id — actualiza una reserva existente. */
   updateReserva(id: number, data: any): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/reserva/${id}`, data);
   }
 
-  /** Elimina una reserva por ID */
+  /** DELETE /reserva/:id — elimina una reserva. */
   deleteReserva(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/reserva/${id}`);
   }
 
-  /** Consulta los slots disponibles/ocupados de la cancha para una fecha. */
+  /** GET /reserva/disponibilidad?fecha=&espacio= — slots libres/ocupados del día. */
   getDisponibilidadCancha(fecha: string, espacio = 'Cancha Principal'): Observable<any[]> {
     return this.http.get<any[]>(
       `${this.apiUrl}/reserva/disponibilidad?fecha=${fecha}&espacio=${encodeURIComponent(espacio)}`,
     );
   }
 
-  /** Disponibilidad semanal de la cancha (slots por día) */
+  /** GET /reserva/disponibilidad-semana?espacio=&fechaInicio= — slots de la semana. */
   getDisponibilidadSemanaCancha(fechaInicio?: string, espacio = 'Cancha Principal'): Observable<any[]> {
     let url = `${this.apiUrl}/reserva/disponibilidad-semana?espacio=${encodeURIComponent(espacio)}`;
     if (fechaInicio) url += `&fechaInicio=${fechaInicio}`;
     return this.http.get<any[]>(url);
   }
 
-  /** Franjas horarias configuradas para un espacio de cancha */
+  /** GET /franja-cancha?espacio= — franjas horarias configuradas del espacio. */
   getFranjasCancha(espacio = 'Cancha Principal'): Observable<any[]> {
     return this.http.get<any[]>(
       `${this.apiUrl}/franja-cancha?espacio=${encodeURIComponent(espacio)}`,
     );
   }
 
-  /** Actualiza las franjas activas y duración por día de la semana */
+  /** PUT /franja-cancha — actualiza franjas activas y duración por día. */
   actualizarFranjasCancha(
     franjas: { diaSemana: number; horaInicio: string; activa: boolean; duracionMinutos?: number }[],
     espacio = 'Cancha Principal',
@@ -273,36 +324,40 @@ export class ApiService {
     return this.http.put<any[]>(`${this.apiUrl}/franja-cancha`, { espacio, franjas });
   }
 
-  // Salida
-  /** Lista salidas pedagógicas, opcionalmente por taller */
-  getSalidas(tallerId?: number): Observable<any[]> {
-    const url = tallerId
-      ? `${this.apiUrl}/salida?tallerId=${tallerId}`
-      : `${this.apiUrl}/salida`;
-    return this.http.get<any[]>(url);
+  // =========================================================================
+  // SALIDA PEDAGÓGICA
+  // =========================================================================
+
+  /** GET /salida?tallerId=&alumnoId= — lista salidas (filtros opcionales). */
+  getSalidas(tallerId?: number, alumnoId?: number): Observable<any[]> {
+    const params = new URLSearchParams();
+    if (tallerId != null) params.set('tallerId', String(tallerId));
+    if (alumnoId != null) params.set('alumnoId', String(alumnoId));
+    const q = params.toString() ? `?${params}` : '';
+    return this.http.get<any[]>(`${this.apiUrl}/salida${q}`);
   }
 
-  /** Obtiene una salida por ID */
+  /** GET /salida/:id — obtiene una salida por ID. */
   getSalida(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/salida/${id}`);
   }
 
-  /** Crea una nueva salida pedagógica */
+  /** POST /salida — crea una nueva salida pedagógica. */
   createSalida(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/salida`, data);
   }
 
-  /** Actualiza datos de una salida */
+  /** PATCH /salida/:id — actualiza datos de una salida. */
   updateSalida(id: number, data: any): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/salida/${id}`, data);
   }
 
-  /** Elimina una salida por ID */
+  /** DELETE /salida/:id — elimina una salida. */
   deleteSalida(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/salida/${id}`);
   }
 
-  /** Salidas publicadas visibles para inscripción de alumnos */
+  /** GET /salida/publicadas — salidas visibles para inscripción de alumnos. */
   getSalidasPublicadas(tallerId?: number, alumnoId?: number): Observable<any[]> {
     const params = new URLSearchParams();
     if (tallerId != null) params.set('tallerId', String(tallerId));
@@ -311,22 +366,22 @@ export class ApiService {
     return this.http.get<any[]>(`${this.apiUrl}/salida/publicadas${q}`);
   }
 
-  /** Salidas propuestas pendientes de aprobación del profesor */
+  /** GET /salida/pendientes/profesor/:profesorId — propuestas pendientes del profesor. */
   getSalidasPendientesProfesor(profesorId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/salida/pendientes/profesor/${profesorId}`);
   }
 
-  /** Salidas pendientes de revisión por la directiva */
+  /** GET /salida/pendientes/directiva — salidas pendientes de revisión directiva. */
   getSalidasPendientesDirectiva(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/salida/pendientes/directiva`);
   }
 
-  /** Historial de salidas gestionadas por un profesor */
+  /** GET /salida/por-profesor/:profesorId — historial de salidas del profesor. */
   getSalidasPorProfesor(profesorId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/salida/por-profesor/${profesorId}`);
   }
 
-  /** La directiva asigna una salida a un taller y profesor */
+  /** POST /salida/asignar — la directiva asigna salida a taller + profesor. */
   asignarSalidaDirectiva(data: {
     destino: string;
     fecha: string;
@@ -339,7 +394,7 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/salida/asignar`, data);
   }
 
-  /** El profesor propone una salida para aprobación */
+  /** POST /salida/proponer — el profesor propone una salida para aprobación. */
   proponerSalidaProfesor(data: {
     destino: string;
     fecha: string;
@@ -351,82 +406,90 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/salida/proponer`, data);
   }
 
-  /** Acepta o rechaza una salida (profesor o directiva) */
+  /** PATCH /salida/:id/responder?actor= — acepta o rechaza (profesor | directiva). */
   responderSalida(id: number, acepta: boolean, actor: 'profesor' | 'directiva', actorId?: number, motivo?: string): Observable<any> {
     const params = new URLSearchParams({ actor });
     if (actorId != null) params.set('actorId', String(actorId));
     return this.http.patch<any>(`${this.apiUrl}/salida/${id}/responder?${params}`, { acepta, motivo });
   }
 
-  /** El profesor abre una salida el día de la actividad */
+  /** PATCH /salida/:id/abrir?profesorId= — el profesor abre la salida el día de la actividad. */
   abrirSalida(id: number, profesorId: number, comentario?: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/salida/${id}/abrir?profesorId=${profesorId}`, { comentario });
   }
 
-  /** El profesor cierra la salida con resultado y comentario */
+  /** PATCH /salida/:id/cerrar?profesorId= — cierra con resultado EXITO | FRACASO. */
   cerrarSalida(id: number, profesorId: number, resultado: 'EXITO' | 'FRACASO', comentario: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/salida/${id}/cerrar?profesorId=${profesorId}`, { resultado, comentario });
   }
 
-  // Inscripción salida
-  /** Inscribe a un alumno en una salida publicada */
+  // =========================================================================
+  // INSCRIPCIÓN A SALIDA
+  // =========================================================================
+
+  /** POST /inscripcion-salida — inscribe alumno en una salida publicada. */
   inscribirSalida(alumnoId: number, salidaId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/inscripcion-salida`, { alumnoId, salidaId });
   }
 
-  /** Inscripciones de salida de un alumno */
+  /** GET /inscripcion-salida/por-alumno/:alumnoId — inscripciones de salida del alumno. */
   getInscripcionesPorAlumno(alumnoId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-salida/por-alumno/${alumnoId}`);
   }
 
-  /** Alumnos inscritos en una salida */
+  /** GET /inscripcion-salida/por-salida/:salidaId — alumnos inscritos en la salida. */
   getInscripcionesPorSalida(salidaId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-salida/por-salida/${salidaId}`);
   }
 
-  /** Cancela la inscripción de un alumno en una salida */
+  /** DELETE /inscripcion-salida?alumnoId=&salidaId= — cancela inscripción. */
   desinscribirSalida(alumnoId: number, salidaId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/inscripcion-salida?alumnoId=${alumnoId}&salidaId=${salidaId}`);
   }
 
-  // Inscripción taller
-  /** Valida cupos, conflictos de horario y elegibilidad antes de inscribirse a un taller. */
+  // =========================================================================
+  // INSCRIPCIÓN A TALLER
+  // =========================================================================
+
+  /** GET /inscripcion-taller/validar/:alumnoId/:tallerId — cupos, conflictos, elegibilidad. */
   validarInscripcionTaller(alumnoId: number, tallerId: number, notificar = false): Observable<any> {
     const q = notificar ? '?notificar=true' : '';
     return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/validar/${alumnoId}/${tallerId}${q}`);
   }
 
-  /** Resumen de cupos e inscripciones de un taller */
+  /** GET /inscripcion-taller/resumen/:tallerId — cupos e inscripciones del taller. */
   getResumenInscripcionesTaller(tallerId: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/resumen/${tallerId}`);
   }
 
-  /** Envía una solicitud de inscripción con la ficha física del alumno. */
-  solicitarInscripcionTaller(alumnoId: number, tallerId: number, ficha: FichaAlumnoPayload): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller`, { alumnoId, tallerId, ficha });
+  /** POST /inscripcion-taller — solicita inscripción (ficha opcional en deportivos). */
+  solicitarInscripcionTaller(alumnoId: number, tallerId: number, ficha?: FichaAlumnoPayload | null): Observable<any> {
+    const body: any = { alumnoId, tallerId };
+    if (ficha != null) body.ficha = ficha;
+    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller`, body);
   }
 
-  /** Actualiza la ficha física asociada a una inscripción */
+  /** PATCH /inscripcion-taller/:id/ficha — actualiza ficha física de la inscripción. */
   actualizarFichaInscripcion(inscripcionId: number, ficha: Partial<FichaAlumnoPayload>): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/${inscripcionId}/ficha`, ficha);
   }
 
-  /** Inscripciones a talleres de un alumno */
+  /** GET /inscripcion-taller/por-alumno/:alumnoId — inscripciones a talleres del alumno. */
   getInscripcionesTallerPorAlumno(alumnoId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/por-alumno/${alumnoId}`);
   }
 
-  /** Inscripciones de un taller */
+  /** GET /inscripcion-taller/por-taller/:tallerId — inscripciones de un taller. */
   getInscripcionesTallerPorTaller(tallerId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/por-taller/${tallerId}`);
   }
 
-  /** Solicitudes de inscripción pendientes de respuesta */
+  /** GET /inscripcion-taller/pendientes — solicitudes pendientes de respuesta. */
   getInscripcionesPendientes(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/pendientes`);
   }
 
-  /** La directiva propone inscribir a un alumno en un taller */
+  /** POST /inscripcion-taller/proponer-directiva — directiva propone inscripción. */
   proponerInscripcionDirectiva(
     alumnoId: number,
     tallerId: number,
@@ -440,7 +503,7 @@ export class ApiService {
     });
   }
 
-  /** El apoderado propone inscribir a su hijo en un taller */
+  /** POST /apoderado/proponer-inscripcion/:tallerId — apoderado propone inscripción del hijo. */
   proponerInscripcionApoderado(
     tallerId: number,
     opts?: { tallerHorarioId?: number; horarioPropuestoTexto?: string; mensajeApoderado?: string },
@@ -452,12 +515,12 @@ export class ApiService {
     });
   }
 
-  /** Propuestas de inscripción enviadas por el apoderado autenticado */
+  /** GET /apoderado/mis-propuestas — propuestas enviadas por el apoderado autenticado. */
   getMisPropuestasApoderado(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/apoderado/mis-propuestas`);
   }
 
-  /** Propone una actividad libre no catalogada (flujo apoderado) */
+  /** POST /apoderado/proponer-actividad-libre — propone actividad no catalogada. */
   proponerActividadLibre(data: {
     actividadNombre: string;
     actividadDescripcion?: string;
@@ -467,12 +530,27 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/apoderado/proponer-actividad-libre`, data);
   }
 
-  /** Propuestas de inscripción pendientes de gestión */
+  /** POST /inscripcion-taller/proponer-actividad-libre — alumno propone actividad libre a directiva. */
+  proponerActividadLibreAlumno(data: {
+    actividadNombre: string;
+    actividadDescripcion?: string;
+    horarioPropuestoTexto: string;
+    mensajeApoderado?: string;
+  }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller/proponer-actividad-libre`, data);
+  }
+
+  /** GET /inscripcion-taller/mis-propuestas — propuestas del alumno autenticado. */
+  getMisPropuestasAlumno(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/mis-propuestas`);
+  }
+
+  /** GET /inscripcion-taller/propuestas/pendientes — propuestas pendientes de gestión. */
   getPropuestasPendientes(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/inscripcion-taller/propuestas/pendientes`);
   }
 
-  /** Responde a una propuesta de inscripción (aceptar/rechazar con opciones de horario) */
+  /** PATCH /inscripcion-taller/propuestas/:id/responder — acepta/rechaza propuesta. */
   responderPropuestaInscripcion(
     id: number,
     acepta: boolean,
@@ -492,20 +570,23 @@ export class ApiService {
     });
   }
 
-  /** Acepta o rechaza una solicitud de inscripción a taller */
+  /** PATCH /inscripcion-taller/:id/responder — acepta o rechaza solicitud (ACEPTADO|RECHAZADO). */
   responderInscripcionTaller(id: number, estado: 'ACEPTADO' | 'RECHAZADO'): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/inscripcion-taller/${id}/responder`, { estado });
   }
 
-  /** El alumno se retira de un taller inscrito */
+  /** PATCH /inscripcion-taller/:id/retirar — el alumno se retira del taller. */
   retirarseDeTaller(inscripcionId: number, alumnoId: number) {
     return this.http.patch<{ ok: true }>(`${this.apiUrl}/inscripcion-taller/${inscripcionId}/retirar`, {
       alumnoId,
     });
   }
 
-  // Fichas alumno por taller
-  /** Fichas de alumnos de un taller (con filtros por rol y solo inscritos) */
+  // =========================================================================
+  // FICHAS ALUMNO POR TALLER
+  // =========================================================================
+
+  /** GET /ficha-alumno/taller/:tallerId — fichas del taller (filtros por rol). */
   getFichasAlumnosPorTaller(
     tallerId: number,
     opts?: { soloInscritos?: boolean; esCoordinacion?: boolean; profesorId?: number },
@@ -518,85 +599,91 @@ export class ApiService {
     return this.http.get<any>(`${this.apiUrl}/ficha-alumno/taller/${tallerId}${q}`);
   }
 
-  /** Guarda o actualiza la ficha física de un alumno en un taller */
+  /** PUT /ficha-alumno/:alumnoId/:tallerId — guarda o actualiza ficha física. */
   guardarFichaAlumnoTaller(alumnoId: number, tallerId: number, ficha: Partial<FichaAlumnoPayload>): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/ficha-alumno/${alumnoId}/${tallerId}`, ficha);
   }
 
-  /** Obtiene la ficha de un alumno en un taller específico */
+  /** GET /ficha-alumno/:alumnoId/:tallerId — ficha de un alumno en un taller. */
   getFichaAlumnoTaller(alumnoId: number, tallerId: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/ficha-alumno/${alumnoId}/${tallerId}`);
   }
 
-  // Asistencia
-  /** Abre una sesión de asistencia para el taller en la fecha indicada (hoy por defecto). */
+  // =========================================================================
+  // ASISTENCIA
+  // =========================================================================
+
+  /** POST /asistencia/sesion/abrir — abre sesión de asistencia (fecha hoy por defecto). */
   abrirSesionAsistencia(tallerId: number, profesorId: number, fecha?: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/asistencia/sesion/abrir`, { tallerId, profesorId, fecha });
   }
 
-  /** Sesión de asistencia abierta del taller, si existe */
+  /** GET /asistencia/sesion/activa/:tallerId — sesión abierta del taller, si existe. */
   getSesionActiva(tallerId: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/asistencia/sesion/activa/${tallerId}`);
   }
 
-  /** Historial de sesiones de asistencia de un taller */
+  /** GET /asistencia/sesiones/:tallerId — historial de sesiones del taller. */
   getHistorialSesiones(tallerId: number): Observable<any> {
     return this.http.get<any[]>(`${this.apiUrl}/asistencia/sesiones/${tallerId}`);
   }
 
-  /** Actualiza los registros de asistencia de una sesión abierta */
+  /** PATCH /asistencia/sesion/:sesionId/registros — actualiza presentes/ausentes. */
   actualizarAsistencia(sesionId: number, registros: any[]): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/asistencia/sesion/${sesionId}/registros`, { registros });
   }
 
-  /** Cierra la sesión de asistencia con observaciones opcionales */
+  /** PATCH /asistencia/sesion/:sesionId/cerrar — cierra la sesión (observaciones opcionales). */
   cerrarSesionAsistencia(sesionId: number, observaciones?: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/asistencia/sesion/${sesionId}/cerrar`, { observaciones });
   }
 
-  /** Reporte de asistencia agregado de un taller */
+  /** GET /asistencia/reporte/:tallerId — reporte de asistencia agregado. */
   getReporteAsistencia(tallerId: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/asistencia/reporte/${tallerId}`);
   }
 
-  /** Alertas de ausencia recurrente para gestión (opcionalmente por taller) */
+  /** GET /asistencia/alertas/gestion?tallerId= — alertas de ausencia recurrente. */
   getAlertasGestion(tallerId?: number): Observable<any[]> {
     const q = tallerId ? `?tallerId=${tallerId}` : '';
     return this.http.get<any[]>(`${this.apiUrl}/asistencia/alertas/gestion${q}`);
   }
 
-  /** Actualiza el umbral de ausencias que dispara alertas en un taller */
+  /** PATCH /asistencia/umbral/:tallerId — umbral de ausencias que dispara alertas. */
   actualizarUmbralAusencias(tallerId: number, umbral: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/asistencia/umbral/${tallerId}`, { umbralAusencias: umbral });
   }
 
-  /** Registra contacto con apoderado por una alerta de ausencia */
+  /** PATCH /asistencia/alertas/:alertaId/contactar — registra contacto con apoderado. */
   contactarApoderado(alertaId: number, notas: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/asistencia/alertas/${alertaId}/contactar`, { notas });
   }
 
-  /** Marca una alerta de ausencia como resuelta */
+  /** PATCH /asistencia/alertas/:alertaId/resolver — marca alerta como resuelta. */
   resolverAlerta(alertaId: number, notas: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/asistencia/alertas/${alertaId}/resolver`, { notas });
   }
 
-  // Período
-  /** Período académico activo en el sistema */
+  // =========================================================================
+  // PERÍODO ACADÉMICO
+  // =========================================================================
+
+  /** GET /periodo/activo — período académico activo. */
   getPeriodoActivo(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/periodo/activo`);
   }
 
-  /** Lista todos los períodos académicos */
+  /** GET /periodo — lista todos los períodos académicos. */
   getPeriodos(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/periodo`);
   }
 
-  /** Crea o actualiza la configuración del período académico */
+  /** PUT /periodo — crea o actualiza la configuración del período. */
   configurarPeriodo(data: any): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/periodo`, data);
   }
 
-  /** Estadísticas comparativas del semestre por período y/o profesor */
+  /** GET /taller/estadisticas/semestre?periodoId=&profesorId= — comparación de semestre. */
   getComparacionSemestre(periodoId?: number, profesorId?: number): Observable<any> {
     const params: string[] = [];
     if (periodoId != null) params.push(`periodoId=${periodoId}`);
@@ -605,53 +692,59 @@ export class ApiService {
     return this.http.get<any>(`${this.apiUrl}/taller/estadisticas/semestre${q}`);
   }
 
-  // Notificaciones
-  /** Notificaciones de un alumno */
+  // =========================================================================
+  // NOTIFICACIONES
+  // =========================================================================
+
+  /** GET /notificacion/por-alumno/:alumnoId — notificaciones del alumno. */
   getNotificaciones(alumnoId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-alumno/${alumnoId}`);
   }
 
-  /** Marca una notificación como leída (alumno) */
+  /** PATCH /notificacion/:id/leer/:alumnoId — marca una como leída (alumno). */
   marcarNotificacionLeida(id: number, alumnoId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer/${alumnoId}`, {});
   }
 
-  /** Marca todas las notificaciones como leídas (alumno) */
+  /** PATCH /notificacion/leer-todas/:alumnoId — marca todas leídas (alumno). */
   marcarTodasNotificacionesLeidas(alumnoId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas/${alumnoId}`, {});
   }
 
-  /** Notificaciones de un profesor */
+  /** GET /notificacion/por-profesor/:profesorId — notificaciones del profesor. */
   getNotificacionesProfesor(profesorId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-profesor/${profesorId}`);
   }
 
-  /** Marca una notificación como leída (profesor) */
+  /** PATCH /notificacion/:id/leer-profesor/:profesorId — marca una leída (profesor). */
   marcarNotificacionLeidaProfesor(id: number, profesorId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer-profesor/${profesorId}`, {});
   }
 
-  /** Marca todas las notificaciones como leídas (profesor) */
+  /** PATCH /notificacion/leer-todas-profesor/:profesorId — marca todas leídas (profesor). */
   marcarTodasNotificacionesLeidasProfesor(profesorId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas-profesor/${profesorId}`, {});
   }
 
-  /** Notificaciones de un administrador/directiva */
+  /** GET /notificacion/por-admin/:adminId — notificaciones de admin/directiva. */
   getNotificacionesAdmin(adminId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-admin/${adminId}`);
   }
 
-  /** Marca una notificación como leída (admin) */
+  /** PATCH /notificacion/:id/leer-admin/:adminId — marca una leída (admin). */
   marcarNotificacionLeidaAdmin(id: number, adminId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer-admin/${adminId}`, {});
   }
 
-  /** Marca todas las notificaciones como leídas (admin) */
+  /** PATCH /notificacion/leer-todas-admin/:adminId — marca todas leídas (admin). */
   marcarTodasNotificacionesLeidasAdmin(adminId: number): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas-admin/${adminId}`, {});
   }
 
-  /** Elimina una notificación según el rol del destinatario */
+  /**
+   * DELETE /notificacion/:id/{alumno|profesor|admin}/:userId
+   * Elimina una notificación según el rol del destinatario.
+   */
   eliminarNotificacion(id: number, userId: number, rol: 'alumno' | 'profesor' | 'admin'): Observable<void> {
     const path =
       rol === 'alumno'

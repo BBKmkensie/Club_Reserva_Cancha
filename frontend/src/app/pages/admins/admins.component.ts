@@ -1,6 +1,11 @@
 /**
- * Administración de cuentas de directiva y super administradores.
- * Permite registrar nuevos administradores y eliminar existentes.
+ * =============================================================================
+ * app/pages/admins/admins.component.ts — CRUD de administradores
+ * =============================================================================
+ * Gestión de cuentas de directiva y super administradores.
+ * Rol: coordinación (super_admin / directiva) — canVerAdmins().
+ * Endpoints ApiService: getAdmins, createAdmin, deleteAdmin
+ * =============================================================================
  */
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -8,9 +13,6 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { ApiService } from '../../services/api.service';
 import { Admin, CreateAdminDto } from '../../models/admin.model';
 
-/**
- * CRUD de administradores del sistema (directiva y super admin).
- */
 @Component({
   selector: 'app-admins',
   standalone: true,
@@ -97,9 +99,13 @@ import { Admin, CreateAdminDto } from '../../models/admin.model';
   styles: []
 })
 export class AdminsComponent implements OnInit {
+  /** Listado de administradores del sistema. */
   admins: Admin[] = [];
+  /** true = modal crear visible. */
   showModal = false;
+  /** Reserva para edición futura; hoy el flujo es solo alta. */
   editingAdmin: Admin | null = null;
+  /** Formulario reactivo del modal (nombre, RUT, email, password). */
   adminForm: FormGroup;
 
   constructor(
@@ -127,12 +133,14 @@ export class AdminsComponent implements OnInit {
     });
   }
 
+  /** Abre el modal para crear un administrador. */
   openModal() {
     this.editingAdmin = null;
     this.adminForm.reset();
     this.showModal = true;
   }
 
+  /** Cierra el modal y limpia el formulario. */
   closeModal() {
     this.showModal = false;
     this.editingAdmin = null;
@@ -152,6 +160,7 @@ export class AdminsComponent implements OnInit {
     }
   }
 
+  /** Elimina un administrador tras confirmación del usuario. */
   /** Elimina un administrador tras confirmación del usuario. */
   deleteAdmin(id: number) {
     if (confirm('¿Estás seguro de eliminar este administrador?')) {

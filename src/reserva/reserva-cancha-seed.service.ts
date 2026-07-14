@@ -1,9 +1,25 @@
 /**
- * Servicio de seed para reservas deportivas semestrales en cancha.
- * Crea reservas de fútbol y vóley según horarios oficiales del periodo académico.
+ * =============================================================================
+ * reserva/reserva-cancha-seed.service.ts — SEED DE RESERVAS DEPORTIVAS
+ * =============================================================================
+ * Genera automáticamente reservas de cancha para talleres de fútbol/vóley
+ * a lo largo del periodo académico (semestre), según el pool
+ * `horariosCanchaDeportesSemestre()`.
+ *
+ * Flujo seedReservasDeportesSemestre():
+ *   1. Asegura franjas base de la cancha
+ *   2. Resuelve el periodo académico (activo o uno automático del año)
+ *   3. Por cada taller deportivo + bloque horario del pool:
+ *        - Itera fechas del semestre que coincidan con el díaSemana
+ *        - Parte el bloque en slots de 30 min
+ *        - Crea la reserva si no existe (si existe → omitida)
+ *
+ * No es un endpoint público por sí solo: lo suelen llamar scripts o el admin.
+ * =============================================================================
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+// Repository: findOne / create / save — TypeORM sobre talleres, reservas, periodo.
 import { Repository } from 'typeorm';
 import { Taller } from '../entities/taller.entity';
 import { Profesor } from '../entities/profesor.entity';
@@ -24,7 +40,7 @@ import {
   sumarMinutosAHora,
 } from './cancha.constants';
 
-/** Resultado del seed de reservas deportivas por taller y periodo. */
+/** Resultado del seed: resumen por taller y totales creadas/omitidas. */
 export interface SeedReservasDeportesResult {
   periodo: { inicio: string; fin: string; nombre: string };
   talleres: Array<{ tipo: string; diaSemana: number; horario: string; reservasCreadas: number; reservasOmitidas: number }>;
@@ -35,6 +51,7 @@ export interface SeedReservasDeportesResult {
 /** Genera reservas de cancha para talleres deportivos durante el semestre activo. */
 @Injectable()
 export class ReservaCanchaSeedService {
+  /** Logger de Nest: aparece con el nombre de la clase en la consola. */
   private readonly logger = new Logger(ReservaCanchaSeedService.name);
 
   constructor(
@@ -49,7 +66,10 @@ export class ReservaCanchaSeedService {
     private franjaCanchaService: FranjaCanchaService,
   ) {}
 
-  /** Siembra reservas de fútbol y vóley en el espacio indicado (por defecto cancha principal). */
+  /**
+   * Siembra reservas de fútbol y vóley en el espacio indicado.
+   * Idempotente: si ya existe la reserva (mismo espacio/fecha/horaInicio), la omite.
+   */
   async seedReservasDeportesSemestre(
     espacio = CANCHA_ESPACIO_DEFAULT,
   ): Promise<SeedReservasDeportesResult> {
@@ -59,6 +79,7 @@ export class ReservaCanchaSeedService {
     const inicio = parseFechaIso(periodo.fechaApertura);
     const fin = parseFechaIso(periodo.fechaCierre);
 
+    // Mapa nombre-normalizado → entidad Taller (incluye alias futsal/voleibol)
     const talleresDb = await this.tallerRepo.find({ relations: ['profesores'] });
     const porNombre = new Map<string, Taller>();
     for (const t of talleresDb) {
@@ -91,6 +112,7 @@ export class ReservaCanchaSeedService {
         continue;
       }
 
+      // Primer profesor del taller (relación o lookup por tallerId)
       const profesor =
         taller.profesores?.[0] ??
         (await this.profesorRepo.findOne({ where: { tallerId: taller.id } }));
@@ -101,6 +123,7 @@ export class ReservaCanchaSeedService {
         let omitidas = 0;
 
         for (const fecha of this.iterarFechas(inicio, fin)) {
+          // Solo fechas cuyo día de semana coincide con el bloque (ej. martes=2)
           if (diaSemanaDesdeFecha(fecha) !== bloque.diaSemana) continue;
 
           for (const slot of slots) {
@@ -147,6 +170,10 @@ export class ReservaCanchaSeedService {
     return result;
   }
 
+  /**
+   * Obtiene el periodo activo; si no hay, inventa uno del año actual
+   * (no lo guarda: solo sirve de rango temporal para el seed).
+   */
   private async resolverPeriodo(): Promise<PeriodoAcademico> {
     const activo = await this.periodoRepo.findOne({
       where: { activo: true },
@@ -163,6 +190,7 @@ export class ReservaCanchaSeedService {
     });
   }
 
+  /** Genera todas las fechas YYYY-MM-DD entre inicio y fin (inclusive). */
   private iterarFechas(inicio: string, fin: string): string[] {
     const fechas: string[] = [];
     let cur = inicio;
@@ -173,6 +201,7 @@ export class ReservaCanchaSeedService {
     return fechas;
   }
 
+  /** Parte un bloque (ej. 15:00–16:30) en slots de 30 minutos. */
   private slotsDesdeBloque(
     horaInicio: string,
     horaFin: string,
@@ -191,6 +220,7 @@ export class ReservaCanchaSeedService {
     return slots;
   }
 
+  /** Alias de nombres de taller (futbol↔futsal, voley↔voleibol). */
   private aliasDe(tipo: string): string[] {
     const n = normalizarNombreTaller(tipo);
     const map: Record<string, string[]> = {

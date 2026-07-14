@@ -1,9 +1,22 @@
 /**
- * Servicio de envío de correos electrónicos.
- * Usa nodemailer cuando está habilitado; en modo desarrollo registra los mensajes en consola.
+ * =============================================================================
+ * mail/mail.service.ts — ENVÍO CENTRALIZADO DE CORREOS
+ * =============================================================================
+ * Usa nodemailer cuando MAIL_ENABLED=true.
+ * Si está deshabilitado, “simula” el envío logueando en consola (útil en dev).
+ *
+ * Métodos de alto nivel (plantillas de texto):
+ *   alertaApoderado / contactoApoderado / asistenciaSesionApoderado
+ *   inscripcionTallerApoderado / respuestaPropuestaDirectivaApoderado
+ *   nuevaPropuestaDirectiva
+ *
+ * El método base es enviar(to, asunto, texto).
+ * =============================================================================
  */
 import { Injectable, Logger } from '@nestjs/common';
+// ConfigService = lee namespace 'mail' (MAIL_ENABLED, host, port, from...)
 import { ConfigService } from '@nestjs/config';
+// nodemailer = cliente SMTP; Transporter = conexión reutilizable
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
@@ -11,12 +24,14 @@ import type { Transporter } from 'nodemailer';
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
+  /** Transporter de nodemailer; null si el mail está deshabilitado. */
   private transporter: Transporter | null = null;
   private enabled = false;
   private from = '';
   private frontendUrl = 'http://localhost:4200';
 
   constructor(private configService: ConfigService) {
+    // Lee namespace 'mail' de ConfigModule (ver config/mail.config.ts)
     this.enabled = this.configService.get<boolean>('mail.enabled') ?? false;
     this.from = this.configService.get<string>('mail.from') ?? 'Reservas Cancha <noreply@reservas.local>';
     this.frontendUrl =
@@ -39,7 +54,10 @@ export class MailService {
     }
   }
 
-  /** Envía un correo de texto plano; simula en consola si el mail está deshabilitado. */
+  /**
+   * Envía un correo de texto plano.
+   * Si mail deshabilitado → log en consola y return true (no rompe el flujo).
+   */
   async enviar(to: string, asunto: string, texto: string): Promise<boolean> {
     if (!to?.trim()) return false;
 
@@ -63,15 +81,18 @@ export class MailService {
     }
   }
 
+  /** Atajo: notifica al email del alumno. */
   async notificarAlumno(email: string | null | undefined, titulo: string, mensaje: string) {
     if (!email) return;
     await this.enviar(email, `[Reservas Cancha] ${titulo}`, mensaje);
   }
 
+  /** Atajo: notifica al email del profesor. */
   async notificarProfesor(email: string, titulo: string, mensaje: string) {
     await this.enviar(email, `[Reservas Cancha] ${titulo}`, mensaje);
   }
 
+  /** Atajo: notifica al email del administrador. */
   async notificarAdmin(email: string, titulo: string, mensaje: string) {
     await this.enviar(email, `[Reservas Cancha] ${titulo}`, mensaje);
   }
@@ -242,7 +263,10 @@ export class MailService {
     return await this.enviar(email, asunto, lineas.join('\n'));
   }
 
-  /** Avisa a la directiva que un apoderado envió una nueva propuesta de inscripción. */
+  /**
+   * Avisa a la directiva que un apoderado o alumno envió una nueva propuesta.
+   * Incluye enlace al frontend: /propuestas-actividad?id=...
+   */
   async nuevaPropuestaDirectiva(
     email: string,
     directivaNombre: string,
@@ -256,18 +280,26 @@ export class MailService {
       propuestaId: number;
       actividadDescripcion?: string | null;
       esActividadLibre?: boolean;
+      origen?: 'APODERADO' | 'ALUMNO';
     },
   ): Promise<boolean> {
     const enlace = `${this.frontendUrl}/propuestas-actividad?id=${opts.propuestaId}`;
     const tituloPropuesta = opts.esActividadLibre
       ? 'nueva actividad (fuera del catálogo)'
       : 'nueva propuesta de inscripción';
+    const esAlumno = opts.origen === 'ALUMNO';
     const lineas: string[] = [
       `Estimado/a ${directivaNombre},\n`,
-      `Un apoderado envió una **${tituloPropuesta}** que requiere su revisión:\n`,
-      `Apoderado: ${opts.apoderadoNombre}`,
-      `Estudiante: ${opts.alumnoNombre}`,
+      esAlumno
+        ? `Un alumno envió una **${tituloPropuesta}** que requiere su revisión:\n`
+        : `Un apoderado envió una **${tituloPropuesta}** que requiere su revisión:\n`,
     ];
+    if (esAlumno) {
+      lineas.push(`Propuesto por (alumno): ${opts.alumnoNombre}`);
+    } else {
+      lineas.push(`Apoderado: ${opts.apoderadoNombre}`);
+      lineas.push(`Estudiante: ${opts.alumnoNombre}`);
+    }
     if (opts.alumnoRut?.trim()) lineas.push(`RUT estudiante: ${opts.alumnoRut.trim()}`);
     lineas.push(`Actividad: ${opts.tallerNombre}`);
     if (opts.actividadDescripcion?.trim()) {

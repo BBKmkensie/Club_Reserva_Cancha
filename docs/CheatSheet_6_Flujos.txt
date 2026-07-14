@@ -1,0 +1,121 @@
+================================================================================
+  CHEAT SHEET — 6 FLUJOS DEL SISTEMA (1 PÁGINA)
+  Reservas de Cancha / Talleres extracurriculares
+  Patrón siempre igual: Pantalla → ApiService → Controller → Service → PostgreSQL
+================================================================================
+
+FÓRMULA UNIVERSAL
+-----------------
+  Angular (página)  envía HTTP
+  Nest Controller  recibe URL / body   (no hace la regla difícil)
+  Nest Service     aplica negocio      (cupos, estados, solapes…)
+  TypeORM          lee/escribe
+  PostgreSQL       guarda
+
+  Frontend:  frontend/src/app/pages/…  +  services/api.service.ts
+  Backend:   src/<modulo>/             +  src/entities/
+
+
+--------------------------------------------------------------------------------
+1) LOGIN                          Quién: todos
+--------------------------------------------------------------------------------
+Pantalla:  login
+API:       POST /auth/login   { usuario, password }
+Service:   AuthService busca admin/profesor/alumno/apoderado, verifica hash,
+           firma JWT { accessToken, user: { id, role, tipo, tallerId } }
+Después:   AuthRoleService guarda token; interceptor manda Bearer siempre
+Si apoderado → /portal-apoderado | si no → /dashboard
+
+
+--------------------------------------------------------------------------------
+2) TALLER (publicar actividad)    Quién: coordinación
+--------------------------------------------------------------------------------
+Pantalla:  gestion-actividades
+Estados:   BORRADOR → ESPERA_DOCENTE → ESPERA_HORARIO → PUBLICADO → CERRADO
+Pasos:     crear → asignar docente → docente acepta → horario → publicar
+API clave: POST /taller
+           POST /taller/:id/asignar-docente
+           PATCH /taller/:id/horario
+           PATCH /taller/:id/publicar
+Regla:     no se publica sin docente ACEPTADO + horario definido
+Catálogo:  solo PUBLICADO (GET /taller/catalogo)
+
+
+--------------------------------------------------------------------------------
+3) INSCRIPCIÓN ALUMNO             Quién: alumno + profesor
+--------------------------------------------------------------------------------
+Pantallas: inscripcion-talleres  |  gestion-inscripciones
+Estados:   PENDIENTE → ACEPTADO | RECHAZADO
+Pasos:     1) GET .../validar  (cupo, horario, publicado, período)
+           2) POST /inscripcion-taller  → PENDIENTE
+           3) PATCH .../responder       → ACEPTADO / RECHAZADO
+Cupo:      capacidad − (PENDIENTE + ACEPTADO)
+Unique BD: un alumno una sola fila por taller
+Sin ACEPTADO → no entra a asistencia
+
+
+--------------------------------------------------------------------------------
+4) ASISTENCIA (pasar lista)       Quién: profesor
+--------------------------------------------------------------------------------
+Pantalla:  control-asistencia
+Pasos:     1) POST /asistencia/sesion/abrir
+              → sesión ABIERTA + 1 registro PRESENTE por alumno ACEPTADO
+           2) PATCH .../registros  (marcar AUSENTE) + listaGuardada
+           3) PATCH .../cerrar
+              → CERRADA + alertas umbral + mail apoderado
+Tablas:    sesiones_asistencia  +  registros_asistencia
+No hay 2 sesiones ABIERTAS del mismo taller el mismo día
+
+
+--------------------------------------------------------------------------------
+5) RESERVA CANCHA                 Quién: profesor / coordinación
+--------------------------------------------------------------------------------
+Pantalla:  reservas
+Tablas:    franjas_cancha (horarios habilitados) + reservas (ocupación)
+Pasos:     1) GET /reserva/disponibilidad  → slots disponible/ocupada
+           2) POST /reserva  { fecha, horaInicio, horaFin, tallerId, espacio }
+Regla:     franja activa + sin SOLAPE de horarios (mismo día/espacio)
+Error:     ConflictException “cancha ya ocupada…”
+
+
+--------------------------------------------------------------------------------
+6) PORTAL APODERADO               Quién: apoderado
+--------------------------------------------------------------------------------
+Pantalla:  portal-apoderado
+Login:     tipo=apoderado ; JWT.sub = id del HIJO (no hay tabla apoderado)
+API:       GET /apoderado/resumen   (JwtAuthGuard en toda la clase)
+Service:   assertApoderado + talleres ACEPTADOS + asistencia de sesiones CERRADAS
+Extra:     proponer inscripción / actividad libre → revisa la directiva
+Casi no crea datos nuevos: LEE lo que talleres/inscripción/asistencia ya guardaron
+
+
+================================================================================
+MAPA “QUIÉN HACE QUÉ”
+================================================================================
+  Coordinación   crear/publicar taller, período, propuestas, franjas, reportes
+  Profesor       aceptar inscripción, lista, reservas, salidas
+  Alumno         inscribirse, ver catálogo, salidas
+  Apoderado      ver hijo/asistencia, proponer
+
+
+================================================================================
+FRASES PARA DEFENSA (memorízalas)
+================================================================================
+• “Controller delgado, reglas en el Service.”
+• “Estado del taller controla cuándo se puede inscribir.”
+• “Cupo y solape se validan antes del INSERT; la BD refuerza con unique/FK.”
+• “Apoderado autentica con datos del alumno; el portal lee sesiones CERRADAS.”
+• “JWT: un login; Bearer en cada request vía interceptor.”
+
+
+================================================================================
+ORDEN PARA ESTUDIAR / DEMO
+================================================================================
+  1 Login coordinación → 2 Crear y publicar taller → 3 Login alumno / inscribir
+  → 4 Login profesor / aceptar → 5 Abrir lista y cerrar → 6 Login apoderado / ver
+  (+ opcional: reservar cancha en el medio)
+
+
+================================================================================
+FIN — Imprime esta hoja. Si entiendes estas 6 cajas, entiendes el sistema.
+================================================================================

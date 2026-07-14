@@ -1,19 +1,31 @@
 /**
- * Servicio de seed y migración de datos de apoderados.
- * Completa datos faltantes, reemplaza valores genéricos y migra dominios de email.
+ * =============================================================================
+ * apoderado/apoderado-seed.service.ts — SEED / MIGRACIÓN DE DATOS DE APODERADOS
+ * =============================================================================
+ * Utilidades para poblar o limpiar datos de apoderados en la tabla alumnos:
+ *
+ *   seedMissingApoderados()     → completa nombre/RUT/email/password faltantes
+ *   actualizarNombresApoderados() → reemplaza nombres/emails genéricos
+ *   migrarEmailsGmail()         → cambia @email.com → @gmail.com
+ *
+ * Usa pools de nombres y RUTs (common/apoderado-*.pool) y hashPassword('12345').
+ * =============================================================================
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Alumno } from '../entities/alumno.entity';
 import { Profesor } from '../entities/profesor.entity';
+// Pool de RUTs válidos para asignar a apoderados sin colisiones
 import { APODERADO_RUT_POOL } from '../common/apoderado-ruts.pool';
+// Nombres + helpers para detectar emails/nombres genéricos
 import {
   APODERADO_NOMBRES_POOL,
   emailDesdeNombreApoderado,
   esEmailApoderadoGenerico,
   esNombreApoderadoGenerico,
 } from '../common/apoderado-nombres.pool';
+// hashPassword('12345') = contraseña por defecto del sistema
 import { hashPassword } from '../common/password.util';
 
 /** Resultado de operaciones de seed o migración de apoderados. */
@@ -34,7 +46,10 @@ export class ApoderadoSeedService {
     private profesorRepo: Repository<Profesor>,
   ) {}
 
-  /** Asigna nombre, RUT, email y contraseña a alumnos con datos de apoderado incompletos. */
+  /**
+   * Asigna nombre, RUT, email y contraseña a alumnos con datos de apoderado incompletos.
+   * Evita colisiones de RUT con alumnos/profesores ya existentes.
+   */
   async seedMissingApoderados(): Promise<SeedApoderadosResult> {
     const usados = new Set<string>();
     const alumnos = await this.alumnoRepo.find();
@@ -61,6 +76,7 @@ export class ApoderadoSeedService {
     let actualizados = 0;
     let omitidos = 0;
 
+    // Contraseña por defecto del sistema (igual que auth)
     const { hash, salt } = hashPassword('12345');
 
     for (const alumno of alumnos) {
@@ -75,7 +91,7 @@ export class ApoderadoSeedService {
       }
 
       if (poolIdx >= disponibles.length) {
-        break;
+        break; // se acabaron los RUTs del pool
       }
 
       const rut = disponibles[poolIdx++];
@@ -168,11 +184,12 @@ export class ApoderadoSeedService {
     };
   }
 
+  /** Toma el siguiente nombre del pool (cíclico con %). */
   private nextNombre(index: number): string {
     return APODERADO_NOMBRES_POOL[index % APODERADO_NOMBRES_POOL.length];
   }
 
-  /** Cambia apoderado_email de @email.com a @gmail.com */
+  /** Cambia apoderado_email de @email.com a @gmail.com (evitando duplicados). */
   async migrarEmailsGmail(): Promise<SeedApoderadosResult> {
     const alumnos = await this.alumnoRepo.find({ order: { id: 'ASC' } });
     const emailsUsados = new Set<string>();

@@ -1,7 +1,14 @@
 /**
- * Controlador HTTP de reportes consolidados.
- * Expone listados de personas e inscripciones para coordinación y administración.
+ * =============================================================================
+ * reportes/reportes.controller.ts — ENDPOINTS DE REPORTES
+ * =============================================================================
+ * Prefijo: /reportes
+ *
+ *   GET /reportes/personas-inscripciones
+ *     → JSON con alumnos sin taller, inscritos, apoderados, directiva, admins, profes
+ * =============================================================================
  */
+// Get = endpoint de solo lectura (JSON, sin PDF)
 import { Controller, Get } from '@nestjs/common';
 import { ReportesService } from './reportes.service';
 

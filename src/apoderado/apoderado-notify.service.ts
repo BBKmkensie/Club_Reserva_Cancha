@@ -1,12 +1,21 @@
 /**
- * Servicio de notificaciones por correo a apoderados.
- * Envía avisos de inscripción a taller y de asistencia en sesiones cerradas.
+ * =============================================================================
+ * apoderado/apoderado-notify.service.ts — ENVÍO MASIVO DE CORREOS A APODERADOS
+ * =============================================================================
+ * Script/utilidad que recorre:
+ *   1. Inscripciones ACEPTADAS → mail de confirmación de taller
+ *   2. Última asistencia (sesión CERRADA) por alumno → mail de asistencia
+ *
+ * delayMs=3500 entre envíos para no saturar SMTP (Mailtrap/rate limits).
+ * Suele invocarse desde scripts CLI, no desde el portal del usuario.
+ * =============================================================================
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { RegistroAsistencia } from '../entities/registro-asistencia.entity';
+// MailService = plantillas de inscripción y asistencia al apoderado
 import { MailService } from '../mail/mail.service';
 
 /** Resultado del envío masivo de correos a apoderados. */
@@ -22,6 +31,7 @@ export interface NotifyApoderadosResult {
 @Injectable()
 export class ApoderadoNotifyService {
   private readonly logger = new Logger(ApoderadoNotifyService.name);
+  /** Pausa entre correos para respetar límites del proveedor SMTP. */
   private readonly delayMs = 3500;
 
   constructor(
@@ -50,6 +60,7 @@ export class ApoderadoNotifyService {
       relations: ['alumno', 'taller'],
     });
 
+    // Evita duplicar el mismo par alumno+taller
     const enviadosInscripcion = new Set<string>();
 
     for (const insc of inscripciones) {
@@ -90,6 +101,7 @@ export class ApoderadoNotifyService {
       order: { id: 'DESC' },
     });
 
+    // Primer registro visto por alumno = el más reciente (order DESC)
     const ultimoPorAlumno = new Map<number, RegistroAsistencia>();
     for (const reg of registros) {
       if (reg.sesion?.estado !== 'CERRADA') continue;
@@ -136,6 +148,7 @@ export class ApoderadoNotifyService {
     return result;
   }
 
+  /** Formatea día + hora del taller para el cuerpo del correo. */
   private formatHorario(taller?: {
     diaSemana?: number | null;
     horaInicio?: string | null;
@@ -148,6 +161,7 @@ export class ApoderadoNotifyService {
     return `${dias[taller.diaSemana!]} ${hi} - ${hf}`;
   }
 
+  /** Pausa asíncrona entre envíos SMTP (rate limit). */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

@@ -1,9 +1,24 @@
 /**
- * Servicio de franjas horarias de cancha.
- * Define bloques habilitados por la directiva y asegura la grilla base de 30 minutos.
+ * =============================================================================
+ * reserva/franja-cancha.service.ts — FRANJAS HABILITADAS POR LA DIRECTIVA
+ * =============================================================================
+ * Una "franja" = bloque reservable (espacio + díaSemana + horaInicio–horaFin).
+ *
+ * Campos importantes de FranjaCancha:
+ *   - activa    → si aparece en la grilla de disponibilidad
+ *   - paraTodos → franja 13:00–14:00 (siempre activa, no la apaga la directiva)
+ *
+ * Flujo típico:
+ *   GET /franja-cancha → asegurarFranjasBase() → findAll()
+ *   PUT /franja-cancha → actualizar() (activa/desactiva y puede alargar bloques)
+ *
+ * Si la directiva crea un bloque de 60 min, ocultarFranjasCubiertas() desactiva
+ * los sub-slots de 30 min que quedan “dentro” de ese bloque.
+ * =============================================================================
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+// Repository.find / findOne / create / save = consultas TypeORM sobre franja_cancha.
 import { Repository } from 'typeorm';
 import { FranjaCancha } from '../entities/franja-cancha.entity';
 import { ActualizarFranjasCanchaDto } from '../dto/actualizar-franjas-cancha.dto';
@@ -26,6 +41,10 @@ export class FranjaCanchaService {
     private repo: Repository<FranjaCancha>,
   ) {}
 
+  /**
+   * Todas las franjas de un espacio, ordenadas por día y hora.
+   * find({ where: { espacio } }) → WHERE espacio = ?
+   */
   async findAll(espacio = CANCHA_ESPACIO_DEFAULT): Promise<FranjaCancha[]> {
     return this.repo.find({
       where: { espacio },
@@ -33,6 +52,10 @@ export class FranjaCanchaService {
     });
   }
 
+  /**
+   * Solo franjas activas de un día concreto (1=lunes … 7=domingo).
+   * where combina espacio + diaSemana + activa: true.
+   */
   async findActivasPorDia(diaSemana: number, espacio = CANCHA_ESPACIO_DEFAULT): Promise<FranjaCancha[]> {
     return this.repo.find({
       where: { espacio, diaSemana, activa: true },
@@ -40,6 +63,10 @@ export class FranjaCanchaService {
     });
   }
 
+  /**
+   * Busca una franja tolerando formato time "HH:MM:00" o "HH:MM".
+   * PostgreSQL/TypeORM a veces serializan distinto.
+   */
   private async buscarFranja(
     espacio: string,
     diaSemana: number,
@@ -55,7 +82,12 @@ export class FranjaCanchaService {
     );
   }
 
-  /** Aplica o actualiza franjas según la directiva; amplía bloques y oculta sub-slots cubiertos. */
+  /**
+   * Aplica o actualiza franjas según la directiva.
+   * - Si existe: actualiza activa/horaFin (paraTodos siempre queda activa)
+   * - Si no existe: la crea
+   * - Si duración > 30 min: oculta los sub-slots cubiertos
+   */
   async actualizar(dto: ActualizarFranjasCanchaDto): Promise<FranjaCancha[]> {
     const espacio = dto.espacio ?? CANCHA_ESPACIO_DEFAULT;
 
@@ -67,6 +99,7 @@ export class FranjaCanchaService {
       let franja = await this.buscarFranja(espacio, item.diaSemana, horaInicio);
 
       if (franja) {
+        // Las franjas "para todos" no se pueden desactivar desde la UI de directiva
         if (franja.paraTodos) {
           franja.activa = true;
         } else {
@@ -99,7 +132,10 @@ export class FranjaCanchaService {
     return this.findAll(espacio);
   }
 
-  /** Desactiva franjas de 30 min quedando cubiertas por un bloque más largo. */
+  /**
+   * Desactiva franjas de 30 min que quedan cubiertas por un bloque más largo.
+   * Ej.: bloque 10:00–11:00 → desactiva 10:30 (el de 10:00 es el “padre”).
+   */
   private async ocultarFranjasCubiertas(
     espacio: string,
     diaSemana: number,
@@ -118,11 +154,13 @@ export class FranjaCanchaService {
     }
   }
 
+  /** Detecta grillas antiguas de 1 hora (sin slots :30) que hay que migrar. */
   private necesitaMigracionMediaHora(franjas: FranjaCancha[]): boolean {
     if (franjas.length === 0) return false;
     return !franjas.some((f) => normalizarHora(f.horaInicio).endsWith(':30'));
   }
 
+  /** Borra franjas del espacio y recrea la grilla de 30 min preservando activas. */
   private async migrarFranjasMediaHora(
     espacio: string,
     existentes: FranjaCancha[],
@@ -136,6 +174,10 @@ export class FranjaCanchaService {
     await this.crearFranjasBase30Min(espacio, mapa);
   }
 
+  /**
+   * Crea la grilla completa: 7 días × slots de 30 min entre apertura y cierre.
+   * Si hay mapaAnterior, hereda el flag `activa` del slot o de su “padre” :00.
+   */
   private async crearFranjasBase30Min(
     espacio: string,
     mapaAnterior = new Map<string, FranjaCancha>(),
@@ -164,7 +206,11 @@ export class FranjaCanchaService {
     await this.repo.save(filas.map((f) => this.repo.create(f)));
   }
 
-  /** Crea o migra la grilla base de franjas de 30 min y aplica reglas globales (13:00–14:00). */
+  /**
+   * Crea o migra la grilla base de franjas de 30 min y aplica reglas globales:
+   *   - Desactiva slots fuera de 09:00–20:00
+   *   - Marca 13:00–14:00 como paraTodos + activa
+   */
   async asegurarFranjasBase(espacio = CANCHA_ESPACIO_DEFAULT): Promise<void> {
     const existentes = await this.findAll(espacio);
 
@@ -178,6 +224,7 @@ export class FranjaCanchaService {
       return;
     }
 
+    // Desactiva franjas cuyo inicio está fuera del rango de apertura/cierre
     await this.repo
       .createQueryBuilder()
       .update(FranjaCancha)
@@ -189,6 +236,7 @@ export class FranjaCanchaService {
       )
       .execute();
 
+    // Fuerza la regla de “horario para todos” (13:00–14:00)
     await this.repo
       .createQueryBuilder()
       .update(FranjaCancha)

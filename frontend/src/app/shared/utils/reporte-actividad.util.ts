@@ -1,8 +1,24 @@
 /**
- * Utilidades para generar y descargar reportes de actividad en texto plano.
+ * =============================================================================
+ * app/shared/utils/reporte-actividad.util.ts — Generación de reportes de actividad
+ * =============================================================================
+ * Construye el contenido textual de un reporte final de actividad (taller,
+ * inscripciones, asistencia) y lo descarga como archivo .txt en el navegador.
+ * Se usa en reportes-asistencia y gestión de actividades al cerrar un período.
+ *
+ * Exporta: textoReporteActividad(), descargarTextoReporte().
+ * =============================================================================
  */
+
 /**
- * Construye el contenido textual de un reporte final de actividad (taller, inscripciones, asistencia).
+ * Construye el contenido textual de un reporte final de actividad.
+ * Incluye datos del taller, período, docente, inscripciones, asistencia,
+ * utilización de espacios y detalle por alumno.
+ *
+ * @param r - Objeto con todos los datos del reporte.
+ * @param titulo - Encabezado del reporte (por defecto «REPORTE FINAL»).
+ * @param formatAlumno - Función opcional para formatear nombre/RUT de cada alumno
+ *                       (útil para aplicar enmascaramiento de privacidad).
  */
 export function textoReporteActividad(
   r: {
@@ -47,7 +63,7 @@ export function textoReporteActividad(
     `Docente: ${r.docente?.nombre ?? '—'}`,
     `Inscripciones: ${r.inscripciones.total} (aceptados: ${r.inscripciones.aceptados}, pendientes: ${r.inscripciones.pendientes}, rechazados: ${r.inscripciones.rechazados ?? 0})`,
     r.asistencia
-      ? `Asistencia: ${r.asistencia.sesionesRealizadas} sesiones | ${r.asistencia.registrosPresentes} presentes | ${r.asistencia.registrosAusentes} ausentes | ${r.asistencia.registrosTardes ?? 0} tarde`
+      ? `Asistencia: ${r.asistencia.sesionesRealizadas} sesiones | ${r.asistencia.registrosPresentes} presentes | ${r.asistencia.registrosAusentes} ausentes`
       : null,
     r.utilizacionEspacios
       ? `Utilización espacios: ${r.utilizacionEspacios.totalReservas} reservas (${r.utilizacionEspacios.horasReservadas} h)${r.utilizacionEspacios.porEspacio.length ? ' — ' + r.utilizacionEspacios.porEspacio.map((e) => `${e.espacio}: ${e.cantidad}`).join(', ') : ''}`
@@ -58,13 +74,16 @@ export function textoReporteActividad(
       const d = formatAlumno(al);
       const base = `- ${d.nombre} (${d.rut}): inscripción ${al.estado}`;
       if (al.estado !== 'ACEPTADO' || al.porcentajeAsistencia == null) return base;
-      return `${base} | ${al.presentes ?? 0}P ${al.tardes ?? 0}T ${al.ausentes ?? 0}A | ${al.porcentajeAsistencia}% asistencia${al.alertaAusencia ? ' ⚠' : ''}`;
+      return `${base} | ${al.presentes ?? 0}P ${al.ausentes ?? 0}A | ${al.porcentajeAsistencia}% asistencia${al.alertaAusencia ? ' ⚠' : ''}`;
     }),
   ];
   return lineas.filter((l) => l != null).join('\n');
 }
 
-/** Descarga un archivo de texto con el contenido del reporte en el navegador */
+/**
+ * Descarga un archivo de texto plano con el contenido del reporte en el navegador.
+ * Crea un Blob temporal, dispara la descarga y libera la URL del objeto.
+ */
 export function descargarTextoReporte(contenido: string, nombreArchivo: string): void {
   const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');

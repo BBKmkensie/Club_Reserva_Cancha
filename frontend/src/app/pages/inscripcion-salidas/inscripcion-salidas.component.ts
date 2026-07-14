@@ -1,6 +1,14 @@
 /**
- * Gestión operativa de salidas y partidos deportivos.
- * La directiva asigna o aprueba propuestas; los profesores proponen, aceptan y cierran salidas.
+ * =============================================================================
+ * app/pages/inscripcion-salidas/inscripcion-salidas.component.ts — Gestión de salidas
+ * =============================================================================
+ * Coordinación de salidas y partidos: directiva asigna/aprueba; profesor propone,
+ * acepta, abre y cierra salidas del día.
+ * Rol: coordinación o profesor — canGestionarSalidas().
+ * Endpoints ApiService: getTalleres, getProfesores, getSalidas, getSalidasPorProfesor,
+ * getSalidasPendientesProfesor, getSalidasPendientesDirectiva, asignarSalidaDirectiva,
+ * proponerSalidaProfesor, responderSalida, abrirSalida, cerrarSalida
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -12,9 +20,6 @@ import { Taller } from '../../models/taller.model';
 import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-picker.component';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
 
-/**
- * Coordinación de salidas: asignación directiva, propuestas de profesores y ciclo de vida.
- */
 @Component({
   selector: 'app-inscripcion-salidas',
   standalone: true,
@@ -38,19 +43,23 @@ import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha
           <form [formGroup]="asignarForm" (ngSubmit)="asignarPartido()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-ink-secondary mb-1">Profesor</label>
-              <select formControlName="profesorId" class="w-full border rounded-lg px-3 py-2">
-                <option value="">Seleccione</option>
+              <select formControlName="profesorId"
+                      (change)="sincronizarDesdeProfesor()"
+                      class="w-full border rounded-lg px-3 py-2">
+                <option [ngValue]="null">Seleccione</option>
                 @for (p of profesores; track p.id) {
-                  <option [value]="p.id">{{ p.nombre }}</option>
+                  <option [ngValue]="p.id">{{ p.nombre }}@if (nombreTallerProfesor(p); as nt) { — {{ nt }}}</option>
                 }
               </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-ink-secondary mb-1">Taller</label>
-              <select formControlName="tallerId" class="w-full border rounded-lg px-3 py-2">
-                <option value="">Seleccione</option>
+              <select formControlName="tallerId"
+                      (change)="sincronizarDesdeTaller()"
+                      class="w-full border rounded-lg px-3 py-2">
+                <option [ngValue]="null">Seleccione</option>
                 @for (t of talleres; track t.id) {
-                  <option [value]="t.id">{{ t.tipo }}</option>
+                  <option [ngValue]="t.id">{{ t.tipo }}@if (profesorDeTaller(t); as prof) { — {{ prof.nombre }}}</option>
                 }
               </select>
             </div>
@@ -204,25 +213,36 @@ import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha
   `,
 })
 export class InscripcionSalidasComponent implements OnInit {
+  /** Coordinación asigna; profesor propone/responde. */
   auth = inject(AuthRoleService);
+  /** Cliente HTTP del flujo de salidas. */
   private api = inject(ApiService);
   private fb = inject(FormBuilder);
 
+  /** Talleres para el formulario de asignación. */
   talleres: Taller[] = [];
+  /** Profesores (coordinación) para asignar salida. */
   profesores: any[] = [];
+  /** Salidas ya creadas / en curso visibles según rol. */
   salidas: Salida[] = [];
+  /** Bandeja del profesor: salidas por aceptar/rechazar. */
   pendientesProfesor: Salida[] = [];
+  /** Bandeja de directiva: propuestas de profesor. */
   pendientesDirectiva: Salida[] = [];
+  /** Evita bucles al sincronizar profesor ↔ taller en el formulario de asignación. */
+  private sincronizandoAsignacion = false;
 
+  /** Formulario coordinación: asignar salida a profesor+taller. */
   asignarForm = this.fb.group({
-    profesorId: ['', Validators.required],
-    tallerId: ['', Validators.required],
+    profesorId: [null as number | null, Validators.required],
+    tallerId: [null as number | null, Validators.required],
     destino: ['', Validators.required],
     fecha: ['', Validators.required],
     hora: [''],
     descripcion: [''],
   });
 
+  /** Formulario profesor: proponer salida a la directiva. */
   proponerForm = this.fb.group({
     destino: ['', Validators.required],
     fecha: ['', Validators.required],
@@ -232,15 +252,66 @@ export class InscripcionSalidasComponent implements OnInit {
 
   /** Carga talleres, profesores y listas según el rol (coordinación o profesor). */
   ngOnInit() {
-    this.api.getTalleres().subscribe({ next: (d) => (this.talleres = d) });
+    this.api.getTalleres().subscribe({ next: (d) => (this.talleres = d ?? []) });
     if (this.auth.isCoordinacion()) {
-      this.api.getProfesores().subscribe({ next: (d) => (this.profesores = d) });
+      this.api.getProfesores().subscribe({
+        next: (d) => {
+          this.profesores = (d ?? []).map((p: any) => ({
+            ...p,
+            tallerId: Number(p.tallerId ?? p.taller?.id ?? 0) || null,
+          }));
+        },
+      });
       this.cargarPendientesDirectiva();
     }
     if (this.auth.isProfesor() && this.auth.currentUserId()) {
       this.cargarPendientesProfesor();
     }
     this.cargarSalidas();
+  }
+
+  /** Nombre del taller ligado al profesor (para el label del select). */
+  nombreTallerProfesor(profesor: any): string | null {
+    return profesor?.taller?.tipo ?? this.talleres.find((t) => Number(t.id) === Number(profesor?.tallerId))?.tipo ?? null;
+  }
+
+  /** Profesor principal asociado a un taller (si existe). */
+  profesorDeTaller(taller: Taller | any): { id: number; nombre: string } | null {
+    const tid = Number(taller?.id);
+    const desdeLista = this.profesores.find(
+      (p) => Number(p.tallerId ?? p.taller?.id) === tid,
+    );
+    if (desdeLista) return { id: Number(desdeLista.id), nombre: desdeLista.nombre };
+    const emb = Array.isArray(taller?.profesores) ? taller.profesores[0] : null;
+    return emb ? { id: Number(emb.id), nombre: emb.nombre } : null;
+  }
+
+  /** Al elegir profesor, rellena de inmediato su taller. */
+  sincronizarDesdeProfesor(): void {
+    if (this.sincronizandoAsignacion) return;
+    const profesorId = this.asignarForm.get('profesorId')!.value;
+    if (profesorId == null || profesorId === '') return;
+    const profesor = this.profesores.find((p) => Number(p.id) === Number(profesorId));
+    const tallerId = Number(profesor?.tallerId ?? profesor?.taller?.id);
+    if (!tallerId) return;
+    if (Number(this.asignarForm.get('tallerId')!.value) === tallerId) return;
+    this.sincronizandoAsignacion = true;
+    this.asignarForm.patchValue({ tallerId }, { emitEvent: false });
+    this.sincronizandoAsignacion = false;
+  }
+
+  /** Al elegir taller, rellena de inmediato su profesor. */
+  sincronizarDesdeTaller(): void {
+    if (this.sincronizandoAsignacion) return;
+    const tallerId = this.asignarForm.get('tallerId')!.value;
+    if (tallerId == null || tallerId === '') return;
+    const taller = this.talleres.find((t) => Number(t.id) === Number(tallerId));
+    const profesor = this.profesorDeTaller(taller ?? { id: tallerId });
+    if (!profesor) return;
+    if (Number(this.asignarForm.get('profesorId')!.value) === Number(profesor.id)) return;
+    this.sincronizandoAsignacion = true;
+    this.asignarForm.patchValue({ profesorId: Number(profesor.id) }, { emitEvent: false });
+    this.sincronizandoAsignacion = false;
   }
 
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }

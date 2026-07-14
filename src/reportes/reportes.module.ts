@@ -1,8 +1,13 @@
 /**
- * Módulo NestJS de reportes.
- * Registra servicio y controlador para listados consolidados de personas e inscripciones.
+ * =============================================================================
+ * reportes/reportes.module.ts — MÓDULO DE REPORTES ADMINISTRATIVOS
+ * =============================================================================
+ * Consolida listados cruzados (alumnos, apoderados, profes, directiva)
+ * para pantallas de coordinación. No genera PDFs: devuelve JSON.
+ * =============================================================================
  */
 import { Module } from '@nestjs/common';
+// Entidades cruzadas para el reporte de personas e inscripciones
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Alumno } from '../entities/alumno.entity';
 import { Admin } from '../entities/admin.entity';

@@ -1,7 +1,21 @@
 /**
- * Servicio de salidas deportivas (partidos, excursiones).
- * Gestiona el flujo de asignación directiva, propuesta del profesor, aprobación,
- * apertura/cierre el día del evento y visibilidad para estudiantes.
+ * =============================================================================
+ * salida/salida.service.ts — LÓGICA DEL CICLO DE VIDA DE SALIDAS
+ * =============================================================================
+ * Responsabilidades:
+ *   - Asignar (directiva) / proponer (profesor)
+ *   - Responder (aceptar → PUBLICADA / rechazar → RECHAZADA)
+ *   - Abrir (EN_CURSO) y cerrar (CERRADA + resultado EXITO/FRACASO)
+ *   - Consultas: publicadas, pendientes, por taller/profesor/alumno
+ *
+ * Seguridad de negocio (ForbiddenException):
+ *   - Solo el profesor asignado responde PENDIENTE_PROFESOR
+ *   - Solo directiva responde PENDIENTE_DIRECTIVA
+ *   - Solo el profesor responsable abre/cierra
+ *
+ * Visibilidad alumno: estados en ESTADOS_SALIDA_VISIBLES_ESTUDIANTE
+ * y solo talleres con inscripción ACEPTADA.
+ * =============================================================================
  */
 import {
   Injectable,
@@ -10,11 +24,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+// In = operador TypeORM “está en la lista”; Repository = find/save/remove.
 import { In, Repository } from 'typeorm';
 import { Salida } from '../entities/salida.entity';
 import { Profesor } from '../entities/profesor.entity';
 import { Taller } from '../entities/taller.entity';
-import { Alumno } from '../entities/alumno.entity';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { CreateSalidaDto } from '../dto/create-salida.dto';
 import { AsignarSalidaDto } from '../dto/asignar-salida.dto';
@@ -35,14 +49,14 @@ export class SalidaService {
     private profesorRepository: Repository<Profesor>,
     @InjectRepository(Taller)
     private tallerRepository: Repository<Taller>,
-    @InjectRepository(Alumno)
-    private alumnoRepository: Repository<Alumno>,
     @InjectRepository(InscripcionTaller)
     private inscripcionTallerRepository: Repository<InscripcionTaller>,
   ) {}
 
+  /** Relaciones TypeORM que casi siempre queremos hidratar en las respuestas. */
   private relaciones = ['taller', 'admin', 'profesor'] as const;
 
+  /** findOne({ where: { id } }) — 404 si taller o profesor no existen. */
   private async validarTallerYProfesor(tallerId: number, profesorId: number): Promise<void> {
     const taller = await this.tallerRepository.findOne({ where: { id: tallerId } });
     if (!taller) throw new NotFoundException('Taller no encontrado');
@@ -50,7 +64,10 @@ export class SalidaService {
     if (!profesor) throw new NotFoundException('Profesor no encontrado');
   }
 
-  /** Directiva asigna partido/salida a un profesor */
+  /**
+   * Directiva asigna partido/salida a un profesor.
+   * create() + save() → INSERT con estado PENDIENTE_PROFESOR.
+   */
   async asignarDirectiva(dto: AsignarSalidaDto): Promise<Salida> {
     await this.validarTallerYProfesor(dto.tallerId, dto.profesorId);
     const salida = this.salidaRepository.create({
@@ -67,7 +84,10 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
-  /** Profesor propone partido/salida */
+  /**
+   * Profesor propone partido/salida.
+   * create() + save() → INSERT con estado PENDIENTE_DIRECTIVA.
+   */
   async proponerProfesor(dto: ProponerSalidaDto): Promise<Salida> {
     await this.validarTallerYProfesor(dto.tallerId, dto.profesorId);
     const salida = this.salidaRepository.create({
@@ -84,10 +104,15 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
-  /** Aceptar o rechazar según el estado pendiente */
+  /**
+   * Aceptar o rechazar según el estado pendiente.
+   * actor + actorId validan quién tiene permiso en cada etapa.
+   * save() persiste el nuevo estado (PUBLICADA o RECHAZADA).
+   */
   async responder(id: number, dto: ResponderSalidaDto, actor: 'profesor' | 'directiva', actorId?: number): Promise<Salida> {
     const salida = await this.findOne(id);
 
+    // Solo el actor correcto puede responder en cada etapa
     if (salida.estado === 'PENDIENTE_PROFESOR') {
       if (actor !== 'profesor') throw new ForbiddenException('Solo el profesor asignado puede responder');
       if (actorId && salida.profesorId !== actorId) {
@@ -110,7 +135,7 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
-  /** Profesor abre la salida el día del evento */
+  /** Profesor abre la salida el día del evento → estado EN_CURSO. */
   async abrir(id: number, profesorId: number, dto: AbrirSalidaDto): Promise<Salida> {
     const salida = await this.findOne(id);
     if (salida.profesorId !== profesorId) {
@@ -125,7 +150,7 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
-  /** Profesor cierra con éxito/fracaso y comentario */
+  /** Profesor cierra con éxito/fracaso y comentario obligatorio → CERRADA. */
   async cerrar(id: number, profesorId: number, dto: CerrarSalidaDto): Promise<Salida> {
     const salida = await this.findOne(id);
     if (salida.profesorId !== profesorId) {
@@ -141,6 +166,10 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
+  /**
+   * Creación “directa” ya PUBLICADA (útil para seeds/admin).
+   * Infiere origen según si viene adminId.
+   */
   async create(createSalidaDto: CreateSalidaDto): Promise<Salida> {
     const salida = this.salidaRepository.create({
       destino: createSalidaDto.destino,
@@ -156,6 +185,7 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
+  /** Lista todas las salidas (find + relations + order). */
   async findAll(): Promise<Salida[]> {
     return this.salidaRepository.find({
       relations: [...this.relaciones],
@@ -163,7 +193,10 @@ export class SalidaService {
     });
   }
 
-  /** Salidas visibles para estudiantes (aprobadas) */
+  /**
+   * Salidas visibles para estudiantes.
+   * where: { estado: In([...]) } = operador TypeORM “está en la lista”.
+   */
   async findPublicadas(tallerId?: number): Promise<Salida[]> {
     const where: any = { estado: In(ESTADOS_SALIDA_VISIBLES_ESTUDIANTE) };
     if (tallerId) where.tallerId = tallerId;
@@ -174,7 +207,10 @@ export class SalidaService {
     });
   }
 
-  /** Salidas publicadas solo de talleres donde el alumno está inscrito (ACEPTADO) */
+  /**
+   * Salidas publicadas solo de talleres donde el alumno está inscrito (ACEPTADO).
+   * Combina In(estados) + In(tallerIds).
+   */
   async findPublicadasParaAlumno(alumnoId: number): Promise<Salida[]> {
     const tallerIds = await this.talleresInscritosAlumno(alumnoId);
     if (!tallerIds.length) return [];
@@ -189,24 +225,21 @@ export class SalidaService {
     });
   }
 
-  /** Talleres con inscripción ACEPTADA (o taller principal del alumno) */
+  /** Talleres con inscripción ACEPTADA (única fuente de verdad para el alumno). */
   async talleresInscritosAlumno(alumnoId: number): Promise<number[]> {
     const inscripciones = await this.inscripcionTallerRepository.find({
       where: { alumnoId, estado: 'ACEPTADO' },
     });
-    const ids = new Set(inscripciones.map((i) => i.tallerId));
-
-    const alumno = await this.alumnoRepository.findOne({ where: { id: alumnoId } });
-    if (alumno?.tallerId) ids.add(alumno.tallerId);
-
-    return [...ids];
+    return [...new Set(inscripciones.map((i) => i.tallerId).filter((id) => id != null))];
   }
 
+  /** ¿El alumno tiene al menos un taller? (gate para el portal de salidas). */
   async alumnoPuedeVerSalidas(alumnoId: number): Promise<boolean> {
     const ids = await this.talleresInscritosAlumno(alumnoId);
     return ids.length > 0;
   }
 
+  /** Bandeja: find({ where: { profesorId, estado: 'PENDIENTE_PROFESOR' } }). */
   async findPendientesProfesor(profesorId: number): Promise<Salida[]> {
     return this.salidaRepository.find({
       where: { profesorId, estado: 'PENDIENTE_PROFESOR' },
@@ -215,6 +248,7 @@ export class SalidaService {
     });
   }
 
+  /** Bandeja directiva: where estado = PENDIENTE_DIRECTIVA. */
   async findPendientesDirectiva(): Promise<Salida[]> {
     return this.salidaRepository.find({
       where: { estado: 'PENDIENTE_DIRECTIVA' },
@@ -223,6 +257,7 @@ export class SalidaService {
     });
   }
 
+  /** Historial de salidas de un profesor. */
   async findByProfesor(profesorId: number): Promise<Salida[]> {
     return this.salidaRepository.find({
       where: { profesorId },
@@ -231,6 +266,7 @@ export class SalidaService {
     });
   }
 
+  /** Detalle por id; NotFoundException si no existe. */
   async findOne(id: number): Promise<Salida> {
     const salida = await this.salidaRepository.findOne({
       where: { id },
@@ -240,6 +276,7 @@ export class SalidaService {
     return salida;
   }
 
+  /** Salidas de un taller concreto. */
   async findByTaller(tallerId: number): Promise<Salida[]> {
     return this.salidaRepository.find({
       where: { tallerId },
@@ -248,6 +285,7 @@ export class SalidaService {
     });
   }
 
+  /** Actualiza campos básicos; save() hace UPDATE. */
   async update(id: number, updateSalidaDto: Partial<CreateSalidaDto>): Promise<Salida> {
     const salida = await this.findOne(id);
     if (updateSalidaDto.fecha) {
@@ -262,12 +300,13 @@ export class SalidaService {
     return this.salidaRepository.save(salida);
   }
 
+  /** Elimina la fila (remove = DELETE). */
   async remove(id: number): Promise<void> {
     const salida = await this.findOne(id);
     await this.salidaRepository.remove(salida);
   }
 
-  /** Etiqueta legible del origen y aprobación */
+  /** Etiqueta legible del origen y aprobación (útil para UI/reportes). */
   etiquetaFlujo(s: Salida): string {
     if (s.estado === 'RECHAZADA') return 'Rechazada';
     if (s.estado === 'PENDIENTE_PROFESOR') {

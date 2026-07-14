@@ -1,9 +1,21 @@
 /**
- * Servicio de streaming SSE para notificaciones en tiempo real.
- * Mantiene canales por alumno, profesor y administrador con heartbeat periódico.
+ * =============================================================================
+ * notificacion/notificacion-stream.service.ts — SSE EN TIEMPO REAL
+ * =============================================================================
+ * Server-Sent Events: el navegador abre una conexión HTTP larga y el servidor
+ * empuja eventos cuando hay notificaciones nuevas.
+ *
+ * Implementación:
+ *   - Un Subject RxJS por usuario (Map<id, Subject>)
+ *   - streamX() → Observable<MessageEvent> (lo consume @Sse del controller)
+ *   - emitX() → NotificacionService lo llama tras guardar en BD
+ *   - Heartbeat cada 30s (type:'ping') para que proxies no cierren la conexión
+ * =============================================================================
  */
 import { Injectable } from '@nestjs/common';
+// MessageEvent = forma del evento SSE que Nest envía al cliente
 import { MessageEvent } from '@nestjs/common';
+// Subject = emisor RxJS; merge = combina notificaciones + heartbeat; interval = ping 30s
 import { Observable, Subject, merge, interval, map, finalize } from 'rxjs';
 import { Notificacion } from '../entities/notificacion.entity';
 
@@ -20,11 +32,13 @@ export class NotificacionStreamService {
     return this.buildStream(subject, () => this.cleanup(this.alumnoStreams, alumnoId, subject));
   }
 
+  /** Abre stream SSE para un profesor (EventSource en el frontend). */
   streamProfesor(profesorId: number): Observable<MessageEvent> {
     const subject = this.getOrCreate(this.profesorStreams, profesorId);
     return this.buildStream(subject, () => this.cleanup(this.profesorStreams, profesorId, subject));
   }
 
+  /** Abre stream SSE para un administrador. */
   streamAdmin(adminId: number): Observable<MessageEvent> {
     const subject = this.getOrCreate(this.adminStreams, adminId);
     return this.buildStream(subject, () => this.cleanup(this.adminStreams, adminId, subject));
@@ -35,14 +49,17 @@ export class NotificacionStreamService {
     this.alumnoStreams.get(alumnoId)?.next(notificacion);
   }
 
+  /** Empuja una notificación nueva a los clientes SSE del profesor. */
   emitProfesor(profesorId: number, notificacion: Notificacion): void {
     this.profesorStreams.get(profesorId)?.next(notificacion);
   }
 
+  /** Empuja una notificación nueva a los clientes SSE del admin. */
   emitAdmin(adminId: number, notificacion: Notificacion): void {
     this.adminStreams.get(adminId)?.next(notificacion);
   }
 
+  /** Reutiliza el Subject existente o crea uno nuevo para ese id. */
   private getOrCreate<T>(map: Map<number, Subject<T>>, id: number): Subject<T> {
     let subject = map.get(id);
     if (!subject) {
@@ -52,7 +69,12 @@ export class NotificacionStreamService {
     return subject;
   }
 
-  /** Construye el observable SSE combinando eventos de datos y ping de keep-alive. */
+  /**
+   * Combina:
+   *   - eventos de datos (notificaciones)
+   *   - heartbeat cada 30s (keep-alive)
+   * finalize() limpia el Subject si ya no hay observadores.
+   */
   private buildStream<T>(
     subject: Subject<T>,
     onCleanup: () => void,
@@ -67,6 +89,7 @@ export class NotificacionStreamService {
     return merge(events, heartbeat);
   }
 
+  /** Si nadie escucha, borra el Subject del Map y lo completa. */
   private cleanup<T>(
     map: Map<number, Subject<T>>,
     id: number,

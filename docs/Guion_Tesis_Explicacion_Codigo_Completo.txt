@@ -1,0 +1,504 @@
+================================================================================
+  GUION DE TESIS — EXPLICACIÓN DEL CÓDIGO COMPLETO
+  Proyecto: Reservas de Cancha / Gestión de Talleres Extracurriculares
+  Stack: NestJS + TypeORM + PostgreSQL | Angular 18 + Tailwind | JWT
+================================================================================
+
+CÓMO USAR ESTE GUION
+--------------------
+• Versión larga de exposición técnica (≈ 20–30 min) o capítulo oral de memoria.
+• Cada bloque tiene: QUÉ DECIR + DÓNDE ESTÁ EN EL CÓDIGO + IDEA CLAVE.
+• Para defensa corta (5 min): usa solo Partes 1, 2, 4 (taller), 7 (seguridad) y 12.
+• No leas rutas literales: di “en el servicio de reservas”, “en la entidad taller”.
+
+
+================================================================================
+PARTE 0 — APERTURA (1 min)
+================================================================================
+DECIR:
+«Voy a recorrer la implementación del sistema: cómo arranca el backend y el
+frontend, cómo se organizan los módulos NestJS, cómo Angular consume la API,
+y las reglas de negocio críticas: ciclo de vida del taller, cupos, reservas
+de cancha, asistencia y portal del apoderado.»
+
+
+================================================================================
+PARTE 1 — PROBLEMA Y ALCANCE (2 min)
+================================================================================
+DECIR:
+«El sistema gestiona talleres extracurriculares de un establecimiento:
+publicación de actividades, inscripción, control de asistencia, salidas,
+reserva de cancha, fichas físicas, reportes y comunicación con apoderados.
+
+Hay cinco perfiles: super admin / directiva, profesor, alumno y apoderado.
+Cada uno ve pantallas distintas desde el mismo frontend.»
+
+ALCANCE DE CÓDIGO A MENCIONAR:
+• Backend: carpeta src/ (NestJS)
+• Frontend: carpeta frontend/src/ (Angular)
+• BD: scripts SQL + entidades TypeORM en src/entities/
+
+
+================================================================================
+PARTE 2 — ARQUITECTURA GLOBAL (3 min)
+================================================================================
+DECIR:
+«Arquitectura en tres capas:
+
+1) Angular: SPA. El usuario navega rutas; HttpClient habla con la API.
+2) NestJS: API REST. Controllers reciben HTTP; Services aplican reglas;
+   TypeORM persiste.
+3) PostgreSQL: tablas con FK y unique para integridad.
+
+Flujo típico:
+  Pantalla Angular → ApiService → HTTP → Controller Nest
+  → Service → Repository TypeORM → PostgreSQL → JSON de vuelta.»
+
+POR QUÉ ESTE STACK (respuesta concreta, no genérica):
+«NestJS porque el dominio ya está partido en módulos
+(auth, taller, reserva, asistencia…) con reglas fuertes en services.
+Angular porque hay muchas pantallas multi-rol con guards e interceptor JWT,
+y el mismo TypeScript tipa DTOs y models.
+PostgreSQL porque cupos, solapes de horario y uniques alumno-taller son
+problemas relacionales.»
+
+DIAGRAMA ORAL:
+  Navegador :4200 ──JWT──► API :3000 ──TypeORM──► PostgreSQL :5432
+
+
+================================================================================
+PARTE 3 — ARRANQUE DEL BACKEND (main.ts + AppModule) (3 min)
+================================================================================
+
+--- 3.1 main.ts ---
+CÓDIGO: src/main.ts
+DECIR:
+«El backend arranca en main.ts con bootstrap().
+Ahí se crea la app Nest, se registra ValidationPipe global, CORS,
+opcionalmente se sirve el build de Angular, Swagger en /api/docs,
+y se escucha el puerto de la variable PORT.»
+
+PUNTOS A DESTACAR:
+
+A) ValidationPipe global
+   whitelist + forbidNonWhitelisted + transform
+   → ningún body “inventado” pasa; los DTO con class-validator filtran.
+
+B) API_ROUTE_PREFIXES
+   Lista /auth, /taller, /reserva, /asistencia…
+   → si se sirve el frontend desde el mismo puerto, esas rutas NO caen al
+     index.html de Angular; siguen siendo JSON de Nest.
+
+C) Fallback SPA
+   GET /dashboard → index.html (router Angular)
+   POST /reserva → controller Nest
+
+--- 3.2 AppModule ---
+CÓDIGO: src/app.module.ts
+DECIR:
+«AppModule es el tablero raíz. Carga ConfigModule (.env), conecta TypeORM
+a PostgreSQL y registra todos los módulos de dominio.»
+
+IDEA CLAVE:
+  synchronize: false
+  → TypeORM no crea ni altera tablas al arrancar.
+  → El esquema viene de scripts SQL (más seguro y controlable).
+  autoLoadEntities: true
+  → también carga entidades declaradas en forFeature() de cada módulo.
+
+
+================================================================================
+PARTE 4 — PATRÓN REPETIDO EN TODO EL BACKEND (2 min)
+================================================================================
+DECIR:
+«Casi todo el backend sigue el mismo patrón. Si entienden uno, entienden todos.»
+
+  Carpeta dominio (ej. reserva/)
+    ├── *.module.ts      → registra entidades + controller + service
+    ├── *.controller.ts  → rutas HTTP (GET/POST/PATCH/DELETE)
+    ├── *.service.ts     → reglas de negocio + repositorios
+    └── (usa) entities/*.entity.ts  → tabla PostgreSQL
+         dto/*.dto.ts               → validación del body
+
+EJEMPLO ORAL:
+«El controller de reserva no decide si la cancha está libre.
+Llama a ReservaService.create → validarReserva → save.
+Si hay solape, lanza ConflictException y Angular muestra el error.»
+
+DTO: forma de los datos (string, int, fecha).
+Service: negocio (¿hay cupo? ¿franja activa? ¿estado permitido?).
+
+
+================================================================================
+PARTE 5 — AUTENTICACIÓN Y USUARIOS (4 min)
+================================================================================
+
+--- 5.1 Login unificado ---
+CÓDIGO:
+  src/auth/auth.controller.ts   POST /auth/login  (@Public)
+  src/auth/auth.service.ts      login / loginUnified / buildResponse
+  src/dto/login.dto.ts
+  src/common/password.util.ts
+
+DECIR:
+«Hay un login único. El usuario manda usuario y password.
+AuthService busca según email (admin), profesor, RUT apoderado o RUT alumno.
+Verifica con PBKDF2 y salt; firma JWT con sub, role, tipo, tallerId, nombre.
+El frontend guarda el accessToken.»
+
+CONTRASEÑAS:
+«No van en claro. hashPassword usa crypto.pbkdf2Sync SHA-512 + salt.
+En demo existe clave temporal 12345 para primer acceso/seeds;
+eso se reconoce como limitación para producción.»
+
+--- 5.2 JWT ---
+CÓDIGO:
+  src/auth/jwt.strategy.ts
+  src/auth/jwt-auth.guard.ts
+  src/auth/public.decorator.ts
+
+DECIR:
+«JwtStrategy lee el Bearer y valida el payload.
+JwtAuthGuard: si la ruta tiene @Public (login), deja pasar; si no, exige token.
+El portal apoderado usa @UseGuards(JwtAuthGuard) en toda la clase.
+
+Limitación sincera: el guard no está como APP_GUARD global en AppModule;
+varias rutas aún se apoyan fuerte en el guard del frontend. Mejora futura.»
+
+--- 5.3 Frontend sesión ---
+CÓDIGO:
+  frontend/.../login.component.ts
+  frontend/.../auth-role.service.ts
+  frontend/.../auth.interceptor.ts
+  frontend/.../auth.guard.ts
+
+DECIR:
+«LoginComponent llama ApiService.loginUnified.
+AuthRoleService guarda token y rol.
+authInterceptor adjunta Authorization en cada HttpClient.
+authGuard bloquea rutas sin sesión.
+Si tipoes apoderado, redirige al portal-apoderado.»
+
+--- 5.4 CRUD personas ---
+CÓDIGO: alumno/, profesor/, admin/
+DECIR:
+«Alumnos, profesores y admins son módulos CRUD.
+El apoderado no tiene tabla propia: vive en columnas apoderado_* del alumno.
+Por eso el JWT del apoderado lleva sub = id del hijo.»
+
+
+================================================================================
+PARTE 6 — TALLER: CORAZÓN DEL NEGOCIO (4 min)
+================================================================================
+CÓDIGO:
+  src/entities/taller.entity.ts
+  src/taller/taller.controller.ts
+  src/taller/taller.service.ts
+  frontend/.../gestion-actividades.component.ts
+
+DECIR:
+«Un taller (o actividad) atraviesa estados:
+
+  BORRADOR → ESPERA_DOCENTE → ESPERA_HORARIO → PUBLICADO → CERRADO
+
+Eso no es cosmética: TallerService bloquea transiciones inválidas.
+No se publica sin docente aceptado y horario definido.
+Solo PUBLICADO entra al catálogo (findCatalogo) con ventana de inscripción.»
+
+FLUJO A NARRAR:
+1) Coordinación crea → POST /taller (BORRADOR)
+2) Asigna docente → asignaciones_docente PENDIENTE + notificación
+3) Docente acepta → ESPERA_HORARIO
+4) Define horarios → filas en taller_horario
+5) Publica → PUBLICADO (+ fechas de inscripción)
+6) Cierra período → CERRADO
+
+FRONTEND:
+«gestion-actividades es la pantalla BPMN del coordinador.
+talleres.component es el CRUD más simple.
+taller-detail muestra presentación, inscritos, cancha y acciones según rol.»
+
+ENTIDAD (mencionar campos):
+tipo, descripcion, capacidad, estado, modoHorario,
+fechaAperturaInscripcion, relaciones a profesores, horarios, reservas…
+
+
+================================================================================
+PARTE 7 — INSCRIPCIONES A TALLERES (3 min)
+================================================================================
+CÓDIGO:
+  src/inscripcion-taller/*
+  src/entities/inscripcion-taller.entity.ts  (@Unique alumno+taller)
+  frontend/.../inscripcion-talleres.component.ts
+  frontend/.../gestion-inscripciones.component.ts
+
+DECIR:
+«Estados: PENDIENTE → ACEPTADO | RECHAZADO.
+
+Antes de postular, validar() revisa en cadena:
+  - taller PUBLICADO
+  - período académico abierto
+  - ventana del taller abierta
+  - no hay solicitud duplicada
+  - conflicto de horario con otro taller del alumno
+  - cupos: capacidad − count(PENDIENTE|ACEPTADO)
+
+Si no hay cupo, puedeInscribirse=false con motivo claro.
+Al aceptar, se vuelve a chequear cupo (carrera entre requests).
+
+Además el apoderado puede proponer inscripción o actividad libre;
+la directiva responde en propuestas-actividad.»
+
+FRASE CLAVE:
+«Cupo no es solo un número en pantalla: el service lo calcula y el unique
+en BD impide dos filas alumno-taller.»
+
+
+================================================================================
+PARTE 8 — RESERVAS DE CANCHA (3 min)
+================================================================================
+CÓDIGO:
+  src/reserva/reserva.controller.ts
+  src/reserva/reserva.service.ts     (validarReserva, obtenerDisponibilidad)
+  src/entities/reserva.entity.ts
+  src/entities/franja-cancha.entity.ts
+  frontend/.../reservas.component.ts
+
+DECIR:
+«La cancha no se reserva a cualquier hora.
+La directiva habilita franjas (FranjaCancha).
+Disponibilidad = franjas activas del día cruzadas con reservas existentes
+→ slots disponible / ocupada / no_habilitada.
+
+Al crear, validarReserva:
+  1) duración válida y dentro del rango institucional
+  2) franja activa existe
+  3) se reserva el bloque exacto
+  4) query de solape: misma fecha/espacio y
+     hora_inicio < fin_nueva AND hora_fin > inicio_nueva
+  5) si hay cruce → ConflictException con el taller que ocupa.»
+
+FRASE CLAVE:
+«Dos talleres no pueden pisarse la cancha: lo resolvemos con validación
+de intervalos en SQL, no solo con un ‘ocupado a las 15:00’ exacto.»
+
+
+================================================================================
+PARTE 9 — ASISTENCIA, ALERTAS Y MAIL (3 min)
+================================================================================
+CÓDIGO:
+  src/asistencia/*
+  src/entities/sesion-asistencia.entity.ts
+  src/entities/registro-asistencia.entity.ts
+  src/mail/mail.service.ts
+  frontend/.../control-asistencia.component.ts
+  frontend/.../reportes-asistencia.component.ts
+
+DECIR:
+«Flujo del profesor:
+  abrirSesion → registros PRESENTE para inscritos ACEPTADOS
+  actualizarAsistencia → marca ausentes; listaGuardada
+  cerrarSesion → exige lista guardada → CERRADA
+  → evaluarAusenciasRecurrentes (umbral del taller)
+  → MailService.asistenciaSesionApoderado
+
+No puede haber dos sesiones ABIERTAS del mismo taller el mismo día
+(ConflictException).
+
+Reportes de asistencia gestionan alertas:
+PENDIENTE → APODERADO_CONTACTADO → RESUELTO.»
+
+MAIL:
+«MailModule no tiene controller. Otros services lo llaman.
+Si MAIL_ENABLED=false, solo loguea (útil en desarrollo).»
+
+
+================================================================================
+PARTE 10 — SALIDAS E INSCRIPCIÓN A SALIDAS (3 min)
+================================================================================
+CÓDIGO:
+  src/salida/*
+  src/inscripcion-salida/*
+  frontend:.../salidas, mis-salidas, inscripcion-salidas
+
+DECIR:
+«Una salida pertenece a un taller.
+Puede nacer asignada por directiva (pendiente del profesor)
+o propuesta por el profesor (pendiente de directiva).
+Cuando está PUBLICADA (o visible), el alumno puede anotarse.
+
+InscripcionSalidaService.inscribir aplica esta lógica, en orden:
+  1. ¿Existe la salida?
+  2. ¿Está en estado visible para estudiantes?
+  3. ¿El alumno tiene inscripción ACEPTADA en algún taller?
+  4. ¿Ese taller es el mismo de la salida?
+  5. ¿Ya estaba inscrito? → Conflict
+  6. INSERT
+
+Así un alumno de Zumba no se cuela a una salida de Fútbol.»
+
+DÍA DEL EVENTO:
+abrir / cerrar con resultado (éxito/fracaso) y comentarios.
+
+
+================================================================================
+PARTE 11 — APODERADO, NOTIFICACIONES, PERÍODO, FICHAS, REPORTES (4 min)
+================================================================================
+
+--- Apoderado ---
+CÓDIGO: src/apoderado/*, frontend portal-apoderado
+DECIR:
+«GET /apoderado/resumen (JWT): assertApoderado, datos del hijo,
+talleres ACEPTADOS y asistencia por taller (sesiones CERRADAS).
+También propone inscripciones a la directiva.»
+
+--- Notificaciones ---
+CÓDIGO: src/notificacion/*, frontend notificacion-poll.service.ts
+DECIR:
+«Al crear notificación: INSERT + emisión SSE + a veces email.
+Frontend: EventSource a /notificacion/sse/{rol}/:id; fallback poll 30s.
+La campanita se actualiza sin recargar la página.»
+
+--- Período académico ---
+CÓDIGO: src/periodo/*
+DECIR:
+«Solo un período activo. Abrir/cerrar ventana global de inscripción.
+gestion-actividades lo configura; validar() de inscripción lo consulta.»
+
+--- Ficha alumno ---
+CÓDIGO: src/ficha-alumno/*, página fichas-alumnos
+DECIR:
+«Medidas por par alumno+taller. Profesor ve inscritos de su taller;
+coordinación puede ver más amplio. PUT upsert.»
+
+--- Reportes ---
+CÓDIGO: src/reportes/*, comparacion-semestre, reportes-asistencia
+DECIR:
+«Reporte de personas/inscripciones; estadísticas de semestre vía
+GET /taller/estadisticas/semestre.»
+
+
+================================================================================
+PARTE 12 — FRONTEND: CÓMO ESTÁ ARMADO (3 min)
+================================================================================
+CÓDIGO:
+  frontend/src/main.ts
+  frontend/src/app/app.routes.ts
+  frontend/src/app/services/api.service.ts
+  frontend/src/app/pages/*
+  frontend/src/app/shared/*
+
+DECIR:
+«main.ts hace bootstrapApplication standalone: router + HttpClient
+con authInterceptor.
+
+app.routes.ts mapea paths a componentes; muchas con canActivate: authGuard.
+
+ApiService es el único gran cliente HTTP: todos los métodos apuntan a
+`${apiUrl}/...` según environment.
+
+pages/ = pantallas.
+shared/ = navbar, sidebar, guards, panel de notificaciones, utilidades
+(horarios, cancha, privacidad de alumno).
+
+Tailwind da el look (bg-surface, primary, dark mode por clase).
+
+Dashboard adapta el home según rol: alumno ve catálogo; profesor pendientes;
+coordinación stats globales.»
+
+
+================================================================================
+PARTE 13 — BASE DE DATOS Y ENTIDADES (2 min)
+================================================================================
+DECIR:
+«Las entidades viven en src/entities/. Cada @Entity es una tabla.
+Relaciones ManyToOne / OneToMany modelan el dominio:
+
+  Admin / Profesor / Alumno
+  Taller → horarios, inscripciones, reservas, salidas
+  InscripcionTaller (unique alumno+taller)
+  SesionAsistencia → RegistroAsistencia
+  Reserva + FranjaCancha
+  Salida → InscripcionSalida
+  Notificacion, PeriodoAcademico, FichaAlumnoTaller, AlertaAusencia…
+
+Se crean con SQL manual; TypeORM solo lee/escribe filas.»
+
+
+================================================================================
+PARTE 14 — SCRIPTS Y DATOS DEMO (1 min)
+================================================================================
+CÓDIGO: src/scripts/*, package.json scripts seed:*
+DECIR:
+«Hay seeds para catálogo, horarios, apoderados, passwords, reservas deporte
+y scripts de reporte/fix. Sirven para reproducir el sistema en defensa
+o en otro PC leyendo el README.»
+
+
+================================================================================
+PARTE 15 — SEGURIDAD, LIMITACIONES Y FUTURO (2 min)
+================================================================================
+DECIR:
+«Implementado:
+  JWT, hash de password, ValidationPipe, unique/FK, reglas en services,
+  roles en UI, guard en portal apoderado.
+
+Limitaciones:
+  1. JwtAuthGuard no global en todos los endpoints
+  2. PBKDF2 con pocas iteraciones / password demo
+  3. CORS permisivo
+  4. Autorización todavía parcial en frontend
+  5. Cobertura de tests mejorable
+
+Futuro:
+  APP_GUARD + RolesGuard, refresh tokens, migraciones TypeORM,
+  Argon2/bcrypt más fuerte, rate-limit login, más e2e.»
+
+
+================================================================================
+PARTE 16 — CIERRE (1 min)
+================================================================================
+DECIR:
+«En síntesis: el código organiza un dominio escolar complejo con
+módulos Nest bien acotados, una SPA Angular multi-rol y PostgreSQL
+para integridad. Las piezas difíciles no son el CRUD, sino las reglas:
+estados del taller, cupos, solapes de cancha, inscripción a salidas
+coherente con el taller, asistencia con alertas, y el portal apoderado.
+
+Quedo atento a las preguntas. Gracias.»
+
+
+================================================================================
+MAPA RÁPIDO ARCHIVO ↔ IDEA (cheat sheet oral)
+================================================================================
+main.ts (backend)          Arranque, ValidationPipe, SPA/API
+app.module.ts              TypeORM + todos los módulos
+auth/*                     Login JWT, password, Public
+taller/*                   Máquina de estados actividad
+inscripcion-taller/*       Cupos + unique + propuestas
+reserva/*                  Franjas + solape horario
+asistencia/*               Sesión lista + umbral + mail
+salida + insc. salida      Aprobación + alta condicionada
+apoderado/*                Resumen hijo + JWT tipo apoderado
+notificacion/*             Persistencia + SSE
+mail/*                     Nodemailer (sin HTTP propio)
+periodo/*                  Ventana global inscripción
+ficha-alumno/*             Antropometría por taller
+reportes/*                 Consolidado personas
+frontend main + routes     Arranque SPA + mapa pantallas
+api.service.ts             Único puente HTTP
+auth.interceptor           Bearer automático
+
+
+================================================================================
+VARIANTES DE TIEMPO
+================================================================================
+• 5 min:  Partes 1–2 + taller (6) + una inconsistencia (cupo O cancha) + 15–16
+• 12 min: + auth (5) + asistencia/apoderado (9–11 corta) + frontend (12)
+• 25 min: guion completo en orden
+• Memoria escrita: usa cada PARTE como sección de “Implementación”
+
+
+================================================================================
+FIN DEL GUION DE CÓDIGO COMPLETO
+================================================================================

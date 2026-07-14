@@ -1,6 +1,14 @@
 /**
- * Barra de navegación superior fija.
- * Muestra logo, menú móvil, notificaciones, rol del usuario y cierre de sesión.
+ * =============================================================================
+ * app/shared/components/navbar/navbar.component.ts — Barra de navegación superior
+ * =============================================================================
+ * Barra fija en la parte superior de la aplicación. Muestra el logo, botón de
+ * menú móvil, panel de notificaciones, conmutador de tema, etiqueta de rol y
+ * acción de cierre de sesión. Se usa en el layout principal (app.component).
+ *
+ * Métodos clave: roleCorto(), cerrar().
+ * Servicios: AuthRoleService, SidebarService, Router.
+ * =============================================================================
  */
 import { Component, inject } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
@@ -11,9 +19,6 @@ import { LogoNautaComponent } from '../logo-nauta/logo-nauta.component';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { NotificacionesPanelComponent } from '../notificaciones-panel/notificaciones-panel.component';
 
-/**
- * Navbar principal: identidad visual, panel de notificaciones y acciones de sesión.
- */
 @Component({
   selector: 'app-navbar',
   standalone: true,
@@ -80,15 +85,18 @@ import { NotificacionesPanelComponent } from '../notificaciones-panel/notificaci
   `,
   styles: []
 })
-/**
- * Clase del navbar: etiqueta de rol abreviada y cierre de sesión.
- */
 export class NavbarComponent {
+  /** Sesión: nombre, rol, isLoggedIn(), clear(). */
   auth = inject(AuthRoleService);
+  /** Abre/cierra el menú lateral en móvil (botón hamburguesa). */
   sidebar = inject(SidebarService);
+  /** Redirección a /login al cerrar sesión. */
   private router = inject(Router);
 
-  /** Devuelve una etiqueta corta del rol para pantallas pequeñas. */
+  /**
+   * Devuelve una etiqueta abreviada del rol del usuario para pantallas pequeñas
+   * (ej. «Profesor» → «Prof.»), evitando que el badge se desborde en móvil.
+   */
   roleCorto(): string {
     const map: Record<string, string> = {
       Estudiante: 'Est.',
@@ -100,7 +108,10 @@ export class NavbarComponent {
     return map[this.auth.roleLabel()] ?? this.auth.roleLabel();
   }
 
-  /** Cierra sesión y redirige a la pantalla de login. */
+  /**
+   * Cierra la sesión del usuario (limpia token y rol en localStorage)
+   * y redirige a la pantalla de login.
+   */
   cerrar(): void {
     this.auth.clear();
     this.router.navigate(['/login']);

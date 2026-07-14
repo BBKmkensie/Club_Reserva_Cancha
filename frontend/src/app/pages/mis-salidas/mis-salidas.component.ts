@@ -1,6 +1,13 @@
 /**
- * Portal del estudiante para ver e inscribirse en salidas publicadas.
- * Lista salidas disponibles de los talleres en los que está inscrito.
+ * =============================================================================
+ * app/pages/mis-salidas/mis-salidas.component.ts — Inscripción en salidas (alumno)
+ * =============================================================================
+ * Portal del estudiante para ver e inscribirse en salidas publicadas de sus talleres.
+ * Solo muestra salidas de talleres con inscripción ACEPTADA.
+ * Rol: alumno (usuario, no apoderado) — canInscribirseSalidas().
+ * Endpoints ApiService: getInscripcionesTallerPorAlumno, getInscripcionesPorAlumno,
+ * getSalidasPublicadas, inscribirSalida, desinscribirSalida
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -9,9 +16,6 @@ import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
 
-/**
- * Vista estudiante: inscripción y desinscripción en salidas de sus talleres.
- */
 @Component({
   selector: 'app-mis-salidas',
   standalone: true,
@@ -20,7 +24,7 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
     <div class="space-y-6">
       <div class="bg-surface rounded-lg shadow p-6">
         <h1 class="text-3xl font-bold text-ink mb-2">Mis salidas</h1>
-        <p class="text-ink-muted">Salidas de los talleres en los que estás inscrito.</p>
+        <p class="text-ink-muted">Solo ves salidas de los talleres en los que estás inscrito (aceptado).</p>
       </div>
 
       @if (!alumnoId) {
@@ -31,7 +35,7 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
         <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
           No estás inscrito en ningún taller. Inscríbete primero en
           <a routerLink="/inscripcion-talleres" class="text-primary-600 font-medium underline">Inscripción de Talleres</a>
-          para ver salidas disponibles.
+          y espera la aceptación para ver salidas disponibles.
         </div>
       } @else {
         @if (misInscripciones.length) {
@@ -42,6 +46,9 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
                 <li class="border rounded-lg p-4 bg-page">
                   <p class="font-semibold">{{ insc.salida?.destino }}</p>
                   <p class="text-sm text-ink-muted">{{ insc.salida?.fecha | date:'fullDate' }}</p>
+                  @if (insc.salida?.taller) {
+                    <p class="text-sm text-ink-muted">Taller: {{ insc.salida.taller.tipo }}</p>
+                  }
                   @if (insc.salida) {
                     <p class="text-xs text-primary-700 mt-1">{{ etiqueta(insc.salida) }}</p>
                     @if (insc.salida.estado === 'CERRADA') {
@@ -97,7 +104,7 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
               </div>
             }
             @if (salidas.length === 0) {
-              <p class="text-ink-muted">No hay salidas publicadas disponibles.</p>
+              <p class="text-ink-muted">No hay salidas publicadas de tus talleres por ahora.</p>
             }
           </div>
         </div>
@@ -106,50 +113,87 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
   `,
 })
 export class MisSalidasComponent implements OnInit {
+  /** Cliente HTTP: salidas publicadas e inscripciones a salida. */
   private api = inject(ApiService);
+  /** Id del alumno logueado. */
   private auth = inject(AuthRoleService);
 
+  /** Salidas de talleres donde el alumno está ACEPTADO. */
   salidas: Salida[] = [];
+  /** Inscripciones del alumno a salidas concretas. */
   misInscripciones: any[] = [];
+  /** Id del alumno en sesión. */
   alumnoId: number | null = null;
+  /** true si tiene al menos un taller aceptado (puede ver salidas). */
   inscritoEnTaller = false;
+  /** Conjunto de tallerId con inscripción ACEPTADO (filtro de salidas). */
+  private tallerIdsInscritos = new Set<number>();
 
-  /** Verifica inscripción en taller y carga salidas e inscripciones del alumno. */
+  /** Verifica inscripción aceptada en taller y carga solo salidas de esos talleres. */
   ngOnInit() {
     this.alumnoId = this.auth.currentUserId();
     if (!this.alumnoId) return;
 
     this.api.getInscripcionesTallerPorAlumno(this.alumnoId).subscribe({
       next: (inscs) => {
-        const aceptadas = (inscs ?? []).filter((i: any) => i.estado === 'ACEPTADO');
-        this.inscritoEnTaller = aceptadas.length > 0 || !!this.auth.currentTallerId();
+        const aceptadas = (inscs ?? []).filter(
+          (i: any) => String(i.estado ?? '').toUpperCase() === 'ACEPTADO',
+        );
+        this.tallerIdsInscritos = new Set(
+          aceptadas
+            .map((i: any) => Number(i.tallerId ?? i.taller?.id))
+            .filter((id: number) => !Number.isNaN(id)),
+        );
+        this.inscritoEnTaller = this.tallerIdsInscritos.size > 0;
+        this.cargarInscripcionesSalida();
         if (this.inscritoEnTaller) {
           this.cargarSalidas();
         }
       },
       error: () => {
         this.inscritoEnTaller = false;
+        this.tallerIdsInscritos = new Set();
       },
     });
+  }
 
+  /** Carga las inscripciones del alumno a salidas (estado de cupo). */
+  private cargarInscripcionesSalida() {
+    if (!this.alumnoId) return;
     this.api.getInscripcionesPorAlumno(this.alumnoId).subscribe({
-      next: (d) => (this.misInscripciones = d),
+      next: (d) => (this.misInscripciones = this.filtrarInscripcionesPropias(d ?? [])),
       error: () => (this.misInscripciones = []),
     });
   }
 
-  /** Obtiene salidas publicadas disponibles para el alumno autenticado. */
+  /** Obtiene salidas publicadas y las limita a talleres con inscripción ACEPTADA. */
   private cargarSalidas() {
     if (!this.alumnoId) return;
     this.api.getSalidasPublicadas(undefined, this.alumnoId).subscribe({
-      next: (d) => (this.salidas = d),
+      next: (d) => {
+        this.salidas = (d ?? []).filter((s) =>
+          this.tallerIdsInscritos.has(Number(s.tallerId ?? s.taller?.id)),
+        );
+      },
       error: () => (this.salidas = []),
     });
   }
 
+  /** Deja solo inscripciones cuya salida pertenece a talleres aceptados del alumno. */
+  private filtrarInscripcionesPropias(list: any[]): any[] {
+    if (!this.tallerIdsInscritos.size) return list;
+    return list.filter((i) => {
+      const tid = Number(i.salida?.tallerId ?? i.salida?.taller?.id);
+      return Number.isNaN(tid) || this.tallerIdsInscritos.has(tid);
+    });
+  }
+
+  /** Texto del flujo pedagógico de la salida. */
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }
+  /** Etiqueta corta del estado de la salida. */
   estadoLabel(s: Salida) { return etiquetaEstadoSalida(s); }
 
+  /** true si el alumno ya tiene inscripción a esa salida. */
   yaInscrito(salidaId: number): boolean {
     return this.misInscripciones.some((i) => i.salidaId === salidaId || i.salida?.id === salidaId);
   }
@@ -176,7 +220,7 @@ export class MisSalidasComponent implements OnInit {
   private refrescarInscripciones() {
     if (!this.alumnoId) return;
     this.api.getInscripcionesPorAlumno(this.alumnoId).subscribe({
-      next: (d) => (this.misInscripciones = d),
+      next: (d) => (this.misInscripciones = this.filtrarInscripcionesPropias(d ?? [])),
     });
   }
 }

@@ -1,6 +1,16 @@
 /**
- * Módulo de inscripciones a talleres.
- * Registra entidades y servicios para el flujo alumno → profesor → directiva.
+ * =============================================================================
+ * inscripcion-taller/inscripcion-taller.module.ts — MÓDULO DE INSCRIPCIONES
+ * =============================================================================
+ * Núcleo del flujo alumno → profesor → (opcional) propuestas de directiva.
+ *
+ * Entidades clave:
+ *   InscripcionTaller          → solicitud PENDIENTE/ACEPTADO/RECHAZADO
+ *   PropuestaInscripcionTaller → propuesta del apoderado a la directiva
+ *   TallerHorario              → horarios opcionales del taller
+ *
+ * NotificacionModule + MailModule: avisan en cada cambio de estado.
+ * =============================================================================
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,7 +24,12 @@ import { InscripcionTallerService } from './inscripcion-taller.service';
 import { InscripcionTallerController } from './inscripcion-taller.controller';
 import { NotificacionModule } from '../notificacion/notificacion.module';
 import { MailModule } from '../mail/mail.module';
+import { AuthModule } from '../auth/auth.module';
 
+/**
+ * @Module: registra entidades TypeORM + controllers/providers.
+ * forFeature([...]) habilita @InjectRepository en InscripcionTallerService.
+ */
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -27,6 +42,7 @@ import { MailModule } from '../mail/mail.module';
     ]),
     NotificacionModule,
     MailModule,
+    AuthModule,
   ],
   controllers: [InscripcionTallerController],
   providers: [InscripcionTallerService],

@@ -1,6 +1,15 @@
 /**
- * Vista semanal de disponibilidad de cancha deportiva.
- * Calendario de 7 días con franjas horarias y estado de cada slot (libre, ocupada, cerrada).
+ * =============================================================================
+ * app/shared/components/cancha-semana-vista/cancha-semana-vista.component.ts — Vista semanal de cancha
+ * =============================================================================
+ * Calendario interactivo de 7 días con franjas horarias y estado de cada slot
+ * (libre, ocupada, cerrada). Consulta la disponibilidad al backend y permite
+ * navegar entre semanas. Se usa en la página de reservas de cancha.
+ *
+ * Inputs: espacio (nombre de la cancha), version (fuerza recarga al cambiar).
+ * Métodos clave: ngOnInit(), ngOnChanges(), seleccionarDia(), irHoy(),
+ *                cambiarSemana(), cargarSemana().
+ * =============================================================================
  */
 import { Component, Input, OnChanges, OnInit, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -37,9 +46,6 @@ interface DiaSemana {
   slots: SlotDia[];
 }
 
-/**
- * CanchaSemanaVista: calendario interactivo con disponibilidad por día y franja horaria.
- */
 @Component({
   selector: 'app-cancha-semana-vista',
   standalone: true,
@@ -200,11 +206,11 @@ interface DiaSemana {
     }
   `],
 })
-/**
- * Carga y presenta la disponibilidad semanal de un espacio deportivo desde la API.
- */
 export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
+  /** Nombre del espacio deportivo a consultar (ej. «Cancha Principal»). */
   @Input() espacio = 'Cancha Principal';
+
+  /** Incrementar este valor fuerza una recarga de datos (p. ej. tras crear una reserva). */
   @Input() version = 0;
 
   private api = inject(ApiService);
@@ -213,11 +219,16 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
   readonly CANCHA_HORA_FIN = CANCHA_HORA_FIN;
   readonly esHoy = esHoy;
 
+  /** Siete días de la semana visible (slots por día). */
   dias: DiaSemana[] = [];
+  /** Día cuyo detalle de slots se muestra a la derecha. */
   fechaSeleccionada = parseFechaIso(new Date());
+  /** Lunes (YYYY-MM-DD) de la semana visible. */
   inicioSemana = lunesDeSemana();
+  /** true mientras se pide disponibilidad al API. */
   cargando = false;
 
+  /** Nombre del mes visible en el encabezado del calendario. */
   get mesVisible(): string {
     const ref = this.diaVisible ?? this.dias[0];
     if (!ref) return MESES[new Date().getMonth()];
@@ -225,28 +236,34 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     return MESES[d.getMonth()];
   }
 
+  /** Año visible en el encabezado del calendario. */
   get anioVisible(): number {
     const ref = this.diaVisible ?? this.dias[0];
     if (!ref) return new Date().getFullYear();
     return new Date(`${ref.fecha}T12:00:00`).getFullYear();
   }
 
+  /** Etiqueta legible del día seleccionado (ej. «L, Ene. 15. 2026»). */
   get etiquetaDiaSeleccionado(): string {
     return etiquetaDiaCorto(this.fechaSeleccionada);
   }
 
+  /** Objeto del día actualmente seleccionado en la grilla semanal. */
   get diaVisible(): DiaSemana | undefined {
     return this.dias.find((d) => d.fecha === this.fechaSeleccionada);
   }
 
+  /** Franjas horarias del día seleccionado. */
   get slotsSeleccionados(): SlotDia[] {
     return this.diaVisible?.slots ?? [];
   }
 
+  /** Solo las franjas ocupadas del día seleccionado (para el bloque de reservas). */
   get slotsOcupados(): SlotDia[] {
     return this.slotsSeleccionados.filter((s) => s.estado === 'ocupada');
   }
 
+  /** Resumen textual con conteo de slots disponibles, ocupados y cerrados. */
   get resumenDia(): string {
     const s = this.slotsSeleccionados;
     const disp = s.filter((x) => x.estado === 'disponible').length;
@@ -255,43 +272,66 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     return `${disp} disponibles · ${occ} ocupadas · ${off} no habilitadas`;
   }
 
-  /** Inicializa la semana actual y solicita la disponibilidad al backend. */
+  /**
+   * Inicializa la semana actual, arma la estructura de 7 días y solicita
+   * la disponibilidad al backend.
+   */
   ngOnInit(): void {
     this.inicioSemana = lunesDeSemana(this.fechaSeleccionada);
     this.dias = this.armarEstructuraSemana();
     this.cargarSemana();
   }
 
-  /** Vuelve a cargar la semana cuando cambia la versión de datos (p. ej. tras una reserva). */
+  /**
+   * Vuelve a cargar la semana cuando cambia el input version
+   * (útil tras crear o cancelar una reserva).
+   */
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['version'] && !changes['version'].firstChange) {
       this.cargarSemana();
     }
   }
 
+  /**
+   * Devuelve la letra del día de la semana (L, M, M, J, V, S, D) para una fecha.
+   */
   letraDia(fecha: string): string {
     return DIAS_CORTO[diaSemanaDesdeFecha(fecha)];
   }
 
+  /**
+   * Formatea una hora numérica como cadena HH:00.
+   */
   fmtHora(h: number): string {
     return `${String(h).padStart(2, '0')}:00`;
   }
 
+  /**
+   * Traduce el estado interno del slot a una etiqueta legible para el usuario.
+   */
   etiquetaEstado(estado: EstadoSlot): string {
     if (estado === 'disponible') return 'Libre';
     if (estado === 'ocupada') return 'Ocupada';
     return 'Cerrada';
   }
 
+  /**
+   * Indica si un día tiene al menos un slot ocupado (muestra el punto indicador).
+   */
   tieneOcupados(d: DiaSemana): boolean {
     return d.slots.some((s) => s.estado === 'ocupada');
   }
 
+  /**
+   * Cambia el día seleccionado en la grilla semanal sin recargar datos.
+   */
   seleccionarDia(fecha: string): void {
     this.fechaSeleccionada = fecha;
   }
 
-  /** Centra la vista en la semana del día actual. */
+  /**
+   * Centra la vista en la semana del día actual y recarga la disponibilidad.
+   */
   irHoy(): void {
     const hoy = parseFechaIso(new Date());
     this.inicioSemana = lunesDeSemana(hoy);
@@ -300,7 +340,9 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     this.cargarSemana();
   }
 
-  /** Avanza o retrocede una semana y recarga los slots. */
+  /**
+   * Avanza o retrocede una semana (delta = ±1) y recarga los slots.
+   */
   cambiarSemana(delta: number): void {
     this.inicioSemana = sumarDias(this.inicioSemana, delta * 7);
     this.fechaSeleccionada = this.inicioSemana;
@@ -308,6 +350,7 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     this.cargarSemana();
   }
 
+  /** Arma los 7 días de la semana a partir de inicioSemana, cruzando datos del API si vienen. */
   private armarEstructuraSemana(dataApi: any[] = []): DiaSemana[] {
     const dias: DiaSemana[] = [];
     for (let i = 0; i < 7; i++) {
@@ -322,6 +365,7 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     return dias;
   }
 
+  /** Normaliza slots crudos del API al tipo SlotDia de la vista. */
   private mapearSlots(slots: any[] = []): SlotDia[] {
     return slots.map((s) => ({
       horaInicio: (s.horaInicio ?? '').slice(0, 5),
@@ -333,7 +377,10 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     }));
   }
 
-  /** Obtiene la disponibilidad de la semana visible para el espacio configurado. */
+  /**
+   * Obtiene la disponibilidad de la semana visible para el espacio configurado.
+   * Si el endpoint semanal falla, usa el respaldo día a día.
+   */
   cargarSemana(): void {
     this.cargando = true;
     this.api.getDisponibilidadSemanaCancha(this.inicioSemana, this.espacio).subscribe({
@@ -351,7 +398,7 @@ export class CanchaSemanaVistaComponent implements OnInit, OnChanges {
     });
   }
 
-  /** Respaldo si el endpoint semanal no está disponible */
+  /** Respaldo si el endpoint semanal no está disponible: consulta día a día. */
   private cargarSemanaPorDia(): void {
     let pendientes = 7;
     const actualizados = this.armarEstructuraSemana();

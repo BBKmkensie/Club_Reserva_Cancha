@@ -1,7 +1,13 @@
 /**
- * Portal exclusivo para apoderados.
- * Muestra datos del hijo/a, asistencia, taller inscrito y propuestas de inscripción
- * (catálogo o actividad libre fuera de catálogo) a la directiva.
+ * =============================================================================
+ * app/pages/portal-apoderado/portal-apoderado.component.ts — Portal apoderado
+ * =============================================================================
+ * Vista exclusiva del apoderado: resumen del hijo/a, talleres inscritos (uno o más),
+ * asistencia por taller y propuestas de inscripción a la directiva.
+ * Rol: apoderado — canVerPortalApoderado().
+ * Endpoints ApiService: getCatalogoTalleres, getMisPropuestasApoderado, getApoderadoResumen,
+ * proponerActividadLibre, proponerInscripcionApoderado
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -17,9 +23,6 @@ import {
   TallerHorarioItem,
 } from '../../shared/utils/horario-taller.util';
 
-/**
- * Vista del apoderado: resumen familiar, asistencia, propuestas de catálogo y actividad libre.
- */
 @Component({
   selector: 'app-portal-apoderado',
   standalone: true,
@@ -39,68 +42,117 @@ import {
       } @else if (error) {
         <p class="text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">{{ error }}</p>
       } @else if (data) {
-        <div class="grid gap-4 sm:grid-cols-2">
-          <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
-            <h2 class="font-bold text-ink mb-3">Su hijo/a</h2>
-            <p class="text-lg font-semibold">{{ data.hijo.nombre }}</p>
-            <p class="text-sm text-ink-muted">RUT: {{ data.hijo.rut }}</p>
-          </section>
+        <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
+          <h2 class="font-bold text-ink mb-3">Su hijo/a</h2>
+          <p class="text-lg font-semibold">{{ data.hijo.nombre }}</p>
+          <p class="text-sm text-ink-muted">RUT: {{ data.hijo.rut }}</p>
+        </section>
 
-          <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
-            <h2 class="font-bold text-ink mb-3">Taller inscrito</h2>
-            @if (data.tallerInscrito) {
-              <p class="text-lg font-semibold text-primary-600">{{ data.tallerInscrito.nombre }}</p>
-              @if (data.tallerInscrito.horario) {
-                <p class="text-sm text-ink-muted mt-1">{{ data.tallerInscrito.horario }}</p>
-              }
-            } @else {
-              <p class="text-ink-muted">Sin taller activo inscrito.</p>
+        @if (talleresInscritos.length > 1) {
+          <div class="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+            <p class="font-semibold">
+              {{ data.hijo.nombre }} está inscrito/a en {{ talleresInscritos.length }} talleres
+            </p>
+            <p class="mt-1 text-primary-800">
+              {{ nombresTalleresInscritos }}. Más abajo puede ver la asistencia de cada uno.
+            </p>
+          </div>
+        }
+
+        <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
+          <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+            <h2 class="font-bold text-ink">
+              {{ talleresInscritos.length > 1 ? 'Talleres en los que está inscrito/a' : 'Taller inscrito' }}
+            </h2>
+            @if (talleresInscritos.length > 0) {
+              <span class="text-xs font-medium text-primary-700 bg-primary-50 px-2 py-1 rounded">
+                {{ talleresInscritos.length }}
+                {{ talleresInscritos.length === 1 ? 'taller' : 'talleres' }}
+              </span>
             }
-          </section>
-        </div>
-
-        @if (data.asistencia) {
-          <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
-            <h2 class="font-bold text-ink mb-4">Resumen de asistencia</h2>
-            <div class="flex flex-wrap gap-3 mb-4">
-              <span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
-                Presente: {{ data.asistencia.resumen.presentes }}
-              </span>
-              <span class="px-3 py-1 rounded-full bg-red-100 text-red-800 text-sm font-medium">
-                Ausente: {{ data.asistencia.resumen.ausentes }}
-              </span>
-              <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-medium">
-                Tarde: {{ data.asistencia.resumen.tardes }}
-              </span>
-              <span class="px-3 py-1 rounded-full bg-muted text-ink-secondary text-sm font-medium">
-                Asistencia: {{ data.asistencia.resumen.porcentaje }}%
-              </span>
-            </div>
-
-            @if (data.asistencia.registros.length === 0) {
-              <p class="text-ink-muted text-sm">Aún no hay sesiones cerradas registradas.</p>
-            } @else {
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b border-line text-left text-ink-muted">
-                      <th class="py-2 pr-4">Fecha</th>
-                      <th class="py-2 pr-4">Estado</th>
-                      <th class="py-2">Observación</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (r of data.asistencia.registros; track r.fecha) {
-                      <tr class="border-b border-line/60">
-                        <td class="py-2 pr-4">{{ r.fecha }}</td>
-                        <td class="py-2 pr-4">
-                          <span [class]="estadoClass(r.estado)">{{ estadoLabel(r.estado) }}</span>
-                        </td>
-                        <td class="py-2 text-ink-muted">{{ r.observacion || '—' }}</td>
-                      </tr>
+          </div>
+          @if (talleresInscritos.length === 0) {
+            <p class="text-ink-muted">Sin taller activo inscrito.</p>
+          } @else {
+            <ul class="space-y-3">
+              @for (t of talleresInscritos; track t.id; let i = $index) {
+                <li class="border border-line/60 rounded-lg p-3 flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    @if (talleresInscritos.length > 1) {
+                      <p class="text-xs text-ink-muted mb-0.5">Taller {{ i + 1 }} de {{ talleresInscritos.length }}</p>
                     }
-                  </tbody>
-                </table>
+                    <p class="font-semibold text-primary-600">{{ t.nombre }}</p>
+                    @if (t.horario) {
+                      <p class="text-sm text-ink-muted mt-1">{{ t.horario }}</p>
+                    }
+                  </div>
+                  <button type="button" (click)="irAAsistencia(t.id)"
+                          class="text-xs font-medium text-primary-700 hover:underline shrink-0">
+                    Ver asistencia →
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        @if (talleresInscritos.length > 0) {
+          <section class="space-y-4">
+            <h2 class="font-bold text-ink text-xl">Asistencia por taller</h2>
+            <p class="text-sm text-ink-muted -mt-2">
+              Detalle de sesiones cerradas de
+              {{ talleresInscritos.length === 1 ? 'su taller' : 'cada taller en el que participa' }}.
+            </p>
+            @for (a of asistencias; track a.tallerId) {
+              <div [attr.id]="'asistencia-taller-' + a.tallerId"
+                   class="bg-surface rounded-xl border border-line p-5 shadow-sm scroll-mt-24">
+                <h3 class="font-bold text-ink mb-3">{{ a.tallerNombre || 'Taller' }}</h3>
+                <div class="flex flex-wrap gap-3 mb-4">
+                  <span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
+                    Presente: {{ a.resumen.presentes }}
+                  </span>
+                  @if ((a.resumen.tardes ?? 0) > 0) {
+                    <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-sm font-medium">
+                      Tarde: {{ a.resumen.tardes }}
+                    </span>
+                  }
+                  <span class="px-3 py-1 rounded-full bg-red-100 text-red-800 text-sm font-medium">
+                    Ausente: {{ a.resumen.ausentes }}
+                  </span>
+                  <span class="px-3 py-1 rounded-full bg-muted text-ink-secondary text-sm font-medium">
+                    Asistencia: {{ a.resumen.porcentaje }}%
+                  </span>
+                  <span class="px-3 py-1 rounded-full bg-muted text-ink-muted text-sm">
+                    Sesiones: {{ a.resumen.totalSesiones }}
+                  </span>
+                </div>
+
+                @if (a.registros.length === 0) {
+                  <p class="text-ink-muted text-sm">Aún no hay sesiones cerradas registradas en este taller.</p>
+                } @else {
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                      <thead>
+                        <tr class="border-b border-line text-left text-ink-muted">
+                          <th class="py-2 pr-4">Fecha</th>
+                          <th class="py-2 pr-4">Estado</th>
+                          <th class="py-2">Observación</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of a.registros; track r.fecha) {
+                          <tr class="border-b border-line/60">
+                            <td class="py-2 pr-4">{{ r.fecha }}</td>
+                            <td class="py-2 pr-4">
+                              <span [class]="estadoClass(r.estado)">{{ estadoLabel(r.estado) }}</span>
+                            </td>
+                            <td class="py-2 text-ink-muted">{{ r.observacion || '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
               </div>
             }
           </section>
@@ -262,27 +314,78 @@ import {
   `,
 })
 export class PortalApoderadoComponent implements OnInit {
+  /** Cliente HTTP: resumen del hijo, catálogo y propuestas. */
   private api = inject(ApiService);
+  /** Valida que el usuario sea apoderado. */
   auth = inject(AuthRoleService);
 
+  /** true en la carga inicial del portal. */
   cargando = true;
+  /** Error de acceso o de red. */
   error = '';
+  /** Resumen del alumno vinculado (talleres, asistencia, etc.). */
   data: any = null;
+  /** Talleres publicados disponibles para proponer inscripción. */
   catalogo: any[] = [];
+  /** Propuestas ya enviadas por este apoderado. */
   misPropuestas: any[] = [];
+  /** Id de taller mientras se envía una propuesta (spinner). */
   proponiendo: number | null = null;
 
+  /** Taller del catálogo abierto en el modal de propuesta. */
   modalTaller: any = null;
+  /** Horarios del taller para elegir en el modal. */
   opcionesModal: { id: number | null; etiqueta: string }[] = [];
+  /** Id de horario del catálogo seleccionado. */
   horarioSeleccionadoId: number | null = null;
+  /** Horario en texto libre si no hay id. */
   horarioLibre = '';
+  /** Mensaje opcional al coordinador. */
   mensajeApoderado = '';
 
+  /** Formulario de propuesta de actividad fuera del catálogo. */
   actividadLibreNombre = '';
   actividadLibreDescripcion = '';
   actividadLibreHorario = '';
   actividadLibreMensaje = '';
+  /** true mientras se envía la actividad libre. */
   enviandoLibre = false;
+
+  /** Talleres con inscripción aceptada (soporta más de uno). */
+  get talleresInscritos(): Array<{ id: number; nombre: string; horario?: string | null }> {
+    if (!this.data) return [];
+    if (Array.isArray(this.data.talleresInscritos)) return this.data.talleresInscritos;
+    return this.data.tallerInscrito ? [this.data.tallerInscrito] : [];
+  }
+
+  /** Nombres unidos para el aviso de multi-taller. */
+  get nombresTalleresInscritos(): string {
+    return this.talleresInscritos.map((t) => t.nombre).join(', ');
+  }
+
+  /** Asistencia de cada taller inscrito. */
+  get asistencias(): Array<{
+    tallerId: number;
+    tallerNombre?: string;
+    resumen: {
+      presentes: number;
+      ausentes: number;
+      tardes?: number;
+      porcentaje: number;
+      totalSesiones: number;
+    };
+    registros: Array<{ fecha: string; estado: string; observacion?: string | null }>;
+  }> {
+    if (!this.data) return [];
+    if (Array.isArray(this.data.asistencias)) return this.data.asistencias;
+    return this.data.asistencia ? [this.data.asistencia] : [];
+  }
+
+  /** Desplaza la vista al bloque de asistencia del taller indicado. */
+  irAAsistencia(tallerId: number): void {
+    const el = document.getElementById(`asistencia-taller-${tallerId}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   /** Valida acceso de apoderado y carga resumen + catálogo de talleres publicados. */
   ngOnInit(): void {
@@ -437,15 +540,15 @@ export class PortalApoderadoComponent implements OnInit {
 
   estadoLabel(estado: string): string {
     if (estado === 'PRESENTE') return 'Presente';
-    if (estado === 'AUSENTE') return 'Ausente';
     if (estado === 'TARDE') return 'Tarde';
+    if (estado === 'AUSENTE') return 'Ausente';
     return 'Sin registro';
   }
 
   estadoClass(estado: string): string {
     if (estado === 'PRESENTE') return 'text-green-700 font-medium';
+    if (estado === 'TARDE') return 'text-amber-800 font-medium';
     if (estado === 'AUSENTE') return 'text-red-700 font-medium';
-    if (estado === 'TARDE') return 'text-amber-700 font-medium';
     return 'text-ink-muted';
   }
 

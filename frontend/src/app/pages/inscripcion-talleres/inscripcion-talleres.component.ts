@@ -1,6 +1,13 @@
 /**
- * Catálogo e inscripción de talleres para estudiantes.
- * Permite solicitar inscripción, completar ficha física y retirarse de talleres.
+ * =============================================================================
+ * app/pages/inscripcion-talleres/inscripcion-talleres.component.ts — Inscripción talleres
+ * =============================================================================
+ * Catálogo publicado e inscripción para estudiantes: validación de cupos/horarios,
+ * ficha física y seguimiento de solicitudes (pendiente/aceptado/rechazado).
+ * Rol: alumno — canInscribirseTalleres().
+ * Endpoints ApiService: getCatalogoTalleres, validarInscripcionTaller,
+ * getInscripcionesTallerPorAlumno, solicitarInscripcionTaller, retirarseDeTaller
+ * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -15,6 +22,7 @@ import {
   tallerSinProfesor,
 } from '../../shared/components/advertencias-inscripcion/advertencias-inscripcion.component';
 import { ValidacionInscripcionTaller } from '../../models/inscripcion-taller.model';
+import { requiereFichaFisica } from '../../shared/utils/taller-categoria.util';
 
 interface InscripcionTaller {
   id: number;
@@ -24,9 +32,6 @@ interface InscripcionTaller {
   taller?: { id: number; tipo: string; descripcion: string };
 }
 
-/**
- * Componente de inscripción: catálogo publicado, estado de solicitudes y flujo de confirmación.
- */
 @Component({
   selector: 'app-inscripcion-talleres',
   standalone: true,
@@ -153,6 +158,72 @@ interface InscripcionTaller {
           <p class="text-ink-muted py-6 text-center">No hay actividades publicadas en el catálogo</p>
         }
       </div>
+
+      @if (auth.canInscribirseTalleres() && alumnoId) {
+        @if (misPropuestas.length > 0) {
+          <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
+            <h2 class="font-bold text-ink mb-3">Mis propuestas a la directiva</h2>
+            <ul class="space-y-3">
+              @for (p of misPropuestas; track p.id) {
+                <li class="border border-line/60 rounded-lg p-3 text-sm">
+                  <div class="flex flex-wrap justify-between gap-2">
+                    <p class="font-medium text-ink">{{ p.tallerNombre }}</p>
+                    <span [class]="estadoPropuestaClass(p.estado)">{{ estadoPropuestaLabel(p.estado) }}</span>
+                  </div>
+                  @if (p.esActividadLibre) {
+                    <p class="text-xs text-violet-700 mt-1">Fuera de catálogo</p>
+                  }
+                  @if (p.horarioPropuesto) {
+                    <p class="text-ink-muted mt-1">Horario propuesto: {{ p.horarioPropuesto }}</p>
+                  }
+                  @if (p.estado === 'RECHAZADA' && p.motivoRechazo) {
+                    <p class="text-red-700 mt-1">Motivo: {{ p.motivoRechazo }}</p>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
+          <h2 class="font-bold text-ink mb-3">Proponer otra actividad (fuera del catálogo)</h2>
+          <p class="text-sm text-ink-muted mb-4">
+            Si la actividad que buscas no está en la lista, puedes proponerla aquí con nombre, horario y una breve descripción.
+            La propuesta llega a la directiva.
+          </p>
+          <div class="space-y-3 max-w-lg">
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Nombre de la actividad *</label>
+              <input type="text" [(ngModel)]="actividadLibreNombre"
+                     class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                     placeholder="Ej.: Ajedrez, Danza contemporánea" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Descripción (opcional)</label>
+              <textarea [(ngModel)]="actividadLibreDescripcion" rows="2"
+                        class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                        placeholder="Ej.: Taller de estrategia para estudiantes de enseñanza media"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Horario propuesto *</label>
+              <input type="text" [(ngModel)]="actividadLibreHorario"
+                     class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                     placeholder="Ej.: Jueves 17:00 - 18:30" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-ink mb-1">Mensaje para la directiva (opcional)</label>
+              <textarea [(ngModel)]="actividadLibreMensaje" rows="2"
+                        class="w-full border border-line rounded-lg px-3 py-2 text-sm"
+                        placeholder="Ej.: Tengo experiencia previa en esta actividad"></textarea>
+            </div>
+            <button type="button" (click)="enviarActividadLibre()"
+                    [disabled]="!puedeEnviarActividadLibre() || enviandoLibre"
+                    class="text-sm bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {{ enviandoLibre ? 'Enviando…' : 'Enviar propuesta a la directiva' }}
+            </button>
+          </div>
+        </section>
+      }
     </div>
 
     @if (tallerConfirmando) {
@@ -170,6 +241,7 @@ interface InscripcionTaller {
             }
           </div>
 
+          @if (pideFichaFisica(tallerConfirmando)) {
           <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
             <h4 class="font-semibold text-ink mb-2">Ficha del alumno (por taller)</h4>
             <p class="text-xs text-ink-muted mb-3">Completa tus datos físicos. El profesor los verá al revisar tu solicitud.</p>
@@ -198,6 +270,7 @@ interface InscripcionTaller {
               </label>
             </div>
           </div>
+          }
 
           @if (errorConfirmacion) {
             <p class="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3 mb-4">{{ errorConfirmacion }}</p>
@@ -249,25 +322,49 @@ interface InscripcionTaller {
   styles: []
 })
 export class InscripcionTalleresComponent implements OnInit {
+  /** Cliente HTTP: catálogo, validar, inscribir, retirar. */
   private apiService = inject(ApiService);
+  /** Id del alumno logueado. */
   auth = inject(AuthRoleService);
 
+  /** Catálogo de talleres publicados. */
   talleres: Taller[] = [];
+  /** Solicitudes previas del alumno (cualquier estado). */
   misSolicitudes: InscripcionTaller[] = [];
+  /** Resultado de validarInscripcionTaller por tallerId. */
   cuposPorTaller: Record<number, ValidacionInscripcionTaller> = {};
+  /** Id del alumno en sesión. */
   alumnoId: number | null = null;
+  /** Id del taller mientras se envía la solicitud (spinner). */
   enviando: number | null = null;
 
+  /** Taller abierto en el modal de confirmación + ficha. */
   tallerConfirmando: Taller | null = null;
+  /** Validación del taller que se está confirmando. */
   validacionActual: ValidacionInscripcionTaller | null = null;
+  /** Error al confirmar inscripción. */
   errorConfirmacion = '';
+  /** true mientras POST de inscripción está en curso. */
   confirmando = false;
+  /** Ficha física obligatoria al inscribirse. */
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
 
+  /** Solicitud abierta en el modal de retiro. */
   solicitudRetirando: InscripcionTaller | null = null;
+  /** Id de solicitud mientras se retira. */
   retirando: number | null = null;
+  /** Error al retirar inscripción. */
   errorRetiro = '';
 
+  /** Formulario de actividad libre para la directiva. */
+  actividadLibreNombre = '';
+  actividadLibreDescripcion = '';
+  actividadLibreHorario = '';
+  actividadLibreMensaje = '';
+  enviandoLibre = false;
+  misPropuestas: any[] = [];
+
+  /** Helper de advertencia: taller sin docente asignado. */
   readonly tallerSinProfesor = tallerSinProfesor;
 
   /** Carga catálogo y solicitudes previas del alumno logueado. */
@@ -276,9 +373,11 @@ export class InscripcionTalleresComponent implements OnInit {
     this.alumnoId = this.auth.currentUserId();
     if (this.alumnoId) {
       this.cargarMisSolicitudes();
+      this.cargarMisPropuestas();
     }
   }
 
+  /** Obtiene el catálogo de talleres publicados y dispara carga de cupos. */
   cargarTalleres() {
     this.apiService.getCatalogoTalleres().subscribe({
       next: (data) => {
@@ -289,6 +388,7 @@ export class InscripcionTalleresComponent implements OnInit {
     });
   }
 
+  /** Valida cupos y conflictos de horario para cada taller del catálogo. */
   cargarCupos() {
     if (!this.alumnoId) return;
     for (const taller of this.talleres) {
@@ -299,6 +399,7 @@ export class InscripcionTalleresComponent implements OnInit {
     }
   }
 
+  /** Recupera las solicitudes de inscripción previas del alumno logueado. */
   cargarMisSolicitudes() {
     if (!this.alumnoId) return;
     this.apiService.getInscripcionesTallerPorAlumno(this.alumnoId).subscribe({
@@ -393,22 +494,82 @@ export class InscripcionTalleresComponent implements OnInit {
   }
 
   fichaValida(): boolean {
+    if (!this.pideFichaFisica(this.tallerConfirmando)) return true;
     const { altura, peso, porcentajeGrasa } = this.fichaForm;
     return altura != null && altura >= 50 && altura <= 250
       && peso != null && peso >= 20 && peso <= 300
       && porcentajeGrasa != null && porcentajeGrasa >= 1 && porcentajeGrasa <= 60;
   }
 
-  /** Envía la solicitud de inscripción con la ficha física al backend. */
+  pideFichaFisica(taller: Taller | null | undefined): boolean {
+    return !!taller && requiereFichaFisica(taller.tipo ?? '');
+  }
+
+  cargarMisPropuestas(): void {
+    this.apiService.getMisPropuestasAlumno().subscribe({
+      next: (p) => (this.misPropuestas = p ?? []),
+      error: () => (this.misPropuestas = []),
+    });
+  }
+
+  puedeEnviarActividadLibre(): boolean {
+    return this.actividadLibreNombre.trim().length >= 2 && this.actividadLibreHorario.trim().length >= 3;
+  }
+
+  enviarActividadLibre(): void {
+    if (!this.puedeEnviarActividadLibre() || !this.alumnoId) return;
+    this.enviandoLibre = true;
+    this.apiService
+      .proponerActividadLibreAlumno({
+        actividadNombre: this.actividadLibreNombre.trim(),
+        actividadDescripcion: this.actividadLibreDescripcion.trim() || undefined,
+        horarioPropuestoTexto: this.actividadLibreHorario.trim(),
+        mensajeApoderado: this.actividadLibreMensaje.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.enviandoLibre = false;
+          this.actividadLibreNombre = '';
+          this.actividadLibreDescripcion = '';
+          this.actividadLibreHorario = '';
+          this.actividadLibreMensaje = '';
+          alert('Propuesta enviada a la directiva.');
+          this.cargarMisPropuestas();
+        },
+        error: (err) => {
+          this.enviandoLibre = false;
+          alert(err?.error?.message || 'No se pudo enviar la propuesta');
+        },
+      });
+  }
+
+  estadoPropuestaLabel(estado: string): string {
+    if (estado === 'PENDIENTE') return 'Pendiente';
+    if (estado === 'ACEPTADA') return 'Aceptada';
+    if (estado === 'RECHAZADA') return 'Rechazada';
+    return estado;
+  }
+
+  estadoPropuestaClass(estado: string): string {
+    if (estado === 'PENDIENTE') return 'text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded';
+    if (estado === 'ACEPTADA') return 'text-xs text-green-800 bg-green-100 px-2 py-0.5 rounded';
+    if (estado === 'RECHAZADA') return 'text-xs text-red-800 bg-red-100 px-2 py-0.5 rounded';
+    return 'text-xs text-ink-muted';
+  }
+
+  /** Envía la solicitud de inscripción; ficha solo en talleres deportivos. */
   confirmarInscripcion() {
     if (!this.tallerConfirmando || !this.alumnoId || !this.validacionActual?.puedeInscribirse || !this.fichaValida()) return;
     this.confirmando = true;
-    this.apiService.solicitarInscripcionTaller(this.alumnoId, this.tallerConfirmando.id, {
-      altura: Number(this.fichaForm.altura),
-      peso: Number(this.fichaForm.peso),
-      porcentajeGrasa: Number(this.fichaForm.porcentajeGrasa),
-      sedentario: this.fichaForm.sedentario,
-    }).subscribe({
+    const ficha = this.pideFichaFisica(this.tallerConfirmando)
+      ? {
+          altura: Number(this.fichaForm.altura),
+          peso: Number(this.fichaForm.peso),
+          porcentajeGrasa: Number(this.fichaForm.porcentajeGrasa),
+          sedentario: this.fichaForm.sedentario,
+        }
+      : null;
+    this.apiService.solicitarInscripcionTaller(this.alumnoId, this.tallerConfirmando.id, ficha).subscribe({
       next: () => {
         this.confirmando = false;
         this.cerrarConfirmacion();
