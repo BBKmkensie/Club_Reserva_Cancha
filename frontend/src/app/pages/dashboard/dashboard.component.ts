@@ -1,7 +1,4 @@
-/**
- * Página principal del sistema tras el login.
- * Muestra catálogo de talleres, notificaciones, asignaciones pendientes y estadísticas según el rol.
- */
+
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -11,13 +8,17 @@ import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { NotificacionPollService } from '../../shared/services/notificacion-poll.service';
 import { Subscription } from 'rxjs';
 import { estiloTarjetaTaller, EstiloTarjetaTaller } from '../../shared/utils/taller-tarjeta.util';
+import {
+  CategoriaTallerId,
+  CategoriaTallerOption,
+  CATEGORIAS_TALLER,
+  categoriaDeTaller,
+  categoriasDisponiblesParaTalleres,
+  filtrarTalleresPorCategoria,
+} from '../../shared/utils/taller-categoria.util';
 
 interface CardTaller extends EstiloTarjetaTaller {}
 
-/**
- * Dashboard adaptativo: vista de alumno (mis talleres), profesor (asignaciones/inscripciones)
- * o coordinación (estadísticas y gestión de actividades).
- */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -81,25 +82,25 @@ interface CardTaller extends EstiloTarjetaTaller {}
 
         @if (auth.canInscribirseTalleres() && alumnoId) {
           @if (notificaciones.length > 0) {
-            <div class="bg-surface rounded-xl shadow-lg p-6 border-2 border-line">
-              <div class="flex items-center justify-between mb-3">
-                <h2 class="text-xl font-bold text-ink">
+            <div class="bg-surface rounded-xl shadow-lg p-4 sm:p-6 border-2 border-line min-w-0">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <h2 class="text-lg sm:text-xl font-bold text-ink flex flex-wrap items-center gap-2">
                   Notificaciones
                   @if (notificacionesNoLeidas > 0) {
-                    <span class="ml-2 bg-palette-magenta text-white text-xs px-2 py-0.5 rounded-full">{{ notificacionesNoLeidas }} nueva(s)</span>
+                    <span class="bg-palette-magenta text-white text-xs px-2 py-0.5 rounded-full">{{ notificacionesNoLeidas }} nueva(s)</span>
                   }
                 </h2>
                 @if (notificacionesNoLeidas > 0) {
-                  <button (click)="marcarTodasLeidas()" class="text-sm text-primary-500 hover:underline">Marcar todas como leídas</button>
+                  <button (click)="marcarTodasLeidas()" class="text-sm text-primary-500 hover:underline self-start sm:self-auto shrink-0">Marcar todas como leídas</button>
                 }
               </div>
               <ul class="space-y-2 max-h-48 overflow-y-auto">
                 @for (n of notificaciones; track n.id) {
-                  <li class="p-3 rounded-lg border text-sm cursor-pointer dash-notif"
+                  <li class="p-3 rounded-lg border text-sm cursor-pointer dash-notif min-w-0"
                       [class.dash-notif--leida]="n.leida"
                       (click)="marcarLeida(n)">
-                    <p class="font-semibold text-ink">{{ n.titulo }}</p>
-                    <p class="text-ink-muted">{{ n.mensaje }}</p>
+                    <p class="font-semibold text-ink break-words">{{ n.titulo }}</p>
+                    <p class="text-ink-muted break-words">{{ n.mensaje }}</p>
                     <p class="text-xs text-ink-muted mt-1">{{ n.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
                   </li>
                 }
@@ -126,6 +127,37 @@ interface CardTaller extends EstiloTarjetaTaller {}
         </p>
       </div>
 
+      @if (mostrarBarraCategorias()) {
+        <div class="bg-surface rounded-xl shadow p-4 sm:p-5 border border-line">
+          <p class="text-sm font-medium text-ink-secondary mb-3 text-center sm:text-left">Filtrar por categoría</p>
+          <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+            <button type="button" (click)="seleccionarCategoria('todas')"
+                    [class]="claseChipCategoria('todas')">
+              <span>📋</span>
+              <span>Todas</span>
+            </button>
+            @for (cat of categoriasDisponibles(); track cat.id) {
+              <button type="button" (click)="seleccionarCategoria(cat.id)"
+                      [class]="claseChipCategoria(cat.id)">
+                <span>{{ cat.icon }}</span>
+                <span>{{ cat.label }}</span>
+              </button>
+            }
+          </div>
+          @if (categoriaFiltro !== 'todas') {
+            <p class="text-xs text-ink-muted mt-3 text-center sm:text-left">
+              Mostrando {{ totalTalleresFiltrados() }}
+              {{ totalTalleresFiltrados() === 1 ? 'taller' : 'talleres' }} en
+              <strong>{{ etiquetaCategoriaActiva() }}</strong>.
+              <button type="button" (click)="seleccionarCategoria('todas')"
+                      class="ml-1 text-primary-600 hover:underline font-medium">
+                Ver todas
+              </button>
+            </p>
+          }
+        </div>
+      }
+
       @if (auth.canInscribirseTalleres() && alumnoId && tieneInscripcionesActivas()) {
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-primary-50 border border-primary-200 rounded-xl p-4">
           <p class="text-sm text-ink-secondary">
@@ -144,52 +176,70 @@ interface CardTaller extends EstiloTarjetaTaller {}
 
       @if (mostrarSeccionMisTalleres()) {
         <h2 class="text-lg sm:text-xl font-bold text-ink">Mis talleres</h2>
+        @if (talleresInscritosFiltrados.length > 0) {
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 min-w-0">
-          @for (act of talleresInscritosVisibles; track act.id) {
+          @for (act of talleresInscritosFiltrados; track act.id) {
             <ng-container *ngTemplateOutlet="tarjetaActividad; context: { $implicit: act }"></ng-container>
           }
         </div>
+        } @else if (categoriaFiltro !== 'todas') {
+          <p class="text-sm text-ink-muted py-4">Ninguno de tus talleres inscritos coincide con esta categoría.</p>
+        }
       }
 
       @if (mostrarSeccionOtrosTalleres()) {
         <h2 class="text-lg sm:text-xl font-bold text-ink mt-2">Otros talleres disponibles</h2>
+        @if (otrosTalleresFiltrados.length > 0) {
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 min-w-0">
-          @for (act of otrosTalleresVisibles; track act.id) {
+          @for (act of otrosTalleresFiltrados; track act.id) {
             <ng-container *ngTemplateOutlet="tarjetaActividad; context: { $implicit: act }"></ng-container>
           }
         </div>
+        } @else if (categoriaFiltro !== 'todas') {
+          <p class="text-sm text-ink-muted py-4">No hay otros talleres en esta categoría.</p>
+        }
       }
 
       @if (mostrarSeccionCatalogoCompleto()) {
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
-        @for (act of actividadesPublicadas; track act.id) {
+        @for (act of actividadesPublicadasFiltradas; track act.id) {
           <ng-container *ngTemplateOutlet="tarjetaActividad; context: { $implicit: act }"></ng-container>
         }
 
-        @if (actividadesPublicadas.length === 0 && !auth.isProfesor()) {
+        @if (actividadesPublicadasFiltradas.length === 0 && categoriaFiltro !== 'todas' && !auth.isProfesor()) {
+          <div class="col-span-full text-center text-ink-muted py-12 bg-page rounded-xl border border-dashed border-line">
+            No hay talleres en esta categoría.
+            <button type="button" (click)="seleccionarCategoria('todas')"
+                    class="block mx-auto mt-3 text-primary-600 hover:underline font-medium">
+              Ver todas las categorías
+            </button>
+          </div>
+        }
+
+        @if (actividadesPublicadasFiltradas.length === 0 && categoriaFiltro === 'todas' && !auth.isProfesor()) {
           <div class="col-span-full text-center text-ink-muted py-12 bg-page rounded-xl border border-dashed border-line">
             No hay actividades publicadas en el catálogo.
           </div>
         }
 
-        @if (auth.isProfesor() && actividadesPublicadas.length === 0) {
+        @if (auth.isProfesor() && actividadesPublicadasFiltradas.length === 0 && categoriaFiltro === 'todas') {
           <div class="col-span-full text-center text-ink-muted py-12 bg-page rounded-xl border border-dashed border-line">
             No tienes un taller asignado o publicado aún.
           </div>
         }
 
-        @if (!auth.isProfesor()) {
-        <a [routerLink]="auth.isLoggedIn() ? '/salidas' : '/login'"
+        @if (auth.isLoggedIn() && !auth.isProfesor() && mostrarTarjetaSalidas()) {
+        <a [routerLink]="rutaSalidas()"
            class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
           <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
           <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Salidas</h2>
-          <p class="text-purple-100 text-sm mb-4">Gestiona las salidas programadas</p>
-          @if (auth.isLoggedIn()) {
-            <div class="text-purple-200">
-              <div class="text-2xl font-bold">{{ stats.salidas }}</div>
-              <div class="text-sm">Salidas programadas</div>
-            </div>
-          }
+          <p class="text-purple-100 text-sm mb-4">
+            {{ auth.canInscribirseSalidas() ? 'Salidas de tus talleres inscritos' : 'Gestiona las salidas programadas' }}
+          </p>
+          <div class="text-purple-200">
+            <div class="text-2xl font-bold">{{ stats.salidas }}</div>
+            <div class="text-sm">Salidas programadas</div>
+          </div>
         </a>
         }
       </div>
@@ -197,18 +247,18 @@ interface CardTaller extends EstiloTarjetaTaller {}
 
       @if (mostrarSeccionMisTalleres() || mostrarSeccionOtrosTalleres()) {
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
-          @if (!auth.isProfesor()) {
-          <a [routerLink]="auth.isLoggedIn() ? '/salidas' : '/login'"
+          @if (auth.isLoggedIn() && !auth.isProfesor() && mostrarTarjetaSalidas()) {
+          <a [routerLink]="rutaSalidas()"
              class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
             <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
             <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Salidas</h2>
-            <p class="text-purple-100 text-sm mb-4">Gestiona las salidas programadas</p>
-            @if (auth.isLoggedIn()) {
-              <div class="text-purple-200">
-                <div class="text-2xl font-bold">{{ stats.salidas }}</div>
-                <div class="text-sm">Salidas programadas</div>
-              </div>
-            }
+            <p class="text-purple-100 text-sm mb-4">
+              {{ auth.canInscribirseSalidas() ? 'Salidas de tus talleres inscritos' : 'Gestiona las salidas programadas' }}
+            </p>
+            <div class="text-purple-200">
+              <div class="text-2xl font-bold">{{ stats.salidas }}</div>
+              <div class="text-sm">Salidas programadas</div>
+            </div>
           </a>
           }
         </div>
@@ -282,33 +332,53 @@ interface CardTaller extends EstiloTarjetaTaller {}
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  
   private apiService = inject(ApiService);
+  
   private router = inject(Router);
+  
   private notificacionPoll = inject(NotificacionPollService);
+  
   auth = inject(AuthRoleService);
+  
   private pollSub?: Subscription;
 
+  
   stats = { talleres: 0, alumnos: 0, profesores: 0, reservas: 0, salidas: 0 };
 
+  
   talleres: any[] = [];
   alumnos: any[] = [];
+  
   inscripcionesPorTaller = new Map<number, number>();
+  
   alumnoId: number | null = null;
+  
   tallerIdProfesor: number | null = null;
+  
   resumenProfesor: any = null;
+  
   notificaciones: any[] = [];
   notificacionesNoLeidas = 0;
+  
   actividadesPublicadas: any[] = [];
+  
   catalogoCompleto: any[] = [];
+  
   misInscripciones: any[] = [];
+  
   mostrarOtrosTalleres = false;
+  
   asignacionesPendientes: any[] = [];
+  
+  categoriaFiltro: CategoriaTallerId = 'todas';
 
+  
   estiloTarjeta(tipo: string): CardTaller {
     return estiloTarjetaTaller(tipo);
   }
 
-  /** Carga catálogo, inscripciones, notificaciones y datos según el rol del usuario. */
+  
   ngOnInit() {
     this.alumnoId = this.auth.currentUserId();
     this.tallerIdProfesor = this.auth.currentTallerId();
@@ -336,7 +406,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Marca una notificación individual como leída vía el servicio de polling. */
+  
   marcarLeida(n: any): void {
     if (!this.alumnoId || n.leida) return;
     this.notificacionPoll.marcarLeida(n.id);
@@ -378,6 +448,67 @@ export class DashboardComponent implements OnInit, OnDestroy {
   get otrosTalleresVisibles(): any[] {
     const ids = this.tallerIdsInscritos();
     return this.catalogoCompleto.filter((a) => !ids.has(Number(a.id)));
+  }
+
+  get talleresInscritosFiltrados(): any[] {
+    return this.aplicarFiltroCategoria(this.talleresInscritosVisibles);
+  }
+
+  get otrosTalleresFiltrados(): any[] {
+    return this.aplicarFiltroCategoria(this.otrosTalleresVisibles);
+  }
+
+  get actividadesPublicadasFiltradas(): any[] {
+    return this.aplicarFiltroCategoria(this.actividadesPublicadas);
+  }
+
+  mostrarBarraCategorias(): boolean {
+    if (this.auth.isProfesor()) return false;
+    return this.talleresEnVistaSinFiltro().length > 0;
+  }
+
+  categoriasDisponibles(): CategoriaTallerOption[] {
+    return categoriasDisponiblesParaTalleres(this.talleresEnVistaSinFiltro());
+  }
+
+  seleccionarCategoria(id: CategoriaTallerId): void {
+    this.categoriaFiltro = id;
+  }
+
+  claseChipCategoria(id: CategoriaTallerId): string {
+    const base =
+      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition';
+    if (this.categoriaFiltro === id) {
+      return `${base} bg-primary-600 text-white border-primary-600 shadow-sm`;
+    }
+    return `${base} bg-page text-ink-secondary border-line hover:border-primary-300 hover:bg-primary-50`;
+  }
+
+  totalTalleresFiltrados(): number {
+    if (this.mostrarSeccionMisTalleres()) {
+      let n = this.talleresInscritosFiltrados.length;
+      if (this.mostrarOtrosTalleres) n += this.otrosTalleresFiltrados.length;
+      return n;
+    }
+    return this.actividadesPublicadasFiltradas.length;
+  }
+
+  etiquetaCategoriaActiva(): string {
+    if (this.categoriaFiltro === 'todas') return 'Todas';
+    return CATEGORIAS_TALLER.find((c) => c.id === this.categoriaFiltro)?.label ?? 'Categoría';
+  }
+
+  private aplicarFiltroCategoria(lista: any[]): any[] {
+    return filtrarTalleresPorCategoria(lista, this.categoriaFiltro);
+  }
+
+  talleresEnVistaSinFiltro(): any[] {
+    if (this.mostrarSeccionMisTalleres()) {
+      const acts = [...this.talleresInscritosVisibles];
+      if (this.mostrarOtrosTalleres) acts.push(...this.otrosTalleresVisibles);
+      return acts;
+    }
+    return this.actividadesPublicadas;
   }
 
   mostrarSeccionMisTalleres(): boolean {
@@ -432,7 +563,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.alumnos.filter((a) => Number(a?.tallerId) === tallerId).length;
   }
 
-  /** Obtiene talleres publicados, estadísticas globales e inscripciones del alumno. */
+  
   loadData() {
     const asList = (data: unknown): any[] => (Array.isArray(data) ? data : []);
 
@@ -458,6 +589,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.auth.isProfesor()) return;
 
+    
+    if (this.auth.canInscribirseSalidas() && this.alumnoId) {
+      this.apiService.getSalidasPublicadas(undefined, this.alumnoId).subscribe({
+        next: (data) => (this.stats.salidas = asList(data).length),
+      });
+      return;
+    }
+
     this.apiService.getTalleres().subscribe({
       next: (data) => {
         this.talleres = asList(data);
@@ -479,6 +618,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.apiService.getSalidas().subscribe({
       next: (data) => (this.stats.salidas = asList(data).length),
     });
+  }
+
+  
+  rutaSalidas(): string {
+    return this.auth.canInscribirseSalidas() ? '/mis-salidas' : '/salidas';
+  }
+
+  mostrarTarjetaSalidas(): boolean {
+    if (this.auth.canInscribirseSalidas()) {
+      const aceptadas = this.misInscripciones.some(
+        (i) => String(i.estado ?? '').toUpperCase() === 'ACEPTADO',
+      );
+      return aceptadas || this.stats.salidas > 0;
+    }
+    return this.auth.isCoordinacion() || this.auth.isAdmin();
   }
 
   private filtrarActividadesParaUsuario(actividades: any[]): any[] {
@@ -529,12 +683,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Navega al detalle de un taller por su identificador. */
+  
   navegarATallerPorId(id: number) {
     this.router.navigate(['/taller', id]);
   }
 
-  /** Acepta o rechaza una asignación de actividad pendiente del profesor. */
+  
   responderAsignacion(asignacionId: number, acepta: boolean) {
     const profesorId = this.auth.currentUserId();
     if (!profesorId) return;
