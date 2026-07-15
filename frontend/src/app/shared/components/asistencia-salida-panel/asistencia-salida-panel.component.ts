@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../services/api.service';
 import { AlumnoPrivacidadService } from '../../services/alumno-privacidad.service';
 import { environment } from '../../../../environments/environment';
+import { prepararImagenEvidencia } from '../../utils/imagen-evidencia.util';
 
 interface RegistroUI {
   alumnoId: number;
@@ -103,6 +104,7 @@ interface RegistroUI {
             <label class="block text-sm font-medium text-ink-secondary mb-1">Imagen de evidencia (lista con nombres)</label>
             <input type="file" accept="image/*" (change)="onArchivoImagen($event)"
                    class="text-sm text-ink-muted" />
+            <p class="text-xs text-ink-muted mt-1">JPG, PNG, WebP o AVIF. Se comprime automáticamente al guardar.</p>
             @if (previewImagen) {
               <img [src]="previewImagen" alt="Vista previa" class="mt-2 max-h-48 rounded-lg border border-line" />
             }
@@ -247,21 +249,21 @@ export class AsistenciaSalidaPanelComponent implements OnInit, OnChanges {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      this.error = 'Seleccione un archivo de imagen';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      this.previewImagen = result;
-      const base64 = result.split(',')[1] ?? result;
-      this.archivoImagen = {
-        base64,
-        mimeType: file.type as 'image/jpeg' | 'image/png' | 'image/webp',
-      };
-    };
-    reader.readAsDataURL(file);
+    this.error = '';
+    this.cargando = true;
+    prepararImagenEvidencia(file)
+      .then((payload) => {
+        this.previewImagen = `data:${payload.mimeType};base64,${payload.base64}`;
+        this.archivoImagen = payload;
+        this.cargando = false;
+      })
+      .catch((err: Error) => {
+        this.archivoImagen = null;
+        this.previewImagen = null;
+        this.cargando = false;
+        this.error = err.message || 'No se pudo procesar la imagen';
+        input.value = '';
+      });
   }
 
   guardar(): void {
@@ -303,7 +305,7 @@ export class AsistenciaSalidaPanelComponent implements OnInit, OnChanges {
         next: () => finalizar(),
         error: (err) => {
           this.cargando = false;
-          this.error = err?.error?.message || 'No se pudo subir la imagen';
+          this.error = this.mensajeErrorImagen(err) || 'No se pudo subir la imagen';
         },
       });
     } else {
@@ -324,5 +326,14 @@ export class AsistenciaSalidaPanelComponent implements OnInit, OnChanges {
         this.error = err?.error?.message || 'No se pudo cerrar la asistencia';
       },
     });
+  }
+
+  private mensajeErrorImagen(err: any): string {
+    if (err?.status === 413) {
+      return 'La imagen es demasiado pesada. Selecciónala de nuevo; se comprimirá automáticamente.';
+    }
+    const msg = err?.error?.message;
+    if (Array.isArray(msg)) return msg.join(', ');
+    return typeof msg === 'string' ? msg : '';
   }
 }

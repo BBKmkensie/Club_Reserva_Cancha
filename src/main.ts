@@ -82,6 +82,10 @@ async function bootstrap() {
   // A partir de aquí Nest conoce todos los controllers, services y la BD.
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Imágenes de evidencia van en JSON base64; el límite por defecto (100 kb) es insuficiente.
+  app.useBodyParser('json', { limit: '12mb' });
+  app.useBodyParser('urlencoded', { limit: '12mb', extended: true });
+
   // ---------- Validación global de todas las peticiones ----------
   // ValidationPipe revisa el body contra class-validator en los DTOs.
   app.useGlobalPipes(
