@@ -397,12 +397,12 @@ export class InscripcionTallerService implements OnModuleInit {
         fichaDto.porcentajeGrasa == null;
       if (incompleta) {
         const previa = await this.fichaAlumnoService.obtenerUltimaDelAlumno(dto.alumnoId);
-        if (previa.encontrada) {
+        if (previa.encontrada && previa.altura != null && previa.peso != null && previa.porcentajeGrasa != null) {
           fichaDto = {
-            altura: previa.altura,
-            peso: previa.peso,
-            porcentajeGrasa: previa.porcentajeGrasa,
-            sedentario: previa.sedentario,
+            altura: Number(previa.altura),
+            peso: Number(previa.peso),
+            porcentajeGrasa: Number(previa.porcentajeGrasa),
+            sedentario: previa.sedentario ?? false,
           };
         }
       }
