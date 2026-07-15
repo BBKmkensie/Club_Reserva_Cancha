@@ -40,6 +40,7 @@ import {
 
 // defaultPassword / hashPassword = clave temporal '12345' y PBKDF2.
 import { defaultPassword, hashPassword } from '../common/password.util';
+import { normalizarEmail } from '../common/email-normalize.util';
 
 /**
  * AlumnoService:
@@ -70,7 +71,7 @@ export class AlumnoService {
     const alumnoData: any = {
       nombre: createAlumnoDto.nombre,
       rut: createAlumnoDto.rut,
-      email: createAlumnoDto.email,
+      email: normalizarEmail(createAlumnoDto.email),
       telefono: createAlumnoDto.telefono,
       edad: createAlumnoDto.edad,
       tallerId: createAlumnoDto.tallerId ?? null,
@@ -148,6 +149,9 @@ export class AlumnoService {
       ...rest
     } = updateAlumnoDto;
     Object.assign(alumno, rest);
+    if (updateAlumnoDto.email !== undefined) {
+      alumno.email = normalizarEmail(updateAlumnoDto.email) ?? '';
+    }
     if (tallerId !== undefined) alumno.tallerId = tallerId ?? null;
     await this.aplicarApoderadoOpcional(alumno, updateAlumnoDto, id);
     return await this.alumnoRepository.save(alumno);
@@ -199,7 +203,7 @@ export class AlumnoService {
 
     target.apoderadoNombre = nombre;
     target.apoderadoRut = rut;
-    target.apoderadoEmail = dto.apoderadoEmail?.trim() || null;
+    target.apoderadoEmail = normalizarEmail(dto.apoderadoEmail) ?? null;
     target.apoderadoTelefono = dto.apoderadoTelefono?.trim() || null;
 
     const t = target as Record<string, unknown>;

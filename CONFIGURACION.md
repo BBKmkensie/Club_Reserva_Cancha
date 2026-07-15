@@ -80,7 +80,27 @@ npm run start:dev
 6. Deberías ver: `Email habilitado (sandbox.smtp.mailtrap.io:2525)`.
 7. Dispara una acción que envíe correo (por ejemplo, aprobar una inscripción) y revisa la bandeja en Mailtrap.
 
-### Producción
+### Producción (Azure App Service — clubagenda)
+
+En **Azure Portal** → App Service **clubagenda** → **Settings** → **Environment variables** (Application settings), agrega:
+
+```env
+MAIL_ENABLED=true
+SMTP_HOST=smtp.tuproveedor.cl
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM=Club Agenda <noreply@tudominio.cl>
+FRONTEND_URL=https://clubagenda-fbenbceetecuhjbs.chilecentral-01.azurewebsites.net
+```
+
+Reinicia la app. Comprueba en el navegador:
+
+`GET https://tu-dominio.azurewebsites.net/health/mail`
+
+Debe responder `{ "ok": true, "mailEnabled": true }`. Si `mailEnabled` es `false`, los correos **no salen** (solo notificaciones en la app).
+
+### Producción (genérico)
 
 Usa las credenciales de tu proveedor real (SendGrid, Amazon SES, servidor SMTP institucional, etc.) y un remitente válido en `SMTP_FROM`.
 

@@ -13,6 +13,7 @@
 
 // Injectable = "esta clase puede inyectarse en otros sitios (DI de Nest)".
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * AppService:
@@ -20,11 +21,20 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class AppService {
+  constructor(private configService: ConfigService) {}
+
   /**
    * getHello = devuelve un mensaje simple.
    * Usado por GET /health para confirmar que el proceso Node responde.
    */
   getHello(): string {
     return 'Hello World!';
+  }
+
+  getHealthStatus(): { ok: true; mailEnabled: boolean } {
+    return {
+      ok: true,
+      mailEnabled: this.configService.get<boolean>('mail.enabled') ?? false,
+    };
   }
 }

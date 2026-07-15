@@ -626,7 +626,8 @@ export class InscripcionTallerService implements OnModuleInit {
     await this.notificacionService.crear(
       guardada.alumnoId,
       'Inscripción aceptada',
-      `¡Felicitaciones! Fuiste aceptado en el taller "${nombreTaller}".`,
+      `¡Felicitaciones! Fuiste aceptado en el taller "${nombreTaller}".` +
+        (guardada.taller ? ` Horario: ${this.formatHorarioTaller(guardada.taller)}.` : ''),
     );
     await this.mailService.inscripcionTallerApoderado(
       guardada.alumno?.apoderadoEmail,

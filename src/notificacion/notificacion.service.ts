@@ -11,7 +11,7 @@
  * Coordinadores = Admin con rol super_admin o directiva.
  * =============================================================================
  */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { JwtPayload } from '../auth/auth.types';
 import { NotificacionScope, resolveNotificacionScope } from './notificacion-scope.util';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -27,6 +27,8 @@ import { NotificacionStreamService } from './notificacion-stream.service';
 /** Creación, consulta y gestión de notificaciones por rol de usuario. */
 @Injectable()
 export class NotificacionService {
+  private readonly logger = new Logger(NotificacionService.name);
+
   constructor(
     @InjectRepository(Notificacion)
     private repo: Repository<Notificacion>,
@@ -61,8 +63,13 @@ export class NotificacionService {
     const guardada = await this.repo.save(notificacion);
 
     const alumno = await this.alumnoRepo.findOne({ where: { id: alumnoId } });
-    if (alumno?.email) {
-      await this.mailService.notificarAlumno(alumno.email, titulo, mensaje);
+    const email = alumno?.email?.trim();
+    if (email) {
+      await this.mailService.notificarAlumno(email, titulo, mensaje);
+    } else {
+      this.logger.warn(
+        `Alumno ${alumnoId} sin email registrado; notificación "${titulo}" solo en la app`,
+      );
     }
     this.streamService.emitAlumno(alumnoId, guardada);
 
