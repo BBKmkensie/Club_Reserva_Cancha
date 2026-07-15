@@ -289,9 +289,9 @@ export class InscripcionSalidasComponent implements OnInit {
   /** Al elegir profesor, rellena de inmediato su taller. */
   sincronizarDesdeProfesor(): void {
     if (this.sincronizandoAsignacion) return;
-    const profesorId = this.asignarForm.get('profesorId')!.value;
-    if (profesorId == null || profesorId === '') return;
-    const profesor = this.profesores.find((p) => Number(p.id) === Number(profesorId));
+    const profesorId = Number(this.asignarForm.get('profesorId')!.value);
+    if (!profesorId) return;
+    const profesor = this.profesores.find((p) => Number(p.id) === profesorId);
     const tallerId = Number(profesor?.tallerId ?? profesor?.taller?.id);
     if (!tallerId) return;
     if (Number(this.asignarForm.get('tallerId')!.value) === tallerId) return;
@@ -303,9 +303,9 @@ export class InscripcionSalidasComponent implements OnInit {
   /** Al elegir taller, rellena de inmediato su profesor. */
   sincronizarDesdeTaller(): void {
     if (this.sincronizandoAsignacion) return;
-    const tallerId = this.asignarForm.get('tallerId')!.value;
-    if (tallerId == null || tallerId === '') return;
-    const taller = this.talleres.find((t) => Number(t.id) === Number(tallerId));
+    const tallerId = Number(this.asignarForm.get('tallerId')!.value);
+    if (!tallerId) return;
+    const taller = this.talleres.find((t) => Number(t.id) === tallerId);
     const profesor = this.profesorDeTaller(taller ?? { id: tallerId });
     if (!profesor) return;
     if (Number(this.asignarForm.get('profesorId')!.value) === Number(profesor.id)) return;
