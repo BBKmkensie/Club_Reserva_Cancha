@@ -166,7 +166,8 @@ export class SalidasComponent implements OnInit {
   puedeEditarAsistencia(salidaId: number): boolean {
     if (!this.auth.isProfesor() || !this.auth.currentUserId()) return false;
     const salida = this.salidas.find((s) => Number(s.id) === Number(salidaId));
-    return Number(salida?.profesorId) === Number(this.auth.currentUserId());
+    const responsableId = salida?.profesorId ?? salida?.profesor?.id;
+    return Number(responsableId) === Number(this.auth.currentUserId());
   }
 
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }

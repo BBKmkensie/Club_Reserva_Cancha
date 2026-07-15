@@ -393,7 +393,8 @@ export class InscripcionSalidasComponent implements OnInit {
   }
 
   esProfesorSalida(s: Salida): boolean {
-    return Number(s.profesorId) === Number(this.auth.currentUserId());
+    const responsableId = s.profesorId ?? s.profesor?.id;
+    return Number(responsableId) === Number(this.auth.currentUserId());
   }
 
   onSeleccionAsistencia(salidaId: number | null): void {
