@@ -48,16 +48,28 @@ interface RegistroUI {
             Esta salida no tiene profesor responsable. Solo el profesor asignado puede pasar lista.
           </p>
         } @else {
-          <button type="button" (click)="iniciar()" [disabled]="cargando"
+          @if (datos?.resumen?.inscritos > 0) {
+            <p class="text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg p-2 mb-2">
+              Hay {{ datos.resumen.inscritos }} alumno(s) inscrito(s) en esta salida.
+            </p>
+          } @else {
+            <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
+              Aún no hay alumnos inscritos en esta salida. Los estudiantes deben inscribirse desde «Mis salidas».
+            </p>
+          }
+          <button type="button" (click)="iniciar()" [disabled]="cargando || !(datos?.resumen?.inscritos > 0)"
                   class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
             Iniciar lista de asistencia
           </button>
-          <p class="text-xs text-ink-muted mt-2">Se cargarán los alumnos inscritos en esta salida.</p>
+          <p class="text-xs text-ink-muted mt-2">Carga a los alumnos inscritos para marcar presentes o ausentes.</p>
         }
       }
 
       @if (!cargando && registros.length === 0 && !modoEdicion) {
         <p class="text-sm text-ink-muted">Aún no hay lista de asistencia registrada.</p>
+        @if (datos?.salida?.profesor?.nombre) {
+          <p class="text-xs text-ink-muted mt-1">Profesor responsable: {{ datos.salida.profesor.nombre }}</p>
+        }
       }
 
       @if (registros.length) {

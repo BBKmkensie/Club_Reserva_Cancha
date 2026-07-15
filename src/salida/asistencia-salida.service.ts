@@ -129,6 +129,7 @@ export class AsistenciaSalidaService implements OnModuleInit {
 
     const presentes = registros.filter((r) => r.estado === 'PRESENTE').length;
     const ausentes = registros.filter((r) => r.estado === 'AUSENTE').length;
+    const inscritosCount = await this.inscripcionRepo.count({ where: { salidaId } });
 
     return {
       salida: {
@@ -151,6 +152,7 @@ export class AsistenciaSalidaService implements OnModuleInit {
         total: registros.length,
         presentes,
         ausentes,
+        inscritos: inscritosCount,
       },
       registros: registros.map((r) => ({
         id: r.id,

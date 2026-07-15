@@ -26,7 +26,11 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
       <section id="control-asistencia" class="bg-primary-50 rounded-xl shadow-lg p-6 border-2 border-primary-300">
         <h2 class="text-xl font-bold text-primary-900 mb-1">Asistencia e imagen de evidencia</h2>
         <p class="text-sm text-ink-muted mb-4">
-          Selecciona una salida para ver la lista de alumnos inscritos, quién asistió y la foto registrada por el profesor.
+          @if (auth.isProfesor()) {
+            Si eres el profesor responsable, puedes iniciar la lista, marcar asistencia y subir la imagen de evidencia.
+          } @else {
+            Selecciona una salida para ver la lista de alumnos inscritos, quién asistió y la foto registrada por el profesor.
+          }
         </p>
         @if (errorCarga) {
           <p class="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-2 mb-3">{{ errorCarga }}</p>
@@ -50,9 +54,16 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
             }
           </select>
           @if (salidaSeleccionada) {
+            @if (auth.isProfesor() && !puedeEditarAsistencia(salidaSeleccionada)) {
+              <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
+                Solo el profesor asignado a esta salida puede registrar la asistencia.
+                Usa una salida donde aparezcas como responsable o ve a <strong>Abrir Salidas</strong>.
+              </p>
+            }
             <app-asistencia-salida-panel
               [salidaId]="salidaSeleccionada"
-              [modoEdicion]="false" />
+              [profesorId]="puedeEditarAsistencia(salidaSeleccionada) ? auth.currentUserId() : null"
+              [modoEdicion]="puedeEditarAsistencia(salidaSeleccionada)" />
           } @else {
             <p class="text-sm text-primary-800">Selecciona una salida arriba para ver la asistencia.</p>
           }
@@ -150,6 +161,12 @@ export class SalidasComponent implements OnInit {
   scrollAsistencia(): void {
     if (typeof document === 'undefined') return;
     document.getElementById('control-asistencia')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  puedeEditarAsistencia(salidaId: number): boolean {
+    if (!this.auth.isProfesor() || !this.auth.currentUserId()) return false;
+    const salida = this.salidas.find((s) => Number(s.id) === Number(salidaId));
+    return Number(salida?.profesorId) === Number(this.auth.currentUserId());
   }
 
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }
