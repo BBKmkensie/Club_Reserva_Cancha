@@ -257,12 +257,22 @@ export class SalidaService {
     });
   }
 
-  /** Historial de salidas de un profesor. */
+  /** Salidas visibles para un profesor: de su taller o donde es el responsable. */
   async findByProfesor(profesorId: number): Promise<Salida[]> {
+    const profesor = await this.profesorRepository.findOne({ where: { id: profesorId } });
+    if (!profesor) throw new NotFoundException('Profesor no encontrado');
+
+    const condiciones: Array<{ profesorId: number } | { tallerId: number }> = [
+      { profesorId },
+    ];
+    if (profesor.tallerId) {
+      condiciones.push({ tallerId: profesor.tallerId });
+    }
+
     return this.salidaRepository.find({
-      where: { profesorId },
+      where: condiciones,
       relations: [...this.relaciones],
-      order: { fecha: 'DESC' },
+      order: { fecha: 'DESC', hora: 'ASC' },
     });
   }
 

@@ -20,7 +20,13 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
     <div class="space-y-6">
       <div>
         <h1 class="text-3xl font-bold text-ink">Salidas programadas</h1>
-        <p class="text-ink-muted mt-1">Historial con profesor responsable, asistencia e imagen de evidencia.</p>
+        <p class="text-ink-muted mt-1">
+          @if (auth.isProfesor()) {
+            Solo ves salidas de tu taller o donde eres el profesor responsable.
+          } @else {
+            Historial con profesor responsable, asistencia e imagen de evidencia.
+          }
+        </p>
       </div>
 
       <section id="control-asistencia" class="bg-primary-50 rounded-xl shadow-lg p-6 border-2 border-primary-300">
@@ -140,7 +146,11 @@ export class SalidasComponent implements OnInit {
   }
 
   cargar() {
-    this.api.getSalidas().subscribe({
+    const obs =
+      this.auth.isProfesor() && this.auth.currentUserId()
+        ? this.api.getSalidasPorProfesor(this.auth.currentUserId()!)
+        : this.api.getSalidas();
+    obs.subscribe({
       next: (d) => {
         this.salidas = d ?? [];
         this.errorCarga = '';

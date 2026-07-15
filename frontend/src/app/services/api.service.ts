@@ -328,11 +328,12 @@ export class ApiService {
   // SALIDA PEDAGÓGICA
   // =========================================================================
 
-  /** GET /salida?tallerId=&alumnoId= — lista salidas (filtros opcionales). */
-  getSalidas(tallerId?: number, alumnoId?: number): Observable<any[]> {
+  /** GET /salida?tallerId=&alumnoId=&profesorId= — lista salidas (filtros opcionales). */
+  getSalidas(tallerId?: number, alumnoId?: number, profesorId?: number): Observable<any[]> {
     const params = new URLSearchParams();
     if (tallerId != null) params.set('tallerId', String(tallerId));
     if (alumnoId != null) params.set('alumnoId', String(alumnoId));
+    if (profesorId != null) params.set('profesorId', String(profesorId));
     const q = params.toString() ? `?${params}` : '';
     return this.http.get<any[]>(`${this.apiUrl}/salida${q}`);
   }
@@ -376,7 +377,7 @@ export class ApiService {
     return this.http.get<any[]>(`${this.apiUrl}/salida/pendientes/directiva`);
   }
 
-  /** GET /salida/por-profesor/:profesorId — historial de salidas del profesor. */
+  /** GET /salida/por-profesor/:profesorId — salidas del taller del profesor o a su nombre. */
   getSalidasPorProfesor(profesorId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/salida/por-profesor/${profesorId}`);
   }

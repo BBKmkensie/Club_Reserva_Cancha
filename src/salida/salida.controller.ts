@@ -99,7 +99,7 @@ export class SalidaController {
     return this.salidaService.findPendientesDirectiva();
   }
 
-  /** GET /salida/por-profesor/:profesorId — historial del profesor. */
+  /** GET /salida/por-profesor/:profesorId — salidas del taller del profesor o a su nombre. */
   @Get('por-profesor/:profesorId')
   findByProfesor(@Param('profesorId', ParseIntPipe) profesorId: number) {
     return this.salidaService.findByProfesor(profesorId);
@@ -157,16 +157,20 @@ export class SalidaController {
   }
 
   /**
-   * GET /salida?tallerId=&alumnoId=
-   * Listado completo, por taller o filtrado para alumno.
+   * GET /salida?tallerId=&alumnoId=&profesorId=
+   * Listado completo, por taller, filtrado para alumno o visible para profesor.
    */
   @Get()
   findAll(
     @Query('tallerId') tallerId?: string,
     @Query('alumnoId') alumnoId?: string,
+    @Query('profesorId') profesorId?: string,
   ) {
     if (alumnoId) {
       return this.salidaService.findPublicadasParaAlumno(parseInt(alumnoId, 10));
+    }
+    if (profesorId) {
+      return this.salidaService.findByProfesor(parseInt(profesorId, 10));
     }
     if (tallerId) {
       return this.salidaService.findByTaller(parseInt(tallerId, 10));
