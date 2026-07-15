@@ -102,9 +102,11 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
                     <span class="font-semibold text-ink">{{ priv.alumno(s.alumno).nombre }}</span>
                     <span class="text-sm text-ink-muted ml-2">({{ priv.alumno(s.alumno).rut }})</span>
                     <p class="text-xs text-ink-muted mt-1">Solicitud #{{ s.id }}</p>
-                    <p class="text-xs text-ink-muted mt-2">
-                      Ficha: {{ textoFicha(s) }}
-                    </p>
+                    @if (auth.canVerDatosAntropometricosAlumno()) {
+                      <p class="text-xs text-ink-muted mt-2">
+                        Ficha: {{ textoFicha(s) }}
+                      </p>
+                    }
                   </div>
                   <div class="flex gap-2">
                     <button (click)="responder(s.id, 'ACEPTADO')"
@@ -123,6 +125,7 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
           }
 
           <!-- Fichas de alumnos por taller -->
+          @if (auth.canVerDatosAntropometricosAlumno()) {
           <h3 class="text-lg font-semibold text-ink mb-3">Fichas de alumnos (por taller)</h3>
 
           <div class="md:hidden space-y-3 mb-8">
@@ -213,10 +216,15 @@ const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
               </tbody>
             </table>
           </div>
+          } @else {
+            <p class="text-sm text-ink-muted mb-8 italic">
+              Los datos físicos de las fichas solo están disponibles para el profesor del taller.
+            </p>
+          }
         </div>
       }
 
-      @if (fichaEditando) {
+      @if (fichaEditando && auth.canVerDatosAntropometricosAlumno()) {
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 class="text-xl font-bold text-ink mb-1">Editar ficha</h3>
@@ -299,7 +307,10 @@ export class GestionInscripcionesComponent implements OnInit {
   /** Carga el resumen de inscripciones (capacidad, pendientes, fichas) del taller seleccionado. */
   cargarResumen() {
     if (!this.tallerIdSeleccionado) return;
-    this.api.getResumenInscripcionesTaller(this.tallerIdSeleccionado).subscribe({
+    this.api.getResumenInscripcionesTaller(
+      this.tallerIdSeleccionado,
+      !this.auth.canVerDatosAntropometricosAlumno(),
+    ).subscribe({
       next: (data) => {
         this.resumen = data;
         this.error = '';
@@ -380,15 +391,21 @@ export class GestionInscripcionesComponent implements OnInit {
       cuposDisponibles: this.resumen.resumen.cuposDisponibles,
       filas: this.resumen.inscripciones.map((s: any) => {
         const a = this.priv.alumno(s.alumno);
-        return {
+        const base = {
           nombre: a.nombre,
           rut: a.rut,
+          estado: s.estado,
+          fecha: s.createdAt ? String(s.createdAt).slice(0, 10) : '',
+        };
+        if (!this.auth.canVerDatosAntropometricosAlumno()) {
+          return { ...base, altura: '', peso: '', porcentajeGrasa: '', sedentario: '' };
+        }
+        return {
+          ...base,
           altura: s.altura != null ? String(s.altura) : '',
           peso: s.peso != null ? String(s.peso) : '',
           porcentajeGrasa: s.porcentajeGrasa != null ? String(s.porcentajeGrasa) : '',
           sedentario: s.sedentario === true ? 'Sí' : s.sedentario === false ? 'No' : '',
-          estado: s.estado,
-          fecha: s.createdAt ? String(s.createdAt).slice(0, 10) : '',
         };
       }),
     });

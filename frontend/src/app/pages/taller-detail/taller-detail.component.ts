@@ -189,7 +189,9 @@ import { requiereFichaFisica } from '../../shared/utils/taller-categoria.util';
               @for (insc of listaInscritosAceptados; track insc.id) {
                 <li class="py-2 px-3 bg-page rounded-lg text-ink">
                   <span class="font-medium">{{ priv.alumno(insc.alumno).nombre }} {{ priv.alumno(insc.alumno).rut }}</span>
-                  <p class="text-xs text-ink-muted mt-1">{{ textoFicha(insc) }}</p>
+                  @if (auth.canVerDatosAntropometricosAlumno()) {
+                    <p class="text-xs text-ink-muted mt-1">{{ textoFicha(insc) }}</p>
+                  }
                 </li>
               }
             </ul>
@@ -210,7 +212,7 @@ import { requiereFichaFisica } from '../../shared/utils/taller-categoria.util';
       </div>
 
       <!-- Gráfico ficha física (solo deportes + quien gestiona el taller) -->
-      @if (puedeVerDetalleInscritos() && pideFichaFisica()) {
+      @if (puedeVerDetalleInscritos() && pideFichaFisica() && auth.canVerDatosAntropometricosAlumno()) {
       <div class="bg-surface rounded-lg shadow-lg p-4 sm:p-6">
         <button (click)="toggleGrafico()" type="button"
                 class="w-full flex items-center justify-between text-left py-2 rounded-lg hover:bg-page transition">
@@ -682,7 +684,10 @@ export class TallerDetailComponent implements OnInit {
     }
 
     this.inscripcionesTaller = [];
-    this.apiService.getResumenInscripcionesTaller(tallerId).subscribe({
+    this.apiService.getResumenInscripcionesTaller(
+      tallerId,
+      !this.auth.canVerDatosAntropometricosAlumno(),
+    ).subscribe({
       next: (data) => {
         this.inscritosAceptadosCount = data?.resumen?.aceptados ?? 0;
       },

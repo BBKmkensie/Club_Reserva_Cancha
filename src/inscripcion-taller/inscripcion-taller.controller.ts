@@ -76,8 +76,14 @@ export class InscripcionTallerController {
 
   /** GET /inscripcion-taller/resumen/:tallerId — cupos y conteos por estado. */
   @Get('resumen/:tallerId')
-  resumen(@Param('tallerId', ParseIntPipe) tallerId: number) {
-    return this.inscripcionTallerService.getResumen(tallerId);
+  resumen(
+    @Param('tallerId', ParseIntPipe) tallerId: number,
+    @Query('ocultarDatosFisicos') ocultarDatosFisicos?: string,
+  ) {
+    return this.inscripcionTallerService.getResumen(
+      tallerId,
+      ocultarDatosFisicos === 'true',
+    );
   }
 
   /** GET /inscripcion-taller/por-taller/:tallerId — listado de inscripciones. */

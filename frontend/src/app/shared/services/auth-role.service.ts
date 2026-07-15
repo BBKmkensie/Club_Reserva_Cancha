@@ -349,6 +349,14 @@ export class AuthRoleService {
   }
 
   /**
+   * Datos antropométricos (altura, peso, % grasa, sedentario):
+   * solo profesor del taller o super admin. Directiva/admin no los ve.
+   */
+  canVerDatosAntropometricosAlumno(): boolean {
+    return this.isProfesor() || this.isSuperAdmin();
+  }
+
+  /**
    * ¿Puede ver fichas de inscritos en este taller?
    * Coordinación: sí. Profesor: solo si es su taller.
    */

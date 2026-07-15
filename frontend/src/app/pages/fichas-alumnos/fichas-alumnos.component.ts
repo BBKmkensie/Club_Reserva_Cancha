@@ -27,6 +27,9 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
           @if (auth.canVerTodasFichasAlumnos()) {
             Como directiva puedes ver <strong>todos los estudiantes</strong> o filtrar solo los
             <strong>inscritos (aceptados)</strong> en cada taller.
+            @if (!auth.canVerDatosAntropometricosAlumno()) {
+              Los datos físicos (altura, peso, % grasa) solo los ve el profesor del taller.
+            }
           } @else {
             Ficha física de los alumnos <strong>inscritos en tu taller</strong>.
           }
@@ -89,12 +92,18 @@ import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad
                     <span class="text-xs bg-gray-200 text-ink-muted px-2 py-0.5 rounded-full shrink-0">No inscrito</span>
                   }
                 </div>
-                <ul class="text-sm text-ink-secondary space-y-1 mt-3">
-                  <li>Altura: {{ f.altura ?? '—' }} cm</li>
-                  <li>Peso: {{ f.peso ?? '—' }} kg</li>
-                  <li>% grasa: {{ f.porcentajeGrasa ?? '—' }}</li>
-                  <li>Sedentario: {{ f.sedentario == null ? '—' : (f.sedentario ? 'Sí' : 'No') }}</li>
-                </ul>
+                @if (auth.canVerDatosAntropometricosAlumno()) {
+                  <ul class="text-sm text-ink-secondary space-y-1 mt-3">
+                    <li>Altura: {{ f.altura ?? '—' }} cm</li>
+                    <li>Peso: {{ f.peso ?? '—' }} kg</li>
+                    <li>% grasa: {{ f.porcentajeGrasa ?? '—' }}</li>
+                    <li>Sedentario: {{ f.sedentario == null ? '—' : (f.sedentario ? 'Sí' : 'No') }}</li>
+                  </ul>
+                } @else {
+                  <p class="text-xs text-ink-muted mt-3 italic">
+                    Datos físicos reservados al profesor del taller.
+                  </p>
+                }
               </div>
             }
           </div>

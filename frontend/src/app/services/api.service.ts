@@ -504,8 +504,10 @@ export class ApiService {
   }
 
   /** GET /inscripcion-taller/resumen/:tallerId — cupos e inscripciones del taller. */
-  getResumenInscripcionesTaller(tallerId: number): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/resumen/${tallerId}`);
+  /** GET /inscripcion-taller/resumen/:tallerId — cupos, conteos e inscripciones del taller. */
+  getResumenInscripcionesTaller(tallerId: number, ocultarDatosFisicos = false): Observable<any> {
+    const q = ocultarDatosFisicos ? '?ocultarDatosFisicos=true' : '';
+    return this.http.get<any>(`${this.apiUrl}/inscripcion-taller/resumen/${tallerId}${q}`);
   }
 
   /** POST /inscripcion-taller — solicita inscripción (ficha opcional en deportivos). */

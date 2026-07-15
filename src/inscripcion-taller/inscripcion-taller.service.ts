@@ -49,6 +49,7 @@ import { PeriodoService } from '../periodo/periodo.service';
 import { MailService } from '../mail/mail.service';
 import { FichaAlumnoService } from '../ficha-alumno/ficha-alumno.service';
 import { requiereFichaFisica } from '../common/taller-categoria.util';
+import { omitirDatosAntropometricos } from '../common/ficha-privacidad.util';
 import {
   opcionesHorarioTaller,
   textoHorarioBloque,
@@ -482,7 +483,7 @@ export class InscripcionTallerService implements OnModuleInit {
   }
 
   /** Cupos y conteos por estado (PENDIENTE/ACEPTADO/RECHAZADO) del taller. */
-  async getResumen(tallerId: number) {
+  async getResumen(tallerId: number, ocultarDatosFisicos = false) {
     const taller = await this.tallerRepo.findOne({ where: { id: tallerId } });
     if (!taller) {
       throw new NotFoundException('Taller no encontrado');
@@ -512,7 +513,9 @@ export class InscripcionTallerService implements OnModuleInit {
         cuposOcupados,
         cuposDisponibles: Math.max(0, taller.capacidad - cuposOcupados),
       },
-      inscripciones,
+      inscripciones: ocultarDatosFisicos
+        ? inscripciones.map((i) => omitirDatosAntropometricos(i))
+        : inscripciones,
     };
   }
 

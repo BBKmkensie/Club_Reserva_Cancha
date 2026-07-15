@@ -24,6 +24,7 @@ import { Alumno } from '../entities/alumno.entity';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
 import { Profesor } from '../entities/profesor.entity';
 import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
+import { omitirDatosAntropometricos } from '../common/ficha-privacidad.util';
 
 /** Elemento de listado con datos del alumno, inscripción y ficha en un taller. */
 export interface FichaAlumnoListItem {
@@ -73,10 +74,29 @@ export class FichaAlumnoService {
     }
 
     if (soloInscritos) {
-      return this.listarInscritosAceptados(tallerId);
+      return this.mapListado(this.listarInscritosAceptados(tallerId), opts);
     }
 
-    return this.listarTodosAlumnosConFicha(tallerId);
+    return this.mapListado(this.listarTodosAlumnosConFicha(tallerId), opts);
+  }
+
+  private async mapListado(
+    promise: Promise<FichaAlumnoListItem[]>,
+    opts: { esCoordinacion?: boolean; profesorId?: number },
+  ): Promise<FichaAlumnoListItem[]> {
+    const items = await promise;
+    if (this.debeOcultarDatosFisicos(opts)) {
+      return items.map((item) => omitirDatosAntropometricos(item));
+    }
+    return items;
+  }
+
+  /** Directiva ve listado pero no medidas; profesor sí. */
+  private debeOcultarDatosFisicos(opts: {
+    esCoordinacion?: boolean;
+    profesorId?: number;
+  }): boolean {
+    return !!opts.esCoordinacion && !opts.profesorId;
   }
 
   /** Todos los estudiantes del sistema con su ficha en el taller seleccionado. */
