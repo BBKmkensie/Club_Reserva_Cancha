@@ -44,7 +44,12 @@ export class AppController {
 
   /** GET /health/mail — indica si el envío SMTP está activo en este servidor. */
   @Get('health/mail')
-  getMailHealth(): { ok: true; mailEnabled: boolean } {
+  getMailHealth(): {
+    ok: true;
+    mailEnabled: boolean;
+    smtpConfigured: boolean;
+    mensaje: string;
+  } {
     return this.appService.getHealthStatus();
   }
 }

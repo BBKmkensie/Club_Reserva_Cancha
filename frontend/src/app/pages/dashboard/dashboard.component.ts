@@ -151,7 +151,17 @@ interface CardTaller extends EstiloTarjetaTaller {}
                   </li>
                 }
               </ul>
-              <p class="text-xs text-ink-muted mt-3">También recibirás estas alertas en tu correo si tienes email registrado.</p>
+              <p class="text-xs mt-3"
+                 [class.text-ink-muted]="correoServidorActivo !== false"
+                 [class.text-amber-800]="correoServidorActivo === false">
+                @if (correoServidorActivo === false) {
+                  Las alertas aparecen aquí en la app. El envío a tu correo aún no está activo en el servidor (directiva debe configurar SMTP en Azure).
+                } @else if (correoServidorActivo === true) {
+                  También recibirás estas alertas en tu correo si tienes email registrado en tu ficha.
+                } @else {
+                  También recibirás estas alertas en tu correo si tienes email registrado.
+                }
+              </p>
             </div>
           }
         }
@@ -416,6 +426,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   resumenDirectiva = { propuestasPendientes: 0, salidasPendientes: 0 };
   /** Filtro de categoría del catálogo ('todas' | id de categoría). */
   categoriaFiltro: CategoriaTallerId = 'todas';
+  /** null = aún no consultado; false = SMTP desactivado en Azure. */
+  correoServidorActivo: boolean | null = null;
 
   /** Colores/icono de la tarjeta según el tipo de taller. */
   estiloTarjeta(tipo: string): CardTaller {
@@ -427,6 +439,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.alumnoId = this.auth.currentUserId();
     this.tallerIdProfesor = this.auth.currentTallerId();
     this.loadData();
+    this.cargarEstadoCorreo();
 
     if (!this.auth.isLoggedIn()) return;
 
@@ -467,6 +480,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   totalPendientesDirectiva(): number {
     return this.resumenDirectiva.propuestasPendientes + this.resumenDirectiva.salidasPendientes;
+  }
+
+  private cargarEstadoCorreo(): void {
+    this.apiService.getMailHealth().subscribe({
+      next: (d) => {
+        this.correoServidorActivo = !!(d?.smtpConfigured ?? d?.mailEnabled);
+      },
+      error: () => {
+        this.correoServidorActivo = null;
+      },
+    });
   }
 
   /** Marca una notificación individual como leída vía el servicio de polling. */

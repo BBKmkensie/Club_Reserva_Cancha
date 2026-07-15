@@ -771,6 +771,20 @@ export class ApiService {
   }
 
   // =========================================================================
+  // SALUD / CORREO
+  // =========================================================================
+
+  /** GET /health/mail — indica si SMTP está activo en el servidor. */
+  getMailHealth(): Observable<{
+    ok: boolean;
+    mailEnabled: boolean;
+    smtpConfigured?: boolean;
+    mensaje?: string;
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/health/mail`);
+  }
+
+  // =========================================================================
   // NOTIFICACIONES
   // =========================================================================
 

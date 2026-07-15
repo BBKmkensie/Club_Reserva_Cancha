@@ -13,7 +13,7 @@
  * El método base es enviar(to, asunto, texto).
  * =============================================================================
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 // ConfigService = lee namespace 'mail' (MAIL_ENABLED, host, port, from...)
 import { ConfigService } from '@nestjs/config';
 // nodemailer = cliente SMTP; Transporter = conexión reutilizable
@@ -22,7 +22,7 @@ import type { Transporter } from 'nodemailer';
 
 /** Envío centralizado de correos transaccionales del sistema. */
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   /** Transporter de nodemailer; null si el mail está deshabilitado. */
   private transporter: Transporter | null = null;
@@ -39,18 +39,40 @@ export class MailService {
 
     if (this.enabled) {
       const host = this.configService.get<string>('mail.host');
-      const port = this.configService.get<number>('mail.port');
+      const port = this.configService.get<number>('mail.port') ?? 587;
       const user = this.configService.get<string>('mail.user');
       const pass = this.configService.get<string>('mail.pass');
 
-      this.transporter = nodemailer.createTransport({
-        host,
-        port,
-        auth: user && pass ? { user, pass } : undefined,
-      });
-      this.logger.log(`Email habilitado (${host}:${port})`);
+      if (!host?.trim() || !user?.trim() || !pass?.trim()) {
+        this.logger.error(
+          'MAIL_ENABLED=true pero faltan SMTP_HOST, SMTP_USER o SMTP_PASS. Los correos NO se enviarán.',
+        );
+        this.enabled = false;
+        this.transporter = null;
+      } else {
+        this.transporter = nodemailer.createTransport({
+          host,
+          port,
+          secure: port === 465,
+          requireTLS: port === 587,
+          auth: { user, pass },
+        });
+        this.logger.log(`Email habilitado (${host}:${port})`);
+      }
     } else {
       this.logger.warn('Email deshabilitado (MAIL_ENABLED=false). Los correos se registran en consola.');
+    }
+  }
+
+  async onModuleInit(): Promise<void> {
+    if (!this.enabled || !this.transporter) return;
+    try {
+      await this.transporter.verify();
+      this.logger.log('Conexión SMTP verificada correctamente');
+    } catch (err) {
+      this.logger.error(
+        `No se pudo conectar al SMTP (${(err as Error).message}). Revisa SMTP_HOST, puerto y credenciales en Azure.`,
+      );
     }
   }
 

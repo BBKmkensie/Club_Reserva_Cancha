@@ -98,7 +98,28 @@ Reinicia la app. Comprueba en el navegador:
 
 `GET https://tu-dominio.azurewebsites.net/health/mail`
 
-Debe responder `{ "ok": true, "mailEnabled": true }`. Si `mailEnabled` es `false`, los correos **no salen** (solo notificaciones en la app).
+Debe responder `{ "ok": true, "mailEnabled": true, "smtpConfigured": true }`. Si `mailEnabled` o `smtpConfigured` es `false`, **no llegará ningún correo** (solo notificaciones en la app).
+
+#### Configurar Gmail (recomendado para pruebas)
+
+1. Entra a tu cuenta Google → **Seguridad** → activa **Verificación en 2 pasos**.
+2. Crea una **Contraseña de aplicación** (App password) para “Correo”.
+3. En Azure, agrega estas variables:
+
+```env
+MAIL_ENABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=osvaldobsavedra@gmail.com
+SMTP_PASS=xxxx xxxx xxxx xxxx
+SMTP_FROM=Club Agenda <osvaldobsavedra@gmail.com>
+FRONTEND_URL=https://clubagenda-XXXX.azurewebsites.net
+```
+
+4. **Reinicia** el App Service.
+5. Inscríbete de nuevo o pide una prueba: el correo va a `email` del alumno en la ficha (Alumnos → editar).
+
+**Importante:** `SMTP_PASS` es la contraseña de aplicación de 16 caracteres, **no** tu contraseña normal de Gmail.
 
 ### Producción (genérico)
 
