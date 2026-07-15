@@ -530,6 +530,18 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/apoderado/proponer-actividad-libre`, data);
   }
 
+  /** POST /inscripcion-taller/proponer-inscripcion/:tallerId — alumno propone inscripción del catálogo. */
+  proponerInscripcionAlumno(
+    tallerId: number,
+    opts?: { tallerHorarioId?: number; horarioPropuestoTexto?: string; mensajeApoderado?: string },
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/inscripcion-taller/proponer-inscripcion/${tallerId}`, {
+      tallerHorarioId: opts?.tallerHorarioId,
+      horarioPropuestoTexto: opts?.horarioPropuestoTexto,
+      mensajeApoderado: opts?.mensajeApoderado,
+    });
+  }
+
   /** POST /inscripcion-taller/proponer-actividad-libre — alumno propone actividad libre a directiva. */
   proponerActividadLibreAlumno(data: {
     actividadNombre: string;
@@ -694,6 +706,11 @@ export class ApiService {
   /** PUT /periodo — crea o actualiza la configuración del período. */
   configurarPeriodo(data: any): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/periodo`, data);
+  }
+
+  /** DELETE /periodo/:id — elimina un período inactivo del historial. */
+  eliminarPeriodo(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/periodo/${id}`);
   }
 
   /** GET /taller/estadisticas/semestre?periodoId=&profesorId= — comparación de semestre. */

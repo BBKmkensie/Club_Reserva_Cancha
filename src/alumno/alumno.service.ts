@@ -88,6 +88,8 @@ export class AlumnoService {
       alumnoData.passwordSalt = salt;
     }
 
+    await this.aplicarApoderadoOpcional(alumnoData, createAlumnoDto);
+
     // create = entidad en memoria; save = INSERT
     const alumno = this.alumnoRepository.create(alumnoData);
     const saved = await this.alumnoRepository.save(alumno);
@@ -136,10 +138,18 @@ export class AlumnoService {
       this.validarEdad(updateAlumnoDto.edad);
     }
     const alumno = await this.findOne(id);
-    // Extraemos tallerId para manejar null aparte del resto de campos
-    const { tallerId, ...rest } = updateAlumnoDto;
-    Object.assign(alumno, rest); // copia campos presentes al objeto entidad
+    const {
+      tallerId,
+      apoderadoNombre: _an,
+      apoderadoRut: _ar,
+      apoderadoEmail: _ae,
+      apoderadoTelefono: _at,
+      apoderadoPassword: _ap,
+      ...rest
+    } = updateAlumnoDto;
+    Object.assign(alumno, rest);
     if (tallerId !== undefined) alumno.tallerId = tallerId ?? null;
+    await this.aplicarApoderadoOpcional(alumno, updateAlumnoDto, id);
     return await this.alumnoRepository.save(alumno);
   }
 
@@ -159,6 +169,54 @@ export class AlumnoService {
       throw new BadRequestException(
         `La edad debe estar entre ${EDAD_ALUMNO_MIN} y ${EDAD_ALUMNO_MAX} años`,
       );
+    }
+  }
+
+  /** Aplica datos de apoderado si vienen nombre y RUT; hashea contraseña opcional. */
+  private async aplicarApoderadoOpcional(
+    target: Record<string, unknown>,
+    dto: Partial<CreateAlumnoDto>,
+    excludeAlumnoId?: number,
+  ): Promise<void> {
+    const nombre = dto.apoderadoNombre?.trim();
+    const rut = dto.apoderadoRut?.trim();
+    const tieneCamposApoderado =
+      dto.apoderadoNombre !== undefined ||
+      dto.apoderadoRut !== undefined ||
+      dto.apoderadoEmail !== undefined ||
+      dto.apoderadoTelefono !== undefined ||
+      dto.apoderadoPassword !== undefined;
+
+    if (!tieneCamposApoderado) return;
+
+    if (!nombre || !rut) {
+      throw new BadRequestException(
+        'Si registra un apoderado, indique al menos nombre y RUT',
+      );
+    }
+
+    await this.validarApoderadoRutUnico(rut, excludeAlumnoId);
+
+    target.apoderadoNombre = nombre;
+    target.apoderadoRut = rut;
+    target.apoderadoEmail = dto.apoderadoEmail?.trim() || null;
+    target.apoderadoTelefono = dto.apoderadoTelefono?.trim() || null;
+
+    if (dto.apoderadoPassword?.trim()) {
+      const { hash, salt } = hashPassword(dto.apoderadoPassword.trim());
+      target.apoderadoPasswordHash = hash;
+      target.apoderadoPasswordSalt = salt;
+    } else if (!excludeAlumnoId) {
+      const { hash, salt } = hashPassword(defaultPassword());
+      target.apoderadoPasswordHash = hash;
+      target.apoderadoPasswordSalt = salt;
+    }
+  }
+
+  private async validarApoderadoRutUnico(rut: string, excludeAlumnoId?: number): Promise<void> {
+    const existente = await this.alumnoRepository.findOne({ where: { apoderadoRut: rut } });
+    if (existente && existente.id !== excludeAlumnoId) {
+      throw new BadRequestException('El RUT del apoderado ya está asociado a otro alumno');
     }
   }
 }

@@ -779,8 +779,11 @@ export class InscripcionTallerService implements OnModuleInit {
     return `${dias[taller.diaSemana]} ${this.normalizarHora(taller.horaInicio)} - ${this.normalizarHora(taller.horaFin)}`;
   }
 
-  /** Apoderado/directiva propone inscripción con horario; notifica a coordinadores. */
-  async proponerDirectiva(dto: ProponerInscripcionDirectivaDto) {
+  /** Apoderado, alumno o directiva propone inscripción con horario; notifica a coordinadores. */
+  async proponerDirectiva(
+    dto: ProponerInscripcionDirectivaDto,
+    origen: OrigenPropuestaInscripcion = 'APODERADO',
+  ) {
     const alumno = await this.alumnoRepo.findOne({ where: { id: dto.alumnoId } });
     if (!alumno) throw new NotFoundException('Alumno no encontrado');
 
@@ -821,7 +824,7 @@ export class InscripcionTallerService implements OnModuleInit {
           tallerHorarioId,
           horarioPropuestoTexto,
           mensajeApoderado: dto.mensajeApoderado?.trim() || null,
-          origen: 'APODERADO' as OrigenPropuestaInscripcion,
+          origen,
         })
       : this.propuestaRepo.create({
           alumnoId: dto.alumnoId,
@@ -830,20 +833,21 @@ export class InscripcionTallerService implements OnModuleInit {
           tallerHorarioId,
           horarioPropuestoTexto,
           mensajeApoderado: dto.mensajeApoderado?.trim() || null,
-          origen: 'APODERADO',
+          origen,
         });
     const guardada = await this.propuestaRepo.save(propuesta);
 
-    const apoderadoNombre = alumno.apoderadoNombre ?? 'Apoderado';
+    const solicitanteNombre =
+      origen === 'ALUMNO' ? alumno.nombre : (alumno.apoderadoNombre ?? 'Apoderado');
     await this.notificacionService.notificarCoordinadoresPropuestaApoderado({
       propuestaId: guardada.id,
-      apoderadoNombre,
+      apoderadoNombre: solicitanteNombre,
       alumnoNombre: alumno.nombre,
       alumnoRut: alumno.rut,
       tallerNombre: taller.tipo,
       horarioPropuesto: horarioPropuestoTexto,
       mensajeApoderado: dto.mensajeApoderado?.trim() || null,
-      origen: 'APODERADO',
+      origen,
     });
 
     return guardada;

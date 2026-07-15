@@ -15,8 +15,8 @@
  * Regla: si NO hay período configurado → se considera siempre abierto.
  * =============================================================================
  */
-// BadRequestException = 400 si fechaApertura > fechaCierre
-import { Injectable, BadRequestException } from '@nestjs/common';
+// BadRequestException = 400 si fechaApertura > fechaCierre; NotFoundException = 404
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PeriodoAcademico } from '../entities/periodo-academico.entity';
@@ -59,6 +59,20 @@ export class PeriodoService {
       activo: true,
     });
     return await this.repo.save(periodo);
+  }
+
+  /** Elimina un período del historial. No permite borrar el período activo. */
+  async eliminar(id: number): Promise<void> {
+    const periodo = await this.repo.findOne({ where: { id } });
+    if (!periodo) {
+      throw new NotFoundException(`Período con ID ${id} no encontrado`);
+    }
+    if (periodo.activo) {
+      throw new BadRequestException(
+        'No se puede eliminar el período activo. Configure otro período antes de borrar este.',
+      );
+    }
+    await this.repo.delete(id);
   }
 
   /**

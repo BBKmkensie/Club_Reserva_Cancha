@@ -12,7 +12,7 @@
  * =============================================================================
  */
 // Put = reemplaza/configura el período activo; Body = JSON validado
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Put } from '@nestjs/common';
 import { PeriodoService } from './periodo.service';
 import { PeriodoAcademicoDto } from '../dto/periodo-academico.dto';
 
@@ -38,5 +38,11 @@ export class PeriodoController {
   @Put()
   configurar(@Body() dto: PeriodoAcademicoDto) {
     return this.periodoService.configurar(dto);
+  }
+
+  /** DELETE /periodo/:id — elimina un período inactivo del historial. */
+  @Delete(':id')
+  eliminar(@Param('id', ParseIntPipe) id: number) {
+    return this.periodoService.eliminar(id);
   }
 }

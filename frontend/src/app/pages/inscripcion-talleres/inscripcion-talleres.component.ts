@@ -23,6 +23,13 @@ import {
 } from '../../shared/components/advertencias-inscripcion/advertencias-inscripcion.component';
 import { ValidacionInscripcionTaller } from '../../models/inscripcion-taller.model';
 import { requiereFichaFisica } from '../../shared/utils/taller-categoria.util';
+import {
+  horariosOrdenados,
+  textoFilaHorario,
+  textoHorarioTaller,
+  TallerConHorarios,
+  TallerHorarioItem,
+} from '../../shared/utils/horario-taller.util';
 
 interface InscripcionTaller {
   id: number;
@@ -41,8 +48,8 @@ interface InscripcionTaller {
       <div class="bg-surface rounded-lg shadow p-6">
         <h1 class="text-3xl font-bold text-ink mb-2">Inscripción en Talleres</h1>
         <p class="text-ink-muted">
-          Explora el catálogo, selecciona un taller y confirma tu inscripción.
-          El sistema valida cupos y conflictos de horario antes de registrar tu solicitud.
+          Explora el catálogo, inscríbete en un taller o envía propuestas a la directiva
+          (actividades del catálogo o nuevas, por ejemplo un taller que aún no existe).
         </p>
       </div>
 
@@ -186,6 +193,36 @@ interface InscripcionTaller {
         }
 
         <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
+          <h2 class="font-bold text-ink mb-3">Proponer inscripción a la directiva</h2>
+          <p class="text-sm text-ink-muted mb-4">
+            Elige una actividad del catálogo e indica el horario que prefieres. La propuesta llegará a la directiva para su revisión.
+          </p>
+          @if (talleres.length === 0) {
+            <p class="text-ink-muted text-sm">No hay actividades publicadas disponibles.</p>
+          } @else {
+            <ul class="space-y-2">
+              @for (t of talleres; track t.id) {
+                <li class="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-line/60 last:border-0">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium text-ink">{{ t.tipo }}</p>
+                    <p class="text-xs text-ink-muted line-clamp-1">{{ t.descripcion }}</p>
+                    <p class="text-xs text-ink-secondary mt-0.5">{{ horarioTaller(t) }}</p>
+                  </div>
+                  @if (propuestaPendiente(t.id)) {
+                    <span class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">Propuesta pendiente</span>
+                  } @else {
+                    <button (click)="abrirModalPropuesta(t)" [disabled]="proponiendo === t.id"
+                            class="text-sm bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700 disabled:opacity-50 shrink-0">
+                      {{ proponiendo === t.id ? 'Enviando…' : 'Proponer' }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="bg-surface rounded-xl border border-line p-5 shadow-sm">
           <h2 class="font-bold text-ink mb-3">Proponer otra actividad (fuera del catálogo)</h2>
           <p class="text-sm text-ink-muted mb-4">
             Si la actividad que buscas no está en la lista, puedes proponerla aquí con nombre, horario y una breve descripción.
@@ -225,6 +262,50 @@ interface InscripcionTaller {
         </section>
       }
     </div>
+
+    @if (modalPropuestaTaller) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cerrarModalPropuesta()">
+        <div class="bg-surface rounded-xl shadow-xl max-w-md w-full p-5 border border-line"
+             (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-bold text-ink mb-1">Proponer {{ modalPropuestaTaller.tipo }}</h3>
+          <p class="text-sm text-ink-muted mb-4">
+            Escribe el horario que prefieres. Si la actividad tiene horarios publicados, puedes usarlos como referencia o modificar el texto.
+          </p>
+
+          @if (opcionesModalPropuesta.length > 0) {
+            <label class="block text-sm font-medium text-ink mb-1">Horarios publicados (referencia)</label>
+            <select [(ngModel)]="horarioSeleccionadoId" (ngModelChange)="aplicarHorarioCatalogo($event)"
+                    class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3">
+              <option [ngValue]="null">— Escribir horario manualmente —</option>
+              @for (h of opcionesModalPropuesta; track h.id ?? h.etiqueta) {
+                <option [ngValue]="h.id">{{ h.etiqueta }}</option>
+              }
+            </select>
+          }
+
+          <label class="block text-sm font-medium text-ink mb-1">Horario propuesto *</label>
+          <input type="text" [(ngModel)]="horarioLibre"
+                 class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-3"
+                 placeholder="Ej.: Martes 16:00 - 17:30" />
+
+          <label class="block text-sm font-medium text-ink mb-1">Mensaje para la directiva (opcional)</label>
+          <textarea [(ngModel)]="mensajePropuesta" rows="3"
+                    class="w-full border border-line rounded-lg px-3 py-2 text-sm mb-4"
+                    placeholder="Ej.: Prefiero este horario por compromisos escolares"></textarea>
+
+          <div class="flex justify-end gap-2">
+            <button type="button" (click)="cerrarModalPropuesta()"
+                    class="px-4 py-2 text-sm rounded-lg border border-line hover:bg-muted">
+              Cancelar
+            </button>
+            <button type="button" (click)="confirmarPropuesta()" [disabled]="!puedeEnviarPropuesta()"
+                    class="px-4 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
+              Enviar propuesta
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     @if (tallerConfirmando) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -371,6 +452,14 @@ export class InscripcionTalleresComponent implements OnInit {
   actividadLibreMensaje = '';
   enviandoLibre = false;
   misPropuestas: any[] = [];
+
+  /** Modal de propuesta de taller del catálogo a la directiva. */
+  modalPropuestaTaller: Taller | null = null;
+  opcionesModalPropuesta: { id: number | null; etiqueta: string }[] = [];
+  horarioSeleccionadoId: number | null = null;
+  horarioLibre = '';
+  mensajePropuesta = '';
+  proponiendo: number | null = null;
 
   /** Helper de advertencia: taller sin docente asignado. */
   readonly tallerSinProfesor = tallerSinProfesor;
@@ -536,6 +625,81 @@ export class InscripcionTalleresComponent implements OnInit {
       next: (p) => (this.misPropuestas = p ?? []),
       error: () => (this.misPropuestas = []),
     });
+  }
+
+  horarioTaller(t: TallerConHorarios): string {
+    return textoHorarioTaller(t);
+  }
+
+  propuestaPendiente(tallerId: number): boolean {
+    return this.misPropuestas.some((p) => p.tallerId === tallerId && p.estado === 'PENDIENTE');
+  }
+
+  abrirModalPropuesta(taller: Taller): void {
+    this.modalPropuestaTaller = taller;
+    this.mensajePropuesta = '';
+    this.horarioLibre = '';
+    const horarios = horariosOrdenados(taller);
+    if (horarios.length > 0) {
+      this.opcionesModalPropuesta = horarios.map((h: TallerHorarioItem) => ({
+        id: h.id ?? null,
+        etiqueta: textoFilaHorario(h),
+      }));
+    } else if (taller.diaSemana != null && taller.horaInicio && taller.horaFin) {
+      this.opcionesModalPropuesta = [{ id: null, etiqueta: textoHorarioTaller(taller) }];
+    } else {
+      this.opcionesModalPropuesta = [];
+    }
+    if (this.opcionesModalPropuesta.length > 0) {
+      const primero = this.opcionesModalPropuesta[0];
+      this.horarioSeleccionadoId = primero.id;
+      this.horarioLibre = primero.etiqueta;
+    } else {
+      this.horarioSeleccionadoId = null;
+      this.horarioLibre = '';
+    }
+  }
+
+  aplicarHorarioCatalogo(horarioId: number | null): void {
+    if (horarioId == null) return;
+    const opcion = this.opcionesModalPropuesta.find((h) => h.id === horarioId);
+    if (opcion) this.horarioLibre = opcion.etiqueta;
+  }
+
+  cerrarModalPropuesta(): void {
+    this.modalPropuestaTaller = null;
+    this.opcionesModalPropuesta = [];
+    this.horarioSeleccionadoId = null;
+    this.horarioLibre = '';
+    this.mensajePropuesta = '';
+  }
+
+  puedeEnviarPropuesta(): boolean {
+    return !!this.modalPropuestaTaller && this.horarioLibre.trim().length > 0;
+  }
+
+  confirmarPropuesta(): void {
+    if (!this.modalPropuestaTaller || !this.puedeEnviarPropuesta()) return;
+    const tallerId = this.modalPropuestaTaller.id;
+    this.proponiendo = tallerId;
+    this.apiService
+      .proponerInscripcionAlumno(tallerId, {
+        tallerHorarioId: this.horarioSeleccionadoId ?? undefined,
+        horarioPropuestoTexto: this.horarioLibre.trim(),
+        mensajeApoderado: this.mensajePropuesta.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.proponiendo = null;
+          this.cerrarModalPropuesta();
+          alert('Propuesta enviada a la directiva con el horario indicado.');
+          this.cargarMisPropuestas();
+        },
+        error: (err) => {
+          this.proponiendo = null;
+          alert(err?.error?.message || 'No se pudo enviar la propuesta');
+        },
+      });
   }
 
   puedeEnviarActividadLibre(): boolean {

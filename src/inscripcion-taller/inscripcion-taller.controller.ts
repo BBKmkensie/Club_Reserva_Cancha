@@ -36,6 +36,7 @@ import { CreateInscripcionTallerDto } from '../dto/create-inscripcion-taller.dto
 import { ResponderInscripcionTallerDto } from '../dto/responder-inscripcion-taller.dto';
 import { ActualizarFichaAlumnoDto } from '../dto/ficha-alumno.dto';
 import { ProponerInscripcionDirectivaDto } from '../dto/proponer-inscripcion-directiva.dto';
+import { ProponerInscripcionApoderadoDto } from '../dto/proponer-inscripcion-apoderado.dto';
 import { ProponerActividadLibreDto } from '../dto/proponer-actividad-libre.dto';
 import { ResponderPropuestaInscripcionDto } from '../dto/responder-propuesta-inscripcion.dto';
 import { RetirarInscripcionTallerDto } from '../dto/retirar-inscripcion-taller.dto';
@@ -131,6 +132,32 @@ export class InscripcionTallerController {
   @Post('proponer-directiva')
   proponerDirectiva(@Body() dto: ProponerInscripcionDirectivaDto) {
     return this.inscripcionTallerService.proponerDirectiva(dto);
+  }
+
+  /**
+   * POST /inscripcion-taller/proponer-inscripcion/:tallerId
+   * El alumno autenticado propone inscripción en un taller del catálogo (llega a directiva).
+   */
+  @Post('proponer-inscripcion/:tallerId')
+  @UseGuards(JwtAuthGuard)
+  proponerInscripcionAlumno(
+    @Req() req: { user: JwtPayload },
+    @Param('tallerId', ParseIntPipe) tallerId: number,
+    @Body() body: ProponerInscripcionApoderadoDto,
+  ) {
+    if (req.user.tipo !== 'alumno') {
+      throw new ForbiddenException('Solo alumnos pueden usar este endpoint');
+    }
+    return this.inscripcionTallerService.proponerDirectiva(
+      {
+        alumnoId: req.user.sub,
+        tallerId,
+        tallerHorarioId: body.tallerHorarioId,
+        horarioPropuestoTexto: body.horarioPropuestoTexto,
+        mensajeApoderado: body.mensajeApoderado,
+      },
+      'ALUMNO',
+    );
   }
 
   /**

@@ -40,5 +40,26 @@ export class CreateAlumnoDto {
   @IsString()
   @IsOptional()
   password?: string;
+
+  /** Datos opcionales del apoderado (no todos los alumnos tienen). */
+  @IsString()
+  @IsOptional()
+  apoderadoNombre?: string;
+
+  @IsString()
+  @IsOptional()
+  apoderadoRut?: string;
+
+  @IsEmail()
+  @IsOptional()
+  apoderadoEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  apoderadoTelefono?: string;
+
+  @IsString()
+  @IsOptional()
+  apoderadoPassword?: string;
 }
 

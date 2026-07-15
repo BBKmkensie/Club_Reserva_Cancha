@@ -25,6 +25,11 @@ export interface Alumno {
   tallerId?: number | null;
   // Relación cargada: objeto taller { id, tipo } si el endpoint la incluye.
   taller?: { id: number; tipo?: string } | null;
+  // Datos opcionales del apoderado (misma fila en backend).
+  apoderadoNombre?: string | null;
+  apoderadoRut?: string | null;
+  apoderadoEmail?: string | null;
+  apoderadoTelefono?: string | null;
 }
 
 /** Payload para registrar un nuevo alumno (POST /alumno). */
@@ -43,4 +48,10 @@ export interface CreateAlumnoDto {
   tallerId?: number | null;
   // Contraseña en texto plano; el backend la hashea.
   password?: string;
+  // Apoderado opcional.
+  apoderadoNombre?: string;
+  apoderadoRut?: string;
+  apoderadoEmail?: string;
+  apoderadoTelefono?: string;
+  apoderadoPassword?: string;
 }

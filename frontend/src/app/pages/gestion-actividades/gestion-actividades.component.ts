@@ -94,6 +94,32 @@ const ESTADO_LABEL: Record<EstadoActividad, string> = {
             Guardar período
           </button>
         </div>
+        @if (periodosHistorial.length > 1) {
+          <div class="mt-4 pt-4 border-t border-violet-100">
+            <h3 class="text-sm font-semibold text-ink mb-2">Historial de períodos</h3>
+            <ul class="space-y-2">
+              @for (p of periodosHistorial; track p.id) {
+                <li class="flex flex-wrap items-center justify-between gap-2 text-sm py-1.5">
+                  <span>
+                    <strong>{{ p.nombre }}</strong>
+                    <span class="text-ink-muted ml-2">
+                      ({{ p.fechaApertura | date:'dd/MM/yyyy' }} — {{ p.fechaCierre | date:'dd/MM/yyyy' }})
+                    </span>
+                    @if (p.activo) {
+                      <span class="ml-2 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded">Activo</span>
+                    }
+                  </span>
+                  @if (!p.activo) {
+                    <button type="button" (click)="eliminarPeriodo(p)"
+                            class="text-xs text-red-700 border border-red-300 px-2 py-1 rounded hover:bg-red-50">
+                      Eliminar
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        }
       </div>
 
       @if (showModal) {
@@ -353,6 +379,8 @@ export class GestionActividadesComponent implements OnInit {
   form: FormGroup;
   /** Período académico activo (fechas globales de inscripción). */
   periodoActivo: any = null;
+  /** Historial de períodos académicos. */
+  periodosHistorial: any[] = [];
   periodoForm = { nombre: 'Período actual', apertura: '', cierre: '' };
 
   constructor() {
@@ -373,15 +401,26 @@ export class GestionActividadesComponent implements OnInit {
 
   /** Obtiene el período académico activo y rellena el formulario de configuración. */
   cargarPeriodo() {
-    this.api.getPeriodoActivo().subscribe({
-      next: (p) => {
-        this.periodoActivo = p;
-        if (p) {
-          this.periodoForm.nombre = p.nombre ?? 'Período actual';
-          this.periodoForm.apertura = p.fechaApertura?.slice?.(0, 10) ?? p.fechaApertura;
-          this.periodoForm.cierre = p.fechaCierre?.slice?.(0, 10) ?? p.fechaCierre;
+    this.api.getPeriodos().subscribe({
+      next: (lista) => {
+        this.periodosHistorial = Array.isArray(lista) ? lista : [];
+        this.periodoActivo = this.periodosHistorial.find((p) => p.activo) ?? this.periodosHistorial[0] ?? null;
+        if (this.periodoActivo) {
+          this.periodoForm.nombre = this.periodoActivo.nombre ?? 'Período actual';
+          this.periodoForm.apertura = this.periodoActivo.fechaApertura?.slice?.(0, 10) ?? this.periodoActivo.fechaApertura;
+          this.periodoForm.cierre = this.periodoActivo.fechaCierre?.slice?.(0, 10) ?? this.periodoActivo.fechaCierre;
         }
       },
+    });
+  }
+
+  /** Elimina un período inactivo del historial. */
+  eliminarPeriodo(periodo: { id: number; nombre: string; activo?: boolean }) {
+    if (periodo.activo) return;
+    if (!confirm(`¿Eliminar el período "${periodo.nombre}"?`)) return;
+    this.api.eliminarPeriodo(periodo.id).subscribe({
+      next: () => this.cargarPeriodo(),
+      error: (err) => alert(err?.error?.message || 'No se pudo eliminar el período'),
     });
   }
 
