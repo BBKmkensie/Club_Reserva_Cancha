@@ -68,6 +68,12 @@ const API_ROUTE_PREFIXES = [
 ];
 
 /**
+ * Rutas de la UI Angular que comparten URL con la API.
+ * Al refrescar (F5), el navegador pide HTML; sin esto Nest responde JSON crudo.
+ */
+const SPA_HTML_ROUTE_PATTERNS: RegExp[] = [/^\/taller\/\d+$/];
+
+/**
  * bootstrap() = "arrancar el servidor".
  * Es async porque crear la app y escuchar el puerto son operaciones asíncronas.
  */
@@ -133,12 +139,21 @@ async function bootstrap() {
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         return next(); // deja pasar POST/PATCH/DELETE a los controllers Nest
       }
-      // Si la URL empieza con un prefijo de API → no tocar, que Nest responda JSON
-      if (API_ROUTE_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
-        return next();
-      }
       // Si la URL parece un archivo (tiene extensión) → que Express lo sirva o 404
       if (req.path.includes('.')) {
+        return next();
+      }
+      const acceptsHtml = req.headers.accept?.includes('text/html');
+      if (
+        acceptsHtml &&
+        SPA_HTML_ROUTE_PATTERNS.some((pattern) => pattern.test(req.path))
+      ) {
+        return res.sendFile(join(frontendDist, 'index.html'), (err) => {
+          if (err) next(err);
+        });
+      }
+      // Si la URL empieza con un prefijo de API → no tocar, que Nest responda JSON
+      if (API_ROUTE_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
         return next();
       }
       // Caso típico: /dashboard → devolver index.html (Angular router)
