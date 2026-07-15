@@ -242,7 +242,7 @@ interface CardTaller extends EstiloTarjetaTaller {}
           </div>
         }
 
-        @if (!auth.isProfesor() && mostrarTarjetaSalidas()) {
+        @if (auth.isLoggedIn() && !auth.isProfesor() && mostrarTarjetaSalidas()) {
         <a [routerLink]="rutaSalidas()"
            class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
           <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
@@ -259,7 +259,7 @@ interface CardTaller extends EstiloTarjetaTaller {}
 
       @if (mostrarSeccionMisTalleres() || mostrarSeccionOtrosTalleres()) {
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 min-w-0">
-          @if (!auth.isProfesor() && mostrarTarjetaSalidas()) {
+          @if (auth.isLoggedIn() && !auth.isProfesor() && mostrarTarjetaSalidas()) {
           <a [routerLink]="rutaSalidas()"
              class="group rounded-xl shadow-lg p-5 sm:p-8 text-white bg-gradient-to-br from-purple-500 to-purple-700 hover:shadow-2xl transition-all duration-300 text-center min-w-0 w-full">
             <div class="text-4xl sm:text-6xl mb-3 sm:mb-4">🚌</div>
@@ -595,14 +595,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
     });
 
-    // Visitante: solo conteo de salidas publicadas (catálogo ya se carga arriba)
-    if (!this.auth.isLoggedIn()) {
-      this.apiService.getSalidasPublicadas().subscribe({
-        next: (data) => (this.stats.salidas = asList(data).length),
-        error: () => (this.stats.salidas = 0),
-      });
-      return;
-    }
+    // Visitante: solo catálogo de talleres (sin salidas ni stats)
+    if (!this.auth.isLoggedIn()) return;
 
     if (this.auth.isProfesor()) return;
 
@@ -637,20 +631,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Visitante → login; alumnos → Mis salidas; coordinación → historial. */
+  /** Alumnos van a Mis salidas; coordinación al historial completo. */
   rutaSalidas(): string {
-    if (!this.auth.isLoggedIn()) return '/login';
     return this.auth.canInscribirseSalidas() ? '/mis-salidas' : '/salidas';
   }
 
   textoTarjetaSalidas(): string {
-    if (!this.auth.isLoggedIn()) return 'Consulta las salidas programadas';
     if (this.auth.canInscribirseSalidas()) return 'Salidas de tus talleres inscritos';
     return 'Gestiona las salidas programadas';
   }
 
+  /** Solo con sesión (no profesor). Visitantes no ven la tarjeta. */
   mostrarTarjetaSalidas(): boolean {
-    if (!this.auth.isLoggedIn()) return true;
+    if (!this.auth.isLoggedIn()) return false;
     if (this.auth.canInscribirseSalidas()) {
       const aceptadas = this.misInscripciones.some(
         (i) => String(i.estado ?? '').toUpperCase() === 'ACEPTADO',
