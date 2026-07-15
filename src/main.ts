@@ -21,7 +21,7 @@ import * as express from 'express';
 import { join } from 'path';
 
 // existsSync = pregunta si una carpeta/archivo existe en el disco.
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 
 // NestFactory = fábrica que CREA la aplicación NestJS.
 import { NestFactory } from '@nestjs/core';
@@ -95,6 +95,13 @@ async function bootstrap() {
   // (ej. http://localhost:3000) aunque sean orígenes distintos.
   app.enableCors();
 
+  // ---------- Servir uploads (evidencias de asistencia en salidas) ----------
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsDir));
+
   // ---------- Servir el frontend Angular (opcional) ----------
   // Ruta donde queda el build de Angular tras "ng build".
   // __dirname = carpeta del archivo compilado (dist/), por eso sube un nivel (..)
@@ -109,7 +116,7 @@ async function bootstrap() {
 
   // Solo si existe el build del frontend, lo servimos desde el mismo puerto que la API.
   if (existsSync(frontendDist)) {
-    // Sirve CSS, JS, imágenes, etc. como archivos estáticos
+  // Sirve CSS, JS, imágenes, etc. como archivos estáticos
     app.use(express.static(frontendDist));
 
     // Obtiene la instancia Express "cruda" para agregar un middleware custom

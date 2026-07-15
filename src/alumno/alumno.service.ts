@@ -174,7 +174,7 @@ export class AlumnoService {
 
   /** Aplica datos de apoderado si vienen nombre y RUT; hashea contraseña opcional. */
   private async aplicarApoderadoOpcional(
-    target: Record<string, unknown>,
+    target: Record<string, unknown> | Alumno,
     dto: Partial<CreateAlumnoDto>,
     excludeAlumnoId?: number,
   ): Promise<void> {
@@ -202,14 +202,15 @@ export class AlumnoService {
     target.apoderadoEmail = dto.apoderadoEmail?.trim() || null;
     target.apoderadoTelefono = dto.apoderadoTelefono?.trim() || null;
 
+    const t = target as Record<string, unknown>;
     if (dto.apoderadoPassword?.trim()) {
       const { hash, salt } = hashPassword(dto.apoderadoPassword.trim());
-      target.apoderadoPasswordHash = hash;
-      target.apoderadoPasswordSalt = salt;
+      t.apoderadoPasswordHash = hash;
+      t.apoderadoPasswordSalt = salt;
     } else if (!excludeAlumnoId) {
       const { hash, salt } = hashPassword(defaultPassword());
-      target.apoderadoPasswordHash = hash;
-      target.apoderadoPasswordSalt = salt;
+      t.apoderadoPasswordHash = hash;
+      t.apoderadoPasswordSalt = salt;
     }
   }
 

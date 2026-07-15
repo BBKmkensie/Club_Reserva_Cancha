@@ -2,9 +2,9 @@
  * =============================================================================
  * app/pages/salidas/salidas.component.ts — Historial de salidas (solo lectura)
  * =============================================================================
- * Consulta del historial de salidas pedagógicas con estado y resultado.
+ * Consulta del historial de salidas pedagógicas con estado, resultado y asistencia.
  * Rol: coordinación / gestión. Los alumnos se redirigen a /mis-salidas.
- * Endpoints ApiService: getSalidas
+ * Endpoints ApiService: getSalidas, getAsistenciaSalida
  * =============================================================================
  */
 import { Component, OnInit, inject } from '@angular/core';
@@ -13,16 +13,17 @@ import { Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
 import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
+import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistencia-salida-panel/asistencia-salida-panel.component';
 
 @Component({
   selector: 'app-salidas',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [CommonModule, DatePipe, AsistenciaSalidaPanelComponent],
   template: `
     <div class="space-y-6">
       <div>
         <h1 class="text-3xl font-bold text-ink">Salidas programadas</h1>
-        <p class="text-ink-muted mt-1">Historial con profesor responsable, origen y resultado al cerrar.</p>
+        <p class="text-ink-muted mt-1">Historial con profesor responsable, asistencia e imagen de evidencia.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -56,6 +57,16 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
                 }
               </div>
             }
+
+            @if (salida.estado === 'PUBLICADA' || salida.estado === 'EN_CURSO' || salida.estado === 'CERRADA') {
+              <button type="button" (click)="toggleDetalle(salida.id)"
+                      class="mt-4 text-sm text-primary-600 hover:text-primary-800 font-medium">
+                {{ detalleAbierto === salida.id ? 'Ocultar asistencia' : 'Ver asistencia e imagen' }}
+              </button>
+              @if (detalleAbierto === salida.id) {
+                <app-asistencia-salida-panel [salidaId]="salida.id" [modoEdicion]="false" />
+              }
+            }
           </div>
         }
         @if (salidas.length === 0) {
@@ -75,13 +86,14 @@ export class SalidasComponent implements OnInit {
 
   /** Listado completo de salidas pedagógicas desde la API. */
   salidas: Salida[] = [];
+  /** Salida cuya ficha de asistencia está expandida. */
+  detalleAbierto: number | null = null;
 
   /**
    * Si el usuario es alumno (o solo se inscribe a salidas), lo manda a Mis salidas.
    * Si es gestión/coordinación, carga el historial completo.
    */
   ngOnInit() {
-    // Alumnos usan Mis salidas (filtrado por talleres inscritos)
     if (this.auth.isAlumno() || this.auth.canInscribirseSalidas()) {
       this.router.navigate(['/mis-salidas']);
       return;
@@ -95,6 +107,10 @@ export class SalidasComponent implements OnInit {
       next: (d) => (this.salidas = d),
       error: () => (this.salidas = []),
     });
+  }
+
+  toggleDetalle(salidaId: number): void {
+    this.detalleAbierto = this.detalleAbierto === salidaId ? null : salidaId;
   }
 
   /** Texto del flujo pedagógico (p. ej. pendiente profesor / directiva). */

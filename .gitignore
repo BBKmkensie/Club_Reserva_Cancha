@@ -11,6 +11,7 @@ dist/
 frontend/dist/
 build/
 out-tsc/
+uploads/
 *.tsbuildinfo
 
 # Frontend Angular

@@ -37,11 +37,17 @@ import { ProponerSalidaDto } from '../dto/proponer-salida.dto';
 import { ResponderSalidaDto } from '../dto/responder-salida.dto';
 import { AbrirSalidaDto } from '../dto/abrir-salida.dto';
 import { CerrarSalidaDto } from '../dto/cerrar-salida.dto';
+import { ActualizarAsistenciaDto } from '../dto/actualizar-asistencia.dto';
+import { SubirImagenSalidaDto } from '../dto/subir-imagen-salida.dto';
+import { AsistenciaSalidaService } from './asistencia-salida.service';
 
 /** @Controller('salida') → todas las rutas empiezan con /salida */
 @Controller('salida')
 export class SalidaController {
-  constructor(private readonly salidaService: SalidaService) {}
+  constructor(
+    private readonly salidaService: SalidaService,
+    private readonly asistenciaSalidaService: AsistenciaSalidaService,
+  ) {}
 
   /**
    * POST /salida/asignar — @Body() AsignarSalidaDto.
@@ -97,6 +103,51 @@ export class SalidaController {
   @Get('por-profesor/:profesorId')
   findByProfesor(@Param('profesorId', ParseIntPipe) profesorId: number) {
     return this.salidaService.findByProfesor(profesorId);
+  }
+
+  /** GET /salida/:id/asistencia — detalle de asistencia e imagen (profesor o directiva). */
+  @Get(':id/asistencia')
+  obtenerAsistencia(@Param('id', ParseIntPipe) id: number) {
+    return this.asistenciaSalidaService.obtenerDetalle(id);
+  }
+
+  /** POST /salida/:id/asistencia/iniciar?profesorId= — inicia lista con inscritos. */
+  @Post(':id/asistencia/iniciar')
+  iniciarAsistencia(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('profesorId', ParseIntPipe) profesorId: number,
+  ) {
+    return this.asistenciaSalidaService.iniciar(id, profesorId);
+  }
+
+  /** PATCH /salida/:id/asistencia/registros?profesorId= — marca presentes/ausentes. */
+  @Patch(':id/asistencia/registros')
+  actualizarAsistenciaSalida(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('profesorId', ParseIntPipe) profesorId: number,
+    @Body() dto: ActualizarAsistenciaDto,
+  ) {
+    return this.asistenciaSalidaService.actualizarRegistros(id, profesorId, dto);
+  }
+
+  /** PATCH /salida/:id/asistencia/cerrar?profesorId= — cierra la lista de la salida. */
+  @Patch(':id/asistencia/cerrar')
+  cerrarAsistenciaSalida(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('profesorId', ParseIntPipe) profesorId: number,
+    @Body() body: { observaciones?: string },
+  ) {
+    return this.asistenciaSalidaService.cerrar(id, profesorId, body?.observaciones);
+  }
+
+  /** POST /salida/:id/asistencia/imagen?profesorId= — sube foto de evidencia. */
+  @Post(':id/asistencia/imagen')
+  subirImagenAsistenciaSalida(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('profesorId', ParseIntPipe) profesorId: number,
+    @Body() dto: SubirImagenSalidaDto,
+  ) {
+    return this.asistenciaSalidaService.subirImagen(id, profesorId, dto);
   }
 
   /** POST /salida — creación directa ya PUBLICADA (atajo/admin). */

@@ -124,6 +124,26 @@ export class Salida {
   @Column({ type: 'timestamp', nullable: true, name: 'fecha_respuesta' })
   fechaRespuesta: Date | null;
 
+  /** true cuando el profesor guardó la lista de asistencia de la salida. */
+  @Column({ type: 'boolean', default: false, name: 'asistencia_lista_guardada' })
+  asistenciaListaGuardada: boolean;
+
+  /** Observaciones generales al cerrar la asistencia de la salida. */
+  @Column({ type: 'text', nullable: true, name: 'asistencia_observaciones' })
+  asistenciaObservaciones: string | null;
+
+  /** Ruta relativa de la imagen de evidencia (lista con nombres visibles). */
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'imagen_evidencia_path' })
+  imagenEvidenciaPath: string | null;
+
+  /** Timestamp de inicio de toma de lista en la salida. */
+  @Column({ type: 'timestamp', nullable: true, name: 'asistencia_iniciada_at' })
+  asistenciaIniciadaAt: Date | null;
+
+  /** Timestamp de cierre de la asistencia de la salida. */
+  @Column({ type: 'timestamp', nullable: true, name: 'asistencia_cerrada_at' })
+  asistenciaCerradaAt: Date | null;
+
   /** Alumnos inscritos en esta salida (tabla intermedia InscripcionSalida). */
   @OneToMany(() => InscripcionSalida, (insc) => insc.salida)
   inscripciones: InscripcionSalida[];

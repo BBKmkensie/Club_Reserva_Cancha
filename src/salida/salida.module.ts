@@ -19,15 +19,27 @@ import { Salida } from '../entities/salida.entity';
 import { Profesor } from '../entities/profesor.entity';
 import { Taller } from '../entities/taller.entity';
 import { InscripcionTaller } from '../entities/inscripcion-taller.entity';
+import { InscripcionSalida } from '../entities/inscripcion-salida.entity';
+import { RegistroAsistenciaSalida } from '../entities/registro-asistencia-salida.entity';
+import { AsistenciaSalidaService } from './asistencia-salida.service';
 
 /**
  * @Module: agrupa gestión de salidas deportivas y su flujo de aprobación.
  * forFeature([...]) permite @InjectRepository en SalidaService.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Salida, Profesor, Taller, InscripcionTaller])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Salida,
+      Profesor,
+      Taller,
+      InscripcionTaller,
+      InscripcionSalida,
+      RegistroAsistenciaSalida,
+    ]),
+  ],
   controllers: [SalidaController],
-  providers: [SalidaService],
-  exports: [SalidaService],
+  providers: [SalidaService, AsistenciaSalidaService],
+  exports: [SalidaService, AsistenciaSalidaService],
 })
 export class SalidaModule {}

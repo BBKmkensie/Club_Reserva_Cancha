@@ -23,12 +23,14 @@ import { NotificacionController } from './notificacion.controller';
 import { NotificacionStreamService } from './notificacion-stream.service';
 // MailModule = envío de correo al crear notificaciones
 import { MailModule } from '../mail/mail.module';
+import { AuthModule } from '../auth/auth.module';
 
 /** Agrupa servicios y controlador de notificaciones del sistema. */
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notificacion, Alumno, Profesor, Admin]),
     MailModule,
+    AuthModule,
   ],
   controllers: [NotificacionController],
   providers: [NotificacionService, NotificacionStreamService],

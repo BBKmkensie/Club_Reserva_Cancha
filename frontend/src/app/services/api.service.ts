@@ -423,6 +423,51 @@ export class ApiService {
     return this.http.patch<any>(`${this.apiUrl}/salida/${id}/cerrar?profesorId=${profesorId}`, { resultado, comentario });
   }
 
+  /** GET /salida/:id/asistencia — detalle de asistencia de la salida. */
+  getAsistenciaSalida(salidaId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/salida/${salidaId}/asistencia`);
+  }
+
+  /** POST /salida/:id/asistencia/iniciar — inicia lista con alumnos inscritos. */
+  iniciarAsistenciaSalida(salidaId: number, profesorId: number): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/salida/${salidaId}/asistencia/iniciar?profesorId=${profesorId}`,
+      {},
+    );
+  }
+
+  /** PATCH /salida/:id/asistencia/registros — presentes/ausentes. */
+  actualizarAsistenciaSalida(
+    salidaId: number,
+    profesorId: number,
+    registros: Array<{ alumnoId: number; estado: 'PRESENTE' | 'AUSENTE'; observacion?: string }>,
+  ): Observable<any> {
+    return this.http.patch<any>(
+      `${this.apiUrl}/salida/${salidaId}/asistencia/registros?profesorId=${profesorId}`,
+      { registros },
+    );
+  }
+
+  /** PATCH /salida/:id/asistencia/cerrar — cierra la asistencia de la salida. */
+  cerrarAsistenciaSalida(salidaId: number, profesorId: number, observaciones?: string): Observable<any> {
+    return this.http.patch<any>(
+      `${this.apiUrl}/salida/${salidaId}/asistencia/cerrar?profesorId=${profesorId}`,
+      { observaciones },
+    );
+  }
+
+  /** POST /salida/:id/asistencia/imagen — sube evidencia fotográfica. */
+  subirImagenAsistenciaSalida(
+    salidaId: number,
+    profesorId: number,
+    data: { base64: string; mimeType: string },
+  ): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/salida/${salidaId}/asistencia/imagen?profesorId=${profesorId}`,
+      { imagenBase64: data.base64, mimeType: data.mimeType },
+    );
+  }
+
   // =========================================================================
   // INSCRIPCIÓN A SALIDA
   // =========================================================================
@@ -726,62 +771,68 @@ export class ApiService {
   // NOTIFICACIONES
   // =========================================================================
 
-  /** GET /notificacion/por-alumno/:alumnoId — notificaciones del alumno. */
-  getNotificaciones(alumnoId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-alumno/${alumnoId}`);
+  /** GET /notificacion/mias — notificaciones del usuario autenticado. */
+  getNotificaciones(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/notificacion/mias`);
   }
 
-  /** PATCH /notificacion/:id/leer/:alumnoId — marca una como leída (alumno). */
-  marcarNotificacionLeida(id: number, alumnoId: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer/${alumnoId}`, {});
+  /** PATCH /notificacion/:id/leer — marca una como leída. */
+  marcarNotificacionLeida(id: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer`, {});
   }
 
-  /** PATCH /notificacion/leer-todas/:alumnoId — marca todas leídas (alumno). */
-  marcarTodasNotificacionesLeidas(alumnoId: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas/${alumnoId}`, {});
+  /** PATCH /notificacion/leer-todas — marca todas leídas. */
+  marcarTodasNotificacionesLeidas(): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas`, {});
   }
 
-  /** GET /notificacion/por-profesor/:profesorId — notificaciones del profesor. */
-  getNotificacionesProfesor(profesorId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-profesor/${profesorId}`);
+  /** @deprecated Usar getNotificaciones() — el backend filtra por JWT. */
+  getNotificacionesAlumno(_alumnoId: number): Observable<any[]> {
+    return this.getNotificaciones();
   }
 
-  /** PATCH /notificacion/:id/leer-profesor/:profesorId — marca una leída (profesor). */
-  marcarNotificacionLeidaProfesor(id: number, profesorId: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer-profesor/${profesorId}`, {});
+  /** @deprecated Usar marcarNotificacionLeida(id). */
+  marcarNotificacionLeidaAlumno(id: number, _alumnoId: number): Observable<any> {
+    return this.marcarNotificacionLeida(id);
   }
 
-  /** PATCH /notificacion/leer-todas-profesor/:profesorId — marca todas leídas (profesor). */
-  marcarTodasNotificacionesLeidasProfesor(profesorId: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas-profesor/${profesorId}`, {});
+  /** @deprecated Usar marcarTodasNotificacionesLeidas(). */
+  marcarTodasNotificacionesLeidasAlumno(_alumnoId: number): Observable<any> {
+    return this.marcarTodasNotificacionesLeidas();
   }
 
-  /** GET /notificacion/por-admin/:adminId — notificaciones de admin/directiva. */
-  getNotificacionesAdmin(adminId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/notificacion/por-admin/${adminId}`);
+  /** @deprecated Usar getNotificaciones(). */
+  getNotificacionesProfesor(_profesorId: number): Observable<any[]> {
+    return this.getNotificaciones();
   }
 
-  /** PATCH /notificacion/:id/leer-admin/:adminId — marca una leída (admin). */
-  marcarNotificacionLeidaAdmin(id: number, adminId: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/notificacion/${id}/leer-admin/${adminId}`, {});
+  /** @deprecated Usar marcarNotificacionLeida(id). */
+  marcarNotificacionLeidaProfesor(id: number, _profesorId: number): Observable<any> {
+    return this.marcarNotificacionLeida(id);
   }
 
-  /** PATCH /notificacion/leer-todas-admin/:adminId — marca todas leídas (admin). */
-  marcarTodasNotificacionesLeidasAdmin(adminId: number): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/notificacion/leer-todas-admin/${adminId}`, {});
+  /** @deprecated Usar marcarTodasNotificacionesLeidas(). */
+  marcarTodasNotificacionesLeidasProfesor(_profesorId: number): Observable<any> {
+    return this.marcarTodasNotificacionesLeidas();
   }
 
-  /**
-   * DELETE /notificacion/:id/{alumno|profesor|admin}/:userId
-   * Elimina una notificación según el rol del destinatario.
-   */
-  eliminarNotificacion(id: number, userId: number, rol: 'alumno' | 'profesor' | 'admin'): Observable<void> {
-    const path =
-      rol === 'alumno'
-        ? `notificacion/${id}/alumno/${userId}`
-        : rol === 'profesor'
-          ? `notificacion/${id}/profesor/${userId}`
-          : `notificacion/${id}/admin/${userId}`;
-    return this.http.delete<void>(`${this.apiUrl}/${path}`);
+  /** @deprecated Usar getNotificaciones(). */
+  getNotificacionesAdmin(_adminId: number): Observable<any[]> {
+    return this.getNotificaciones();
+  }
+
+  /** @deprecated Usar marcarNotificacionLeida(id). */
+  marcarNotificacionLeidaAdmin(id: number, _adminId: number): Observable<any> {
+    return this.marcarNotificacionLeida(id);
+  }
+
+  /** @deprecated Usar marcarTodasNotificacionesLeidas(). */
+  marcarTodasNotificacionesLeidasAdmin(_adminId: number): Observable<any> {
+    return this.marcarTodasNotificacionesLeidas();
+  }
+
+  /** DELETE /notificacion/:id — elimina una notificación del usuario autenticado. */
+  eliminarNotificacion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/notificacion/${id}`);
   }
 }

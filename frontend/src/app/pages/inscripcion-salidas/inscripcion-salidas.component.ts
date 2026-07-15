@@ -19,11 +19,12 @@ import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/
 import { Taller } from '../../models/taller.model';
 import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-picker.component';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
+import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistencia-salida-panel/asistencia-salida-panel.component';
 
 @Component({
   selector: 'app-inscripcion-salidas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, HoraPickerComponent, FechaPickerComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, HoraPickerComponent, FechaPickerComponent, AsistenciaSalidaPanelComponent],
   template: `
     <div class="space-y-8">
       <div class="bg-surface rounded-xl shadow-lg p-6">
@@ -194,9 +195,21 @@ import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha
                       <button (click)="cerrarSalida(s, 'EXITO')" class="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg">Cerrar · Éxito</button>
                       <button (click)="cerrarSalida(s, 'FRACASO')" class="text-sm bg-red-600 text-white px-3 py-1.5 rounded-lg">Cerrar · Fracaso</button>
                     }
+                    @if (s.estado === 'PUBLICADA' || s.estado === 'EN_CURSO' || s.estado === 'CERRADA') {
+                      <button type="button" (click)="toggleAsistenciaSalida(s.id)"
+                              class="text-sm border border-primary-300 text-primary-700 px-3 py-1.5 rounded-lg hover:bg-primary-50">
+                        {{ salidaAsistenciaAbierta === s.id ? 'Ocultar asistencia' : 'Pasar lista' }}
+                      </button>
+                    }
                   </div>
                 }
               </div>
+              @if (auth.isProfesor() && salidaAsistenciaAbierta === s.id && auth.currentUserId()) {
+                <app-asistencia-salida-panel
+                  [salidaId]="s.id"
+                  [profesorId]="auth.currentUserId()"
+                  [modoEdicion]="true" />
+              }
               @if (s.estado === 'CERRADA' && s.comentarioCierre) {
                 <p class="mt-2 text-sm text-ink-secondary bg-page p-2 rounded">
                   <strong>Comentario del profesor:</strong> {{ s.comentarioCierre }}
@@ -229,6 +242,8 @@ export class InscripcionSalidasComponent implements OnInit {
   pendientesProfesor: Salida[] = [];
   /** Bandeja de directiva: propuestas de profesor. */
   pendientesDirectiva: Salida[] = [];
+  /** Id de salida cuyo panel de asistencia está expandido (profesor). */
+  salidaAsistenciaAbierta: number | null = null;
   /** Evita bucles al sincronizar profesor ↔ taller en el formulario de asignación. */
   private sincronizandoAsignacion = false;
 
@@ -404,6 +419,10 @@ export class InscripcionSalidasComponent implements OnInit {
       },
       error: (e) => alert(e?.error?.message || 'Error'),
     });
+  }
+
+  toggleAsistenciaSalida(salidaId: number): void {
+    this.salidaAsistenciaAbierta = this.salidaAsistenciaAbierta === salidaId ? null : salidaId;
   }
 
   /** Marca una salida publicada como en curso (profesor responsable). */

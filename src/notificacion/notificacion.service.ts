@@ -12,6 +12,8 @@
  * =============================================================================
  */
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { JwtPayload } from '../auth/auth.types';
+import { NotificacionScope, resolveNotificacionScope } from './notificacion-scope.util';
 import { InjectRepository } from '@nestjs/typeorm';
 // In = WHERE rol IN ('super_admin', 'directiva')
 import { In, Repository } from 'typeorm';
@@ -48,7 +50,14 @@ export class NotificacionService {
     mensaje: string,
     tipo = 'inscripcion_taller',
   ): Promise<Notificacion> {
-    const notificacion = this.repo.create({ alumnoId, titulo, mensaje, tipo });
+    const notificacion = this.repo.create({
+      alumnoId,
+      profesorId: null,
+      adminId: null,
+      titulo,
+      mensaje,
+      tipo,
+    });
     const guardada = await this.repo.save(notificacion);
 
     const alumno = await this.alumnoRepo.findOne({ where: { id: alumnoId } });
@@ -67,7 +76,14 @@ export class NotificacionService {
     mensaje: string,
     tipo = 'ausencia_recurrente',
   ): Promise<Notificacion> {
-    const notificacion = this.repo.create({ profesorId, titulo, mensaje, tipo });
+    const notificacion = this.repo.create({
+      alumnoId: null,
+      profesorId,
+      adminId: null,
+      titulo,
+      mensaje,
+      tipo,
+    });
     const guardada = await this.repo.save(notificacion);
 
     const profesor = await this.profesorRepo.findOne({ where: { id: profesorId } });
@@ -182,6 +198,95 @@ export class NotificacionService {
     });
     for (const admin of coordinadores) {
       await this.crearParaAdmin(admin.id, titulo, mensaje, tipo, refId);
+    }
+  }
+
+  /** Lista las notificaciones del usuario autenticado según su tipo JWT. */
+  async findForUser(user: JwtPayload): Promise<Notificacion[]> {
+    const scope = resolveNotificacionScope(user);
+    return this.findByScope(scope, user.sub);
+  }
+
+  /** Cuenta no leídas del usuario autenticado. */
+  async contarNoLeidasForUser(user: JwtPayload): Promise<number> {
+    const scope = resolveNotificacionScope(user);
+    return this.contarNoLeidasByScope(scope, user.sub);
+  }
+
+  /** Marca una notificación como leída verificando que pertenezca al usuario autenticado. */
+  async marcarLeidaForUser(id: number, user: JwtPayload): Promise<Notificacion> {
+    const scope = resolveNotificacionScope(user);
+    return this.marcarLeidaByScope(id, scope, user.sub);
+  }
+
+  /** Marca todas las notificaciones del usuario autenticado como leídas. */
+  async marcarTodasLeidasForUser(user: JwtPayload): Promise<void> {
+    const scope = resolveNotificacionScope(user);
+    return this.marcarTodasLeidasByScope(scope, user.sub);
+  }
+
+  /** Elimina una notificación verificando que pertenezca al usuario autenticado. */
+  async eliminarForUser(id: number, user: JwtPayload): Promise<void> {
+    const scope = resolveNotificacionScope(user);
+    return this.eliminarByScope(id, scope, user.sub);
+  }
+
+  private findByScope(scope: NotificacionScope, ownerId: number): Promise<Notificacion[]> {
+    switch (scope) {
+      case 'alumno':
+        return this.findByAlumno(ownerId);
+      case 'profesor':
+        return this.findByProfesor(ownerId);
+      case 'admin':
+        return this.findByAdmin(ownerId);
+    }
+  }
+
+  private contarNoLeidasByScope(scope: NotificacionScope, ownerId: number): Promise<number> {
+    switch (scope) {
+      case 'alumno':
+        return this.contarNoLeidas(ownerId);
+      case 'profesor':
+        return this.contarNoLeidasProfesor(ownerId);
+      case 'admin':
+        return this.contarNoLeidasAdmin(ownerId);
+    }
+  }
+
+  private marcarLeidaByScope(
+    id: number,
+    scope: NotificacionScope,
+    ownerId: number,
+  ): Promise<Notificacion> {
+    switch (scope) {
+      case 'alumno':
+        return this.marcarLeida(id, ownerId);
+      case 'profesor':
+        return this.marcarLeidaProfesor(id, ownerId);
+      case 'admin':
+        return this.marcarLeidaAdmin(id, ownerId);
+    }
+  }
+
+  private marcarTodasLeidasByScope(scope: NotificacionScope, ownerId: number): Promise<void> {
+    switch (scope) {
+      case 'alumno':
+        return this.marcarTodasLeidas(ownerId);
+      case 'profesor':
+        return this.marcarTodasLeidasProfesor(ownerId);
+      case 'admin':
+        return this.marcarTodasLeidasAdmin(ownerId);
+    }
+  }
+
+  private eliminarByScope(id: number, scope: NotificacionScope, ownerId: number): Promise<void> {
+    switch (scope) {
+      case 'alumno':
+        return this.eliminarAlumno(id, ownerId);
+      case 'profesor':
+        return this.eliminarProfesor(id, ownerId);
+      case 'admin':
+        return this.eliminarAdmin(id, ownerId);
     }
   }
 

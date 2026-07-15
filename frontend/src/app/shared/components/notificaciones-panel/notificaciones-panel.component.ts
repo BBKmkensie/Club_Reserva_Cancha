@@ -217,11 +217,8 @@ export class NotificacionesPanelComponent implements OnInit, OnDestroy {
 
   /** Roles que ven la campana: alumno, profesor, coordinación, admin. */
   private tieneNotificaciones(): boolean {
-    return this.auth.canInscribirseTalleres()
-      || this.auth.isProfesor()
-      || this.auth.isCoordinacion()
-      || this.auth.isSuperAdmin()
-      || this.auth.isAdmin();
+    const tipo = this.auth.currentUserTipo();
+    return tipo === 'alumno' || tipo === 'profesor' || tipo === 'admin' || tipo === 'directiva';
   }
 
   /**
