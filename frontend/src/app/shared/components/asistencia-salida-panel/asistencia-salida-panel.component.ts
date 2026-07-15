@@ -43,11 +43,17 @@ interface RegistroUI {
       }
 
       @if (!cargando && registros.length === 0 && modoEdicion && !cerrada) {
-        <button type="button" (click)="iniciar()" [disabled]="cargando"
-                class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
-          Iniciar lista de asistencia
-        </button>
-        <p class="text-xs text-ink-muted">Se cargarán los alumnos inscritos en esta salida.</p>
+        @if (!profesorId) {
+          <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            Esta salida no tiene profesor responsable. Solo el profesor asignado puede pasar lista.
+          </p>
+        } @else {
+          <button type="button" (click)="iniciar()" [disabled]="cargando"
+                  class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
+            Iniciar lista de asistencia
+          </button>
+          <p class="text-xs text-ink-muted mt-2">Se cargarán los alumnos inscritos en esta salida.</p>
+        }
       }
 
       @if (!cargando && registros.length === 0 && !modoEdicion) {

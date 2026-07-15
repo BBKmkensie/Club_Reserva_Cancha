@@ -15,7 +15,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthRoleService } from '../../shared/services/auth-role.service';
-import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida } from '../../models/salida.model';
+import { Salida, etiquetaFlujoSalida, etiquetaEstadoSalida, salidaPermiteAsistencia } from '../../models/salida.model';
 import { Taller } from '../../models/taller.model';
 import { HoraPickerComponent } from '../../shared/components/hora-picker/hora-picker.component';
 import { FechaPickerComponent } from '../../shared/components/fecha-picker/fecha-picker.component';
@@ -37,6 +37,50 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
           }
         </p>
       </div>
+
+      <section id="control-asistencia" class="bg-primary-50 rounded-xl shadow-lg p-6 border-2 border-primary-300">
+        <h2 class="text-xl font-bold text-primary-900 mb-1">Control de asistencia</h2>
+        <p class="text-sm text-ink-muted mb-4">
+          @if (auth.isProfesor()) {
+            Elige la salida, inicia la lista con los alumnos inscritos, marca presentes/ausentes y sube la imagen de evidencia.
+          } @else {
+            Elige la salida para revisar la asistencia y la imagen que registró el profesor.
+          }
+        </p>
+        @if (errorCargaSalidas) {
+          <p class="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-2 mb-3">{{ errorCargaSalidas }}</p>
+        }
+        @if (salidasAsistencia.length === 0) {
+          <p class="text-sm text-ink-muted">
+            No hay salidas publicadas, en curso o cerradas.
+            @if (salidas.length > 0) {
+              Hay {{ salidas.length }} salida(s) pendientes de aprobación — deben aceptarse antes de pasar lista.
+            } @else {
+              Crea o aprueba una salida primero.
+            }
+          </p>
+        } @else {
+          <label class="block text-sm font-medium text-ink-secondary mb-1">Seleccionar salida</label>
+          <select [(ngModel)]="salidaAsistenciaSeleccionada"
+                  (ngModelChange)="onSeleccionAsistencia($event)"
+                  class="w-full max-w-xl border border-primary-300 rounded-lg px-3 py-2 mb-4 bg-white">
+            <option [ngValue]="null">— Seleccione una salida —</option>
+            @for (s of salidasAsistencia; track s.id) {
+              <option [ngValue]="s.id">
+                {{ s.destino }} · {{ s.fecha | date:'dd/MM/yyyy' }} · {{ estadoLabel(s) }}
+              </option>
+            }
+          </select>
+          @if (salidaAsistenciaSeleccionada) {
+            <app-asistencia-salida-panel
+              [salidaId]="salidaAsistenciaSeleccionada"
+              [profesorId]="puedeEditarAsistencia(salidaAsistenciaSeleccionada) ? auth.currentUserId() : null"
+              [modoEdicion]="puedeEditarAsistencia(salidaAsistenciaSeleccionada)" />
+          } @else {
+            <p class="text-sm text-primary-800">Selecciona una salida arriba para ver el panel de asistencia.</p>
+          }
+        }
+      </section>
 
       @if (auth.isCoordinacion()) {
         <section class="bg-surface rounded-xl shadow-lg p-6">
@@ -163,38 +207,6 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
         }
       }
 
-      <section class="bg-surface rounded-xl shadow-lg p-6 border border-primary-200">
-        <h2 class="text-xl font-semibold text-ink mb-2">Control de asistencia</h2>
-        <p class="text-sm text-ink-muted mb-4">
-          @if (auth.isProfesor()) {
-            Selecciona una salida para pasar lista, subir la imagen de evidencia y guardar la asistencia de los alumnos inscritos.
-          } @else {
-            Selecciona una salida para ver la lista de asistencia y la imagen de evidencia registrada por el profesor.
-          }
-        </p>
-        @if (salidasAsistencia.length === 0) {
-          <p class="text-sm text-ink-muted">No hay salidas publicadas, en curso o cerradas disponibles.</p>
-        } @else {
-          <label class="block text-sm font-medium text-ink-secondary mb-1">Salida</label>
-          <select [(ngModel)]="salidaAsistenciaSeleccionada"
-                  (ngModelChange)="onSeleccionAsistencia($event)"
-                  class="w-full max-w-xl border border-line rounded-lg px-3 py-2 mb-4 bg-surface">
-            <option [ngValue]="null">— Seleccione una salida —</option>
-            @for (s of salidasAsistencia; track s.id) {
-              <option [ngValue]="s.id">
-                {{ s.destino }} · {{ s.fecha | date:'dd/MM/yyyy' }} · {{ estadoLabel(s) }}
-              </option>
-            }
-          </select>
-          @if (salidaAsistenciaSeleccionada) {
-            <app-asistencia-salida-panel
-              [salidaId]="salidaAsistenciaSeleccionada"
-              [profesorId]="puedeEditarAsistencia(salidaAsistenciaSeleccionada) ? auth.currentUserId() : null"
-              [modoEdicion]="puedeEditarAsistencia(salidaAsistenciaSeleccionada)" />
-          }
-        }
-      </section>
-
       <section class="bg-surface rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-ink mb-4">Todas las salidas</h2>
         <div class="space-y-3">
@@ -278,6 +290,8 @@ export class InscripcionSalidasComponent implements OnInit {
   salidaAsistenciaSeleccionada: number | null = null;
   /** Id de salida cuyo panel de asistencia está expandido en la tarjeta (profesor). */
   salidaAsistenciaAbierta: number | null = null;
+  /** Mensaje si falla la carga de salidas desde la API. */
+  errorCargaSalidas = '';
   /** Evita bucles al sincronizar profesor ↔ taller en el formulario de asignación. */
   private sincronizandoAsignacion = false;
 
@@ -368,9 +382,7 @@ export class InscripcionSalidasComponent implements OnInit {
 
   /** Salidas donde ya se puede ver o registrar asistencia. */
   get salidasAsistencia(): Salida[] {
-    return this.salidas.filter(
-      (s) => s.estado === 'PUBLICADA' || s.estado === 'EN_CURSO' || s.estado === 'CERRADA',
-    );
+    return this.salidas.filter((s) => salidaPermiteAsistencia(s));
   }
 
   /** Solo el profesor responsable puede editar la lista. */
@@ -399,7 +411,28 @@ export class InscripcionSalidasComponent implements OnInit {
     const obs = this.auth.isProfesor() && this.auth.currentUserId()
       ? this.api.getSalidasPorProfesor(this.auth.currentUserId()!)
       : this.api.getSalidas();
-    obs.subscribe({ next: (d) => (this.salidas = d), error: () => (this.salidas = []) });
+    obs.subscribe({
+      next: (d) => {
+        this.salidas = d ?? [];
+        this.errorCargaSalidas = '';
+        this.preseleccionarSalidaAsistencia();
+      },
+      error: () => {
+        this.salidas = [];
+        this.errorCargaSalidas = 'No se pudieron cargar las salidas. Verifica que el backend esté activo.';
+      },
+    });
+  }
+
+  private preseleccionarSalidaAsistencia(): void {
+    const elegibles = this.salidasAsistencia;
+    if (this.salidaAsistenciaSeleccionada && elegibles.some((s) => s.id === this.salidaAsistenciaSeleccionada)) {
+      return;
+    }
+    if (elegibles.length === 1) {
+      this.salidaAsistenciaSeleccionada = elegibles[0].id;
+      this.salidaAsistenciaAbierta = elegibles[0].id;
+    }
   }
 
   /** Obtiene asignaciones de la directiva pendientes de respuesta del profesor. */

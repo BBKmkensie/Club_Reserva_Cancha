@@ -29,6 +29,12 @@ export type EstadoSalida =
 /** Resultado final al cerrar una salida ya realizada. */
 export type ResultadoSalida = 'EXITO' | 'FRACASO';
 
+/** Salidas donde ya se puede ver o registrar asistencia. */
+export function salidaPermiteAsistencia(s: Salida): boolean {
+  const estado = String(s.estado ?? 'PUBLICADA').toUpperCase();
+  return estado === 'PUBLICADA' || estado === 'EN_CURSO' || estado === 'CERRADA';
+}
+
 /** Salida con destino, fechas, responsables y relaciones cargadas. */
 export interface Salida {
   // Identificador único.
