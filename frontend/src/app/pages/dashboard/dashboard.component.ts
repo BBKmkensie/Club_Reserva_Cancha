@@ -5,12 +5,14 @@
  * Pantalla de inicio tras el login; contenido adaptativo según rol:
  * - Alumno: catálogo de talleres, mis inscripciones, notificaciones
  * - Profesor: asignaciones pendientes, resumen de inscripciones de su taller
+ * - Directiva/coordinación: propuestas y salidas pendientes de aprobar/rechazar
  * - Coordinación: estadísticas globales (talleres, alumnos, reservas, salidas)
  *
  * Endpoints ApiService:
  * getCatalogoTalleres, getTalleres, getAlumnos, getProfesores, getReservas,
  * getSalidas, getInscripcionesTallerPorAlumno, getInscripcionesTallerPorTaller,
- * getResumenInscripcionesTaller, getAsignacionesPendientes, responderAsignacion
+ * getResumenInscripcionesTaller, getAsignacionesPendientes, responderAsignacion,
+ * getPropuestasPendientes, getSalidasPendientesDirectiva
  * =============================================================================
  */
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
@@ -88,6 +90,36 @@ interface CardTaller extends EstiloTarjetaTaller {}
               <a routerLink="/gestion-inscripciones"
                  class="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700">
                 Gestionar inscripciones →
+              </a>
+            </div>
+          </div>
+        }
+
+        @if (auth.isCoordinacion()) {
+          <div class="bg-surface rounded-xl shadow-lg p-6 border-2 border-sky-200">
+            <h2 class="text-xl font-bold text-ink mb-2">Panel de la directiva — Pendientes</h2>
+            <p class="text-ink-muted text-sm mb-4">
+              Revisa propuestas de actividades y salidas que debes aprobar o rechazar.
+            </p>
+            <div class="flex flex-wrap items-center gap-3 text-sm mb-4">
+              <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-bold">
+                {{ resumenDirectiva.propuestasPendientes }} propuestas
+              </span>
+              <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-bold">
+                {{ resumenDirectiva.salidasPendientes }} salidas
+              </span>
+              <span class="bg-sky-100 text-sky-800 px-3 py-1 rounded-full font-bold">
+                {{ totalPendientesDirectiva() }} por revisar
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <a routerLink="/propuestas-actividad"
+                 class="bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-700">
+                Ver propuestas →
+              </a>
+              <a routerLink="/inscripcion-salidas"
+                 class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700">
+                Revisar salidas →
               </a>
             </div>
           </div>
@@ -380,6 +412,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   mostrarOtrosTalleres = false;
   /** Asignaciones de actividad que el profesor debe aceptar/rechazar. */
   asignacionesPendientes: any[] = [];
+  /** Contadores de bandeja de la directiva. */
+  resumenDirectiva = { propuestasPendientes: 0, salidasPendientes: 0 };
   /** Filtro de categoría del catálogo ('todas' | id de categoría). */
   categoriaFiltro: CategoriaTallerId = 'todas';
 
@@ -408,12 +442,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
         error: () => (this.asignacionesPendientes = []),
       });
     }
+    if (this.auth.isCoordinacion()) {
+      this.cargarResumenDirectiva();
+    }
     if (this.auth.canInscribirseTalleres() && this.alumnoId) {
       this.pollSub = this.notificacionPoll.cambios$.subscribe(({ notificaciones, noLeidas }) => {
         this.notificaciones = notificaciones;
         this.notificacionesNoLeidas = noLeidas;
       });
     }
+  }
+
+  /** Carga propuestas y salidas pendientes de aprobación de la directiva. */
+  private cargarResumenDirectiva(): void {
+    this.apiService.getPropuestasPendientes().subscribe({
+      next: (data) => (this.resumenDirectiva.propuestasPendientes = Array.isArray(data) ? data.length : 0),
+      error: () => (this.resumenDirectiva.propuestasPendientes = 0),
+    });
+    this.apiService.getSalidasPendientesDirectiva().subscribe({
+      next: (data) => (this.resumenDirectiva.salidasPendientes = Array.isArray(data) ? data.length : 0),
+      error: () => (this.resumenDirectiva.salidasPendientes = 0),
+    });
+  }
+
+  totalPendientesDirectiva(): number {
+    return this.resumenDirectiva.propuestasPendientes + this.resumenDirectiva.salidasPendientes;
   }
 
   /** Marca una notificación individual como leída vía el servicio de polling. */

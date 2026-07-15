@@ -136,10 +136,10 @@ export class NavLinksComponent implements OnInit {
       return;
     }
 
-    items.push(
-      { path: '/dashboard', label: 'Dashboard' },
-      { path: '/talleres', label: 'Talleres' },
-    );
+    items.push({ path: '/dashboard', label: 'Dashboard' });
+    if (!this.auth.isProfesor()) {
+      items.push({ path: '/talleres', label: 'Talleres' });
+    }
 
     if (this.auth.canAccessTalleresCRUD()) {
       items.push({ path: '/gestion-actividades', label: 'Gestión actividades' });
