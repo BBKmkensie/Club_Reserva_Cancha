@@ -16,11 +16,20 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Taller } from './taller.entity';
 import { Admin } from './admin.entity';
 import { Profesor } from './profesor.entity';
 
+/**
+ * Evita dos reservas con el mismo inicio en el mismo espacio/fecha.
+ * El solape de intervalos (bloques de distinta duración) se refuerza en BD
+ * con EXCLUDE USING gist (ver ReservaService.onModuleInit).
+ */
+@Index('UQ_reservas_espacio_fecha_hora_inicio', ['espacio', 'fecha', 'horaInicio'], {
+  unique: true,
+})
 @Entity('reservas')
 export class Reserva {
   /** PK autoincremental de la reserva. */

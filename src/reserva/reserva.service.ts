@@ -12,8 +12,10 @@
  *   - 'ocupada'      → hay una reserva que solapa ese horario
  *   - 'no_habilitada'→ (conceptualmente) franja inactiva; aquí no se listan
  *
- * Flujo create:
- *   Controller → validarReserva() → create + save → captura error 23505 (unique)
+ * Concurrencia:
+ *   - validarReserva() rechaza solapes detectados antes del INSERT
+ *   - Índice único (espacio, fecha, hora_inicio) + EXCLUDE gist de rangos en BD
+ *     → si dos usuarios confirman a la vez, la segunda falla (23505 / 23P01)
  * =============================================================================
  */
 import {
@@ -21,11 +23,13 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 // @InjectRepository = pide el Repository de una entidad registrada en ReservaModule.
 import { InjectRepository } from '@nestjs/typeorm';
 // Repository: find / findOne / create / save / remove — API TypeORM sobre la tabla.
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Reserva } from '../entities/reserva.entity';
 import { FranjaCancha } from '../entities/franja-cancha.entity';
 import { CreateReservaDto } from '../dto/create-reserva.dto';
@@ -66,15 +70,68 @@ export interface SlotDisponibilidadCancha {
 
 /** @Injectable() = Nest puede inyectar este service en el controller y otros módulos. */
 @Injectable()
-export class ReservaService {
+export class ReservaService implements OnModuleInit {
+  private readonly logger = new Logger(ReservaService.name);
+
   constructor(
     @InjectRepository(Reserva)
     private reservaRepository: Repository<Reserva>,
     @InjectRepository(FranjaCancha)
     private franjaRepository: Repository<FranjaCancha>,
     private franjaCanchaService: FranjaCanchaService,
+    private dataSource: DataSource,
   ) {}
 
+  /**
+   * Refuerza en Postgres que no existan dos reservas solapadas
+   * (protege carreras entre dos clics simultáneos).
+   */
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.dataSource.query(`CREATE EXTENSION IF NOT EXISTS btree_gist`);
+
+      await this.dataSource.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS UQ_reservas_espacio_fecha_hora_inicio
+        ON reservas (espacio, fecha, hora_inicio)
+      `);
+
+      await this.dataSource.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'reservas_no_solape_espacio_fecha'
+          ) THEN
+            ALTER TABLE reservas
+            ADD CONSTRAINT reservas_no_solape_espacio_fecha
+            EXCLUDE USING gist (
+              espacio WITH =,
+              fecha WITH =,
+              tsrange(
+                (fecha + hora_inicio),
+                (fecha + hora_fin),
+                '[)'
+              ) WITH &&
+            );
+          END IF;
+        END $$;
+      `);
+      this.logger.log('Restricciones de no-solape de cancha aseguradas en BD');
+    } catch (err: any) {
+      this.logger.warn(
+        `No se pudieron asegurar restricciones de no-solape en reservas: ${err?.message ?? err}`,
+      );
+    }
+  }
+
+  /** Interpreta errores de unicidad / exclusión de Postgres como conflicto de negocio. */
+  private lanzarSiConflictoCancha(err: any, horaInicio: string, horaFin: string): void {
+    const code = err?.code ?? err?.driverError?.code;
+    if (code === '23505' || code === '23P01') {
+      throw new ConflictException(
+        `La cancha ya está ocupada de ${horaInicio} a ${horaFin} en esa fecha`,
+      );
+    }
+  }
   /**
    * Slots de un día: cruza franjas activas con reservas existentes.
    * 1) Asegura grilla base de franjas
@@ -259,7 +316,7 @@ export class ReservaService {
     }
   }
 
-  /** Crea una reserva tras validar; captura violación de unique index (código PG 23505). */
+  /** Crea una reserva tras validar; captura violación de unique/EXCLUDE (carrera). */
   async create(createReservaDto: CreateReservaDto): Promise<Reserva> {
     await this.validarReserva(createReservaDto);
 
@@ -280,12 +337,7 @@ export class ReservaService {
     try {
       return await this.reservaRepository.save(reserva);
     } catch (err: any) {
-      // 23505 = unique_violation en PostgreSQL (carrera entre dos reservas iguales)
-      if (err?.code === '23505') {
-        throw new ConflictException(
-          `La cancha ya está ocupada de ${horaInicio} a ${horaFin} en esa fecha`,
-        );
-      }
+      this.lanzarSiConflictoCancha(err, horaInicio, horaFin);
       throw err;
     }
   }
@@ -362,7 +414,16 @@ export class ReservaService {
       profesorId: merged.profesorId ?? null,
     });
 
-    return await this.reservaRepository.save(reserva);
+    try {
+      return await this.reservaRepository.save(reserva);
+    } catch (err: any) {
+      this.lanzarSiConflictoCancha(
+        err,
+        normalizarHora(merged.horaInicio),
+        normalizarHora(merged.horaFin),
+      );
+      throw err;
+    }
   }
 
   /** Elimina la reserva de la base de datos. */
