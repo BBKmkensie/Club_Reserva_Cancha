@@ -5,9 +5,9 @@
 import { Component, Input, OnChanges, OnInit, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../services/api.service';
-import { AlumnoPrivacidadService } from '../../shared/services/alumno-privacidad.service';
-import { environment } from '../../../environments/environment';
+import { ApiService } from '../../../services/api.service';
+import { AlumnoPrivacidadService } from '../../services/alumno-privacidad.service';
+import { environment } from '../../../../environments/environment';
 
 interface RegistroUI {
   alumnoId: number;

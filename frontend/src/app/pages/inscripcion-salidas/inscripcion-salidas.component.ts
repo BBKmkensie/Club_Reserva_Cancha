@@ -163,6 +163,38 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
         }
       }
 
+      <section class="bg-surface rounded-xl shadow-lg p-6 border border-primary-200">
+        <h2 class="text-xl font-semibold text-ink mb-2">Control de asistencia</h2>
+        <p class="text-sm text-ink-muted mb-4">
+          @if (auth.isProfesor()) {
+            Selecciona una salida para pasar lista, subir la imagen de evidencia y guardar la asistencia de los alumnos inscritos.
+          } @else {
+            Selecciona una salida para ver la lista de asistencia y la imagen de evidencia registrada por el profesor.
+          }
+        </p>
+        @if (salidasAsistencia.length === 0) {
+          <p class="text-sm text-ink-muted">No hay salidas publicadas, en curso o cerradas disponibles.</p>
+        } @else {
+          <label class="block text-sm font-medium text-ink-secondary mb-1">Salida</label>
+          <select [(ngModel)]="salidaAsistenciaSeleccionada"
+                  (ngModelChange)="onSeleccionAsistencia($event)"
+                  class="w-full max-w-xl border border-line rounded-lg px-3 py-2 mb-4 bg-surface">
+            <option [ngValue]="null">— Seleccione una salida —</option>
+            @for (s of salidasAsistencia; track s.id) {
+              <option [ngValue]="s.id">
+                {{ s.destino }} · {{ s.fecha | date:'dd/MM/yyyy' }} · {{ estadoLabel(s) }}
+              </option>
+            }
+          </select>
+          @if (salidaAsistenciaSeleccionada) {
+            <app-asistencia-salida-panel
+              [salidaId]="salidaAsistenciaSeleccionada"
+              [profesorId]="puedeEditarAsistencia(salidaAsistenciaSeleccionada) ? auth.currentUserId() : null"
+              [modoEdicion]="puedeEditarAsistencia(salidaAsistenciaSeleccionada)" />
+          }
+        }
+      </section>
+
       <section class="bg-surface rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-ink mb-4">Todas las salidas</h2>
         <div class="space-y-3">
@@ -186,7 +218,7 @@ import { AsistenciaSalidaPanelComponent } from '../../shared/components/asistenc
                     {{ estadoLabel(s) }}
                   </span>
                 </div>
-                @if (auth.isProfesor() && s.profesorId === auth.currentUserId()) {
+                @if (auth.isProfesor() && esProfesorSalida(s)) {
                   <div class="flex flex-col gap-2">
                     @if (s.estado === 'PUBLICADA') {
                       <button (click)="abrirSalida(s)" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg">Abrir salida</button>
@@ -242,7 +274,9 @@ export class InscripcionSalidasComponent implements OnInit {
   pendientesProfesor: Salida[] = [];
   /** Bandeja de directiva: propuestas de profesor. */
   pendientesDirectiva: Salida[] = [];
-  /** Id de salida cuyo panel de asistencia está expandido (profesor). */
+  /** Id de salida elegida en el selector de control de asistencia. */
+  salidaAsistenciaSeleccionada: number | null = null;
+  /** Id de salida cuyo panel de asistencia está expandido en la tarjeta (profesor). */
   salidaAsistenciaAbierta: number | null = null;
   /** Evita bucles al sincronizar profesor ↔ taller en el formulario de asignación. */
   private sincronizandoAsignacion = false;
@@ -332,6 +366,34 @@ export class InscripcionSalidasComponent implements OnInit {
   etiqueta(s: Salida) { return etiquetaFlujoSalida(s); }
   estadoLabel(s: Salida) { return etiquetaEstadoSalida(s); }
 
+  /** Salidas donde ya se puede ver o registrar asistencia. */
+  get salidasAsistencia(): Salida[] {
+    return this.salidas.filter(
+      (s) => s.estado === 'PUBLICADA' || s.estado === 'EN_CURSO' || s.estado === 'CERRADA',
+    );
+  }
+
+  /** Solo el profesor responsable puede editar la lista. */
+  puedeEditarAsistencia(salidaId: number): boolean {
+    if (!this.auth.isProfesor()) return false;
+    const salida = this.salidas.find((s) => Number(s.id) === Number(salidaId));
+    return this.esProfesorSalida(salida ?? { profesorId: null } as Salida);
+  }
+
+  esProfesorSalida(s: Salida): boolean {
+    return Number(s.profesorId) === Number(this.auth.currentUserId());
+  }
+
+  onSeleccionAsistencia(salidaId: number | null): void {
+    this.salidaAsistenciaAbierta = salidaId;
+  }
+
+  toggleAsistenciaSalida(salidaId: number): void {
+    const abierta = this.salidaAsistenciaAbierta === salidaId ? null : salidaId;
+    this.salidaAsistenciaAbierta = abierta;
+    this.salidaAsistenciaSeleccionada = abierta;
+  }
+
   /** Recarga el listado completo de salidas (filtrado por profesor si aplica). */
   cargarSalidas() {
     const obs = this.auth.isProfesor() && this.auth.currentUserId()
@@ -419,10 +481,6 @@ export class InscripcionSalidasComponent implements OnInit {
       },
       error: (e) => alert(e?.error?.message || 'Error'),
     });
-  }
-
-  toggleAsistenciaSalida(salidaId: number): void {
-    this.salidaAsistenciaAbierta = this.salidaAsistenciaAbierta === salidaId ? null : salidaId;
   }
 
   /** Marca una salida publicada como en curso (profesor responsable). */
