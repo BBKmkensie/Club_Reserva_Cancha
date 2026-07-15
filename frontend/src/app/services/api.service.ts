@@ -609,6 +609,19 @@ export class ApiService {
     return this.http.get<any>(`${this.apiUrl}/ficha-alumno/${alumnoId}/${tallerId}`);
   }
 
+  /** GET /ficha-alumno/alumno/:alumnoId/ultima — última ficha física conocida (cualquier taller). */
+  getUltimaFichaAlumno(alumnoId: number): Observable<{
+    encontrada: boolean;
+    altura?: number;
+    peso?: number;
+    porcentajeGrasa?: number;
+    sedentario?: boolean;
+    tallerId?: number | null;
+    fuente?: 'ficha' | 'inscripcion';
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/ficha-alumno/alumno/${alumnoId}/ultima`);
+  }
+
   // =========================================================================
   // ASISTENCIA
   // =========================================================================

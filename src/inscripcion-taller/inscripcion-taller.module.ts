@@ -25,6 +25,7 @@ import { InscripcionTallerController } from './inscripcion-taller.controller';
 import { NotificacionModule } from '../notificacion/notificacion.module';
 import { MailModule } from '../mail/mail.module';
 import { AuthModule } from '../auth/auth.module';
+import { FichaAlumnoModule } from '../ficha-alumno/ficha-alumno.module';
 
 /**
  * @Module: registra entidades TypeORM + controllers/providers.
@@ -43,6 +44,7 @@ import { AuthModule } from '../auth/auth.module';
     NotificacionModule,
     MailModule,
     AuthModule,
+    FichaAlumnoModule,
   ],
   controllers: [InscripcionTallerController],
   providers: [InscripcionTallerService],

@@ -47,6 +47,7 @@ import { TallerHorario } from '../entities/taller-horario.entity';
 import { NotificacionService } from '../notificacion/notificacion.service';
 import { PeriodoService } from '../periodo/periodo.service';
 import { MailService } from '../mail/mail.service';
+import { FichaAlumnoService } from '../ficha-alumno/ficha-alumno.service';
 import { requiereFichaFisica } from '../common/taller-categoria.util';
 import {
   opcionesHorarioTaller,
@@ -93,6 +94,7 @@ export class InscripcionTallerService implements OnModuleInit {
     private notificacionService: NotificacionService,
     private periodoService: PeriodoService,
     private mailService: MailService,
+    private fichaAlumnoService: FichaAlumnoService,
     private dataSource: DataSource,
   ) {}
 
@@ -384,12 +386,31 @@ export class InscripcionTallerService implements OnModuleInit {
     }
 
     const pideFicha = requiereFichaFisica(taller?.tipo ?? '');
+    let fichaDto = dto.ficha;
+
+    // Si es deporte y no mandan ficha completa, reutiliza la última conocida del alumno
     if (pideFicha) {
+      const incompleta =
+        fichaDto == null ||
+        fichaDto.altura == null ||
+        fichaDto.peso == null ||
+        fichaDto.porcentajeGrasa == null;
+      if (incompleta) {
+        const previa = await this.fichaAlumnoService.obtenerUltimaDelAlumno(dto.alumnoId);
+        if (previa.encontrada) {
+          fichaDto = {
+            altura: previa.altura,
+            peso: previa.peso,
+            porcentajeGrasa: previa.porcentajeGrasa,
+            sedentario: previa.sedentario,
+          };
+        }
+      }
       if (
-        dto.ficha == null ||
-        dto.ficha.altura == null ||
-        dto.ficha.peso == null ||
-        dto.ficha.porcentajeGrasa == null
+        fichaDto == null ||
+        fichaDto.altura == null ||
+        fichaDto.peso == null ||
+        fichaDto.porcentajeGrasa == null
       ) {
         throw new BadRequestException(
           'Este taller deportivo requiere altura, peso y % de grasa corporal',
@@ -401,12 +422,12 @@ export class InscripcionTallerService implements OnModuleInit {
       where: { alumnoId: dto.alumnoId, tallerId: dto.tallerId },
     });
     let guardada: InscripcionTaller;
-    const datosFicha = pideFicha && dto.ficha
+    const datosFicha = pideFicha && fichaDto
       ? {
-          altura: dto.ficha.altura,
-          peso: dto.ficha.peso,
-          porcentajeGrasa: dto.ficha.porcentajeGrasa,
-          sedentario: dto.ficha.sedentario ?? false,
+          altura: fichaDto.altura,
+          peso: fichaDto.peso,
+          porcentajeGrasa: fichaDto.porcentajeGrasa,
+          sedentario: fichaDto.sedentario ?? false,
         }
       : {
           altura: null,
@@ -428,6 +449,16 @@ export class InscripcionTallerService implements OnModuleInit {
         ...datosFicha,
       });
       guardada = await this.repo.save(inscripcion);
+    }
+
+    // Replica la ficha en el nuevo taller para que profesores/coordinación la vean
+    if (pideFicha && fichaDto) {
+      await this.fichaAlumnoService.guardar(dto.alumnoId, dto.tallerId, {
+        altura: fichaDto.altura,
+        peso: fichaDto.peso,
+        porcentajeGrasa: fichaDto.porcentajeGrasa,
+        sedentario: fichaDto.sedentario ?? false,
+      });
     }
 
     await this.notificacionService.crear(

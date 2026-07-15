@@ -49,6 +49,16 @@ export class FichaAlumnoController {
     });
   }
 
+  /**
+   * GET /ficha-alumno/alumno/:alumnoId/ultima
+   * Última ficha conocida del alumno (cualquier taller) para reutilizar en otro deporte.
+   * Debe ir ANTES de :alumnoId/:tallerId.
+   */
+  @Get('alumno/:alumnoId/ultima')
+  obtenerUltima(@Param('alumnoId', ParseIntPipe) alumnoId: number) {
+    return this.fichaService.obtenerUltimaDelAlumno(alumnoId);
+  }
+
   /** GET /ficha-alumno/:alumnoId/:tallerId */
   @Get(':alumnoId/:tallerId')
   obtener(

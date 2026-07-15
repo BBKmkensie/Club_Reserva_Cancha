@@ -291,6 +291,13 @@ import { requiereFichaFisica } from '../../shared/utils/taller-categoria.util';
           @if (pideFichaFisica()) {
           <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
             <h4 class="font-semibold text-ink mb-2">Ficha del alumno</h4>
+            @if (fichaReutilizada) {
+              <p class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 mb-3">
+                Se reutilizaron tus datos físicos de un taller deportivo anterior. Puedes corregirlos si cambiaron.
+              </p>
+            } @else {
+              <p class="text-xs text-ink-muted mb-3">Completa tus datos físicos. El profesor los verá al revisar tu solicitud.</p>
+            }
             <div class="grid grid-cols-2 gap-3 text-sm">
               <label class="block">
                 <span class="text-ink-secondary">Altura (cm)</span>
@@ -402,6 +409,8 @@ export class TallerDetailComponent implements OnInit {
   errorInscripcion = '';
   confirmando = false;
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
+  /** true si se precargó ficha de otro taller deportivo. */
+  fichaReutilizada = false;
   /** Modal de retiro de inscripción. */
   mostrarConfirmacionRetiro = false;
   retirando = false;
@@ -735,6 +744,23 @@ export class TallerDetailComponent implements OnInit {
     this.validacion = null;
     this.errorInscripcion = '';
     this.fichaForm = { altura: null, peso: null, porcentajeGrasa: null, sedentario: false };
+    this.fichaReutilizada = false;
+
+    if (this.pideFichaFisica() && this.alumnoId) {
+      this.apiService.getUltimaFichaAlumno(this.alumnoId).subscribe({
+        next: (previa) => {
+          if (!previa?.encontrada) return;
+          this.fichaForm = {
+            altura: Number(previa.altura),
+            peso: Number(previa.peso),
+            porcentajeGrasa: Number(previa.porcentajeGrasa),
+            sedentario: !!previa.sedentario,
+          };
+          this.fichaReutilizada = true;
+        },
+      });
+    }
+
     this.apiService.validarInscripcionTaller(this.alumnoId, this.taller.id, true).subscribe({
       next: (v) => {
         this.validacion = v;
@@ -753,6 +779,7 @@ export class TallerDetailComponent implements OnInit {
     this.validacion = null;
     this.errorInscripcion = '';
     this.confirmando = false;
+    this.fichaReutilizada = false;
   }
 
   /** Envía la solicitud de inscripción; ficha solo en talleres deportivos. */

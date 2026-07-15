@@ -243,8 +243,14 @@ interface InscripcionTaller {
 
           @if (pideFichaFisica(tallerConfirmando)) {
           <div class="border border-primary-200 bg-primary-50 rounded-lg p-4 mb-4">
-            <h4 class="font-semibold text-ink mb-2">Ficha del alumno (por taller)</h4>
-            <p class="text-xs text-ink-muted mb-3">Completa tus datos físicos. El profesor los verá al revisar tu solicitud.</p>
+            <h4 class="font-semibold text-ink mb-2">Ficha del alumno</h4>
+            @if (fichaReutilizada) {
+              <p class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 mb-3">
+                Se reutilizaron tus datos físicos de un taller deportivo anterior. Puedes corregirlos si cambiaron.
+              </p>
+            } @else {
+              <p class="text-xs text-ink-muted mb-3">Completa tus datos físicos. El profesor los verá al revisar tu solicitud.</p>
+            }
             <div class="grid grid-cols-2 gap-3 text-sm">
               <label class="block">
                 <span class="text-ink-secondary">Altura (cm)</span>
@@ -348,6 +354,8 @@ export class InscripcionTalleresComponent implements OnInit {
   confirmando = false;
   /** Ficha física obligatoria al inscribirse. */
   fichaForm = { altura: null as number | null, peso: null as number | null, porcentajeGrasa: null as number | null, sedentario: false };
+  /** true si se precargó ficha de otro taller deportivo. */
+  fichaReutilizada = false;
 
   /** Solicitud abierta en el modal de retiro. */
   solicitudRetirando: InscripcionTaller | null = null;
@@ -473,6 +481,23 @@ export class InscripcionTalleresComponent implements OnInit {
     this.validacionActual = null;
     this.errorConfirmacion = '';
     this.fichaForm = { altura: null, peso: null, porcentajeGrasa: null, sedentario: false };
+    this.fichaReutilizada = false;
+
+    if (this.pideFichaFisica(taller) && this.alumnoId) {
+      this.apiService.getUltimaFichaAlumno(this.alumnoId).subscribe({
+        next: (previa) => {
+          if (!previa?.encontrada) return;
+          this.fichaForm = {
+            altura: Number(previa.altura),
+            peso: Number(previa.peso),
+            porcentajeGrasa: Number(previa.porcentajeGrasa),
+            sedentario: !!previa.sedentario,
+          };
+          this.fichaReutilizada = true;
+        },
+      });
+    }
+
     this.apiService.validarInscripcionTaller(this.alumnoId, taller.id, true).subscribe({
       next: (v) => {
         this.validacionActual = v;
@@ -491,6 +516,7 @@ export class InscripcionTalleresComponent implements OnInit {
     this.validacionActual = null;
     this.errorConfirmacion = '';
     this.confirmando = false;
+    this.fichaReutilizada = false;
   }
 
   fichaValida(): boolean {

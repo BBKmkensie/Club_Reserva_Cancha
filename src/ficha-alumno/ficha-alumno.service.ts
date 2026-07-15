@@ -149,6 +149,73 @@ export class FichaAlumnoService {
     return this.toItem(alumno, tallerId, ficha ?? undefined, inscripcion ?? undefined);
   }
 
+  /**
+   * Última ficha física conocida del alumno (cualquier taller deportivo).
+   * Sirve para reutilizar altura/peso/%grasa/sedentario al inscribirse en otro deporte.
+   */
+  async obtenerUltimaDelAlumno(alumnoId: number): Promise<{
+    encontrada: boolean;
+    altura?: number;
+    peso?: number;
+    porcentajeGrasa?: number;
+    sedentario?: boolean;
+    tallerId?: number | null;
+    fuente?: 'ficha' | 'inscripcion';
+  }> {
+    const alumno = await this.alumnoRepo.findOne({ where: { id: alumnoId } });
+    if (!alumno) throw new NotFoundException('Alumno no encontrado');
+
+    const completo = (
+      altura: unknown,
+      peso: unknown,
+      porcentajeGrasa: unknown,
+    ): boolean =>
+      altura != null &&
+      peso != null &&
+      porcentajeGrasa != null &&
+      !Number.isNaN(Number(altura)) &&
+      !Number.isNaN(Number(peso)) &&
+      !Number.isNaN(Number(porcentajeGrasa));
+
+    const fichas = await this.fichaRepo.find({
+      where: { alumnoId },
+      order: { updatedAt: 'DESC' },
+    });
+    for (const f of fichas) {
+      if (completo(f.altura, f.peso, f.porcentajeGrasa)) {
+        return {
+          encontrada: true,
+          altura: Number(f.altura),
+          peso: Number(f.peso),
+          porcentajeGrasa: Number(f.porcentajeGrasa),
+          sedentario: f.sedentario ?? false,
+          tallerId: f.tallerId,
+          fuente: 'ficha',
+        };
+      }
+    }
+
+    const inscripciones = await this.inscripcionRepo.find({
+      where: { alumnoId },
+      order: { createdAt: 'DESC' },
+    });
+    for (const i of inscripciones) {
+      if (completo(i.altura, i.peso, i.porcentajeGrasa)) {
+        return {
+          encontrada: true,
+          altura: Number(i.altura),
+          peso: Number(i.peso),
+          porcentajeGrasa: Number(i.porcentajeGrasa),
+          sedentario: i.sedentario ?? false,
+          tallerId: i.tallerId,
+          fuente: 'inscripcion',
+        };
+      }
+    }
+
+    return { encontrada: false };
+  }
+
   /** Crea o actualiza la ficha antropométrica (upsert manual). */
   async guardar(alumnoId: number, tallerId: number, dto: ActualizarFichaAlumnoDto): Promise<FichaAlumnoTaller> {
     let ficha = await this.fichaRepo.findOne({ where: { alumnoId, tallerId } });
